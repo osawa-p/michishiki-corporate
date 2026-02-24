@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 40" fill="none">
+  <!-- 道のパスモチーフ -->
+  <path d="M6 32 L14 8 L18 8 L22 22 L26 8 L30 8 L38 32" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- 導くアロー -->
+  <path d="M34 20 L42 20 M38 16 L42 20 L38 24" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- テキスト: michibiki -->
+  <text x="50" y="26" font-family="'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="700" letter-spacing="1" fill="#1e293b">michibiki</text>
+  <!-- ドット装飾 -->
+  <circle cx="50" cy="33" r="1.5" fill="#2563eb"/>
+  <circle cx="55" cy="33" r="1.5" fill="#2563eb"/>
+  <circle cx="60" cy="33" r="1.5" fill="#2563eb"/>
+</svg>

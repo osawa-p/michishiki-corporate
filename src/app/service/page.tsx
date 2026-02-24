@@ -3,33 +3,36 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "サービス",
-  description: "株式会社ミチビキが提供するサービス一覧",
+  description: "SEO・LLMO支援、DB型SEO設計・実装、コンテンツディレクション。株式会社ミチビキのサービス一覧。",
 };
 
 const services = [
   {
-    icon: "🏢",
-    title: "企業向けソリューション",
-    subtitle: "DX推進・システム開発",
+    icon: "🔍",
+    title: "SEO・LLMO支援",
+    subtitle: "SEO / LLMO / AXO / DB型SEO",
     description:
-      "ペット関連企業のDX推進を支援します。業務効率化のためのシステム構築から、デジタル戦略の立案・実行支援まで幅広く対応します。",
-    features: ["業務フロー分析・改善提案", "カスタムシステム開発", "クラウド移行支援", "保守・運用サポート"],
+      "Googleなどの検索エンジン最適化（SEO）に加え、ChatGPT・Gemini・Claudeなど AIアシスタントが回答に引用するコンテンツへの最適化（LLMO）を一気通貫で支援します。DB型SEOの設計・実装とコンテンツディレクションを特に得意としています。",
+    features: [
+      "DB型SEO設計・実装（大量ページ自動生成・構造化データ対応）",
+      "LLMO（AIへの引用最適化）コンテンツ戦略",
+      "SEOディレクション・内製化支援",
+      "AXO（Answer Engine Optimization）対応",
+      "DX化・業務効率化の提案",
+    ],
   },
   {
     icon: "🐕",
-    title: "ペットサービスプラットフォーム",
-    subtitle: "サービス情報DB・マッチング",
+    title: "犬のトリミングポータルサイト運営",
+    subtitle: "ペットサービスDB（運営準備中）",
     description:
-      "犬のトリミングサロンを中心に、ペット関連サービスの情報を集約したDBサイトを運営します。オーナーとサービス事業者をつなぐマッチングプラットフォームです。",
-    features: ["サロン情報検索・比較", "ユーザーレビュー機能", "サービス事業者向け掲載管理", "エリア・犬種での絞り込み"],
-  },
-  {
-    icon: "💡",
-    title: "Webシステム開発",
-    subtitle: "フルスクラッチ・受託開発",
-    description:
-      "予約管理システム・顧客管理システム・会員サイトなど、ビジネス課題に合わせたWebシステムをオーダーメイドで開発します。",
-    features: ["要件定義・設計", "フロントエンド/バックエンド開発", "API連携・外部サービス統合", "テスト・デプロイ・保守"],
+      "犬のトリミングサロン情報を集約したDBポータルサイトを運営予定。エリア・犬種・料金・サービス内容で比較検索できるプラットフォームを構築し、ペットオーナーとサロンをつなぎます。",
+    features: [
+      "エリア・犬種での絞り込み検索",
+      "サービス・料金の比較",
+      "ユーザーレビュー・評価機能",
+      "サロンオーナー向け掲載管理",
+    ],
   },
 ];
 
@@ -68,7 +71,7 @@ export default function ServicePage() {
           href="/contact"
           className="inline-block px-10 py-3 bg-blue-600 text-white font-semibold rounded-full hover:bg-blue-700 transition-colors"
         >
-          お問い合わせ
+          無料相談する
         </Link>
       </div>
     </div>
