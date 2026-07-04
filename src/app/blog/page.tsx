@@ -34,22 +34,31 @@ export default function BlogPage() {
                 <Link
                   key={post.slug}
                   href={`/blog/${post.slug}`}
-                  className="group block py-7 border-b border-line hover:bg-white/60 transition-colors px-2"
+                  className="group flex flex-col sm:flex-row gap-5 sm:gap-7 py-7 border-b border-line hover:bg-white/60 transition-colors px-2"
                 >
-                  <div className="flex flex-wrap items-center gap-4 mb-3">
-                    <time className="text-xs text-ink-faint tracking-wider">{post.date}</time>
-                    <span className="text-[10px] tracking-[0.2em] uppercase text-bronze-deep border border-bronze/40 px-2.5 py-0.5">
-                      {post.category}
-                    </span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/blog/${post.slug}/opengraph-image`}
+                    alt=""
+                    loading="lazy"
+                    className="w-full sm:w-52 shrink-0 aspect-[1200/630] object-cover border border-line"
+                  />
+                  <div className="flex flex-col justify-center">
+                    <div className="flex flex-wrap items-center gap-4 mb-3">
+                      <time className="text-xs text-ink-faint tracking-wider">{post.date}</time>
+                      <span className="text-[10px] tracking-[0.2em] uppercase text-bronze-deep border border-bronze/40 px-2.5 py-0.5">
+                        {post.category}
+                      </span>
+                    </div>
+                    <h2 className="font-serif text-lg font-semibold group-hover:text-bronze-deep transition-colors">
+                      {post.title}
+                    </h2>
+                    {post.excerpt && (
+                      <p className="mt-2 text-sm text-ink-soft leading-relaxed line-clamp-2">
+                        {post.excerpt}
+                      </p>
+                    )}
                   </div>
-                  <h2 className="font-serif text-lg font-semibold group-hover:text-bronze-deep transition-colors">
-                    {post.title}
-                  </h2>
-                  {post.excerpt && (
-                    <p className="mt-2 text-sm text-ink-soft leading-relaxed line-clamp-2">
-                      {post.excerpt}
-                    </p>
-                  )}
                 </Link>
               ))}
             </div>
