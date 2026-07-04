@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
 
-export const alt = "株式会社ミチビキ｜人とペットの豊かな未来へ";
+export const alt = "株式会社ミチビキ｜SEO・AXO/LLMOコンサルティング";
 export const size = {
   width: 1200,
   height: 630,
@@ -20,30 +20,28 @@ export default function OpengraphImage() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "#1e3a8a",
-          backgroundImage:
-            "linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #3b82f6 100%)",
-          color: "#ffffff",
-          fontFamily: "sans-serif",
+          backgroundColor: "#14130f",
+          color: "#f6f4ef",
+          fontFamily: "serif",
         }}
       >
         <div
           style={{
             display: "flex",
-            fontSize: 40,
-            letterSpacing: 8,
-            color: "#bfdbfe",
-            marginBottom: 24,
+            fontSize: 30,
+            letterSpacing: 14,
+            color: "#a17c3f",
+            marginBottom: 32,
           }}
         >
-          MICHIBIKI
+          MICHIBIKI INC.
         </div>
         <div
           style={{
             display: "flex",
-            fontSize: 88,
+            fontSize: 92,
             fontWeight: 700,
-            marginBottom: 32,
+            marginBottom: 36,
           }}
         >
           株式会社ミチビキ
@@ -51,12 +49,23 @@ export default function OpengraphImage() {
         <div
           style={{
             display: "flex",
-            fontSize: 44,
+            fontSize: 40,
             fontWeight: 500,
-            color: "#e0ecff",
+            color: "#d8d4c8",
           }}
         >
-          人とペットの豊かな未来へ
+          検索にも、AIにも、選ばれる。
+        </div>
+        <div
+          style={{
+            display: "flex",
+            marginTop: 48,
+            fontSize: 24,
+            letterSpacing: 6,
+            color: "#8b877c",
+          }}
+        >
+          SEO / AXO / LLMO / CVR / DATA
         </div>
       </div>
     ),

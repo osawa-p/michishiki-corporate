@@ -1,18 +1,76 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #1a1a1a;
+  --paper: #f6f4ef;
+  --ink: #1c1b18;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  /* ベースカラー：紙（生成り）× 墨 × ブロンズ */
+  --color-paper: #f6f4ef;
+  --color-ink: #1c1b18;
+  --color-ink-soft: #56534a;
+  --color-ink-faint: #8b877c;
+  --color-line: #e2ded2;
+  --color-bronze: #a17c3f;
+  --color-bronze-deep: #86672f;
+  --color-night: #14130f;
+
   --font-sans: var(--font-noto-sans-jp);
+  --font-serif: var(--font-shippori-mincho);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-noto-sans-jp), "Helvetica Neue", Arial, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-noto-sans-jp), "Hiragino Kaku Gothic ProN", "Helvetica Neue", Arial, sans-serif;
+  font-feature-settings: "palt";
+}
+
+::selection {
+  background: #a17c3f;
+  color: #f6f4ef;
+}
+
+/* お知らせ本文（remark出力のHTML）用スタイル */
+.article-body {
+  line-height: 1.9;
+}
+.article-body h2 {
+  font-family: var(--font-shippori-mincho), serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 2.5rem 0 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e2ded2;
+}
+.article-body h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 2rem 0 0.75rem;
+}
+.article-body p {
+  margin: 1rem 0;
+}
+.article-body ul,
+.article-body ol {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+.article-body ul {
+  list-style: disc;
+}
+.article-body ol {
+  list-style: decimal;
+}
+.article-body li {
+  margin: 0.35rem 0;
+}
+.article-body a {
+  color: #86672f;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.article-body strong {
+  font-weight: 700;
 }

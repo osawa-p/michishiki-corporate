@@ -8,27 +8,33 @@ export const metadata: Metadata = {
 
 export default function RecruitPage() {
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-      <div className="mb-14 text-center">
-        <p className="text-blue-600 text-sm font-semibold tracking-widest mb-2">RECRUIT</p>
-        <h1 className="text-3xl md:text-4xl font-bold text-gray-900">採用情報</h1>
-      </div>
+    <>
+      {/* Page Header */}
+      <section className="border-b border-line">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
+          <p className="text-xs tracking-[0.3em] uppercase text-bronze mb-4">Recruit</p>
+          <h1 className="font-serif text-4xl md:text-5xl font-semibold">採用情報</h1>
+        </div>
+      </section>
 
-      <div className="bg-white rounded-2xl shadow-sm p-10 md:p-16 text-center">
-        <div className="text-5xl mb-6">🙏</div>
-        <h2 className="text-xl font-bold text-gray-900 mb-4">現在、募集中のポジションはありません</h2>
-        <p className="text-gray-500 text-sm leading-relaxed mb-8 max-w-md mx-auto">
-          現時点では採用募集を行っておりませんが、
-          ご興味をお持ちいただける方はお気軽にお問い合わせください。
-          将来的な採用情報はこちらのページで随時お知らせします。
-        </p>
-        <Link
-          href="/contact"
-          className="inline-block px-8 py-3 border border-gray-300 text-gray-600 text-sm font-semibold rounded-full hover:border-blue-500 hover:text-blue-600 transition-colors"
-        >
-          お問い合わせはこちら
-        </Link>
-      </div>
-    </div>
+      <section className="py-20 md:py-28">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="font-serif text-xl md:text-2xl font-semibold mb-6">
+            現在、募集中のポジションはありません
+          </p>
+          <p className="text-sm text-ink-soft leading-loose mb-10 max-w-lg mx-auto">
+            現時点では採用募集を行っておりませんが、SEO・AXO/LLMOやWebマーケティングの領域に
+            ご興味をお持ちの方とのつながりは歓迎しています。
+            将来的な募集はこのページとお知らせでご案内します。
+          </p>
+          <Link
+            href="/contact"
+            className="inline-block px-8 py-3.5 border border-ink/30 text-ink text-sm font-semibold hover:border-bronze-deep hover:text-bronze-deep transition-colors"
+          >
+            お問い合わせはこちら
+          </Link>
+        </div>
+      </section>
+    </>
   );
 }

@@ -65,9 +65,9 @@ export default function ContactForm() {
   if (status === "success") {
     return (
       <div className="text-center py-8">
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-paper border border-bronze/40">
           <svg
-            className="h-8 w-8 text-blue-600"
+            className="h-8 w-8 text-bronze-deep"
             fill="none"
             viewBox="0 0 24 24"
             strokeWidth={2}
@@ -77,8 +77,8 @@ export default function ContactForm() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
           </svg>
         </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-3">お問い合わせありがとうございます</h2>
-        <p className="text-gray-600 text-sm">
+        <h2 className="font-serif text-xl font-semibold text-ink mb-3">お問い合わせありがとうございます</h2>
+        <p className="text-ink-soft text-sm">
           お問い合わせを受け付けました。<br />
           通常2営業日以内にご返信いたします。今しばらくお待ちください。
         </p>
@@ -89,14 +89,14 @@ export default function ContactForm() {
   return (
     <form className="space-y-6" onSubmit={handleSubmit} noValidate>
       {status === "error" && errorMessage && (
-        <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+        <div className="bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
           {errorMessage}
         </div>
       )}
 
       <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="name">
-          お名前 <span className="text-red-500">*</span>
+        <label className="block text-sm font-semibold text-ink mb-2" htmlFor="name">
+          お名前 <span className="text-bronze-deep">*</span>
         </label>
         <input
           id="name"
@@ -105,12 +105,12 @@ export default function ContactForm() {
           value={form.name}
           onChange={handleChange}
           placeholder="山田 太郎"
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          className="w-full px-4 py-3 bg-white border border-line text-sm focus:outline-none focus:border-bronze"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="company">
+        <label className="block text-sm font-semibold text-ink mb-2" htmlFor="company">
           会社名
         </label>
         <input
@@ -119,13 +119,13 @@ export default function ContactForm() {
           value={form.company}
           onChange={handleChange}
           placeholder="株式会社〇〇"
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          className="w-full px-4 py-3 bg-white border border-line text-sm focus:outline-none focus:border-bronze"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="email">
-          メールアドレス <span className="text-red-500">*</span>
+        <label className="block text-sm font-semibold text-ink mb-2" htmlFor="email">
+          メールアドレス <span className="text-bronze-deep">*</span>
         </label>
         <input
           id="email"
@@ -134,20 +134,20 @@ export default function ContactForm() {
           value={form.email}
           onChange={handleChange}
           placeholder="example@mail.com"
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          className="w-full px-4 py-3 bg-white border border-line text-sm focus:outline-none focus:border-bronze"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="subject">
-          お問い合わせ種別 <span className="text-red-500">*</span>
+        <label className="block text-sm font-semibold text-ink mb-2" htmlFor="subject">
+          お問い合わせ種別 <span className="text-bronze-deep">*</span>
         </label>
         <select
           id="subject"
           required
           value={form.subject}
           onChange={handleChange}
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"
+          className="w-full px-4 py-3 bg-white border border-line text-sm focus:outline-none focus:border-bronze"
         >
           <option value="">選択してください</option>
           <option>サービスに関するご質問</option>
@@ -158,8 +158,8 @@ export default function ContactForm() {
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="message">
-          お問い合わせ内容 <span className="text-red-500">*</span>
+        <label className="block text-sm font-semibold text-ink mb-2" htmlFor="message">
+          お問い合わせ内容 <span className="text-bronze-deep">*</span>
         </label>
         <textarea
           id="message"
@@ -168,14 +168,14 @@ export default function ContactForm() {
           value={form.message}
           onChange={handleChange}
           placeholder="お問い合わせ内容をご記入ください"
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 resize-none"
+          className="w-full px-4 py-3 bg-white border border-line text-sm focus:outline-none focus:border-bronze resize-none"
         />
       </div>
 
       <button
         type="submit"
         disabled={status === "submitting"}
-        className="w-full py-3 bg-blue-600 text-white font-semibold rounded-full hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+        className="w-full py-3.5 bg-ink text-paper text-sm font-semibold hover:bg-bronze-deep transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {status === "submitting" ? "送信中..." : "送信する"}
       </button>

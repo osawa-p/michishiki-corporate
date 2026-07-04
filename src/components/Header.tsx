@@ -4,69 +4,81 @@ import Link from "next/link";
 import { useState } from "react";
 
 const navLinks = [
-  { href: "/about", label: "会社概要" },
   { href: "/service", label: "サービス" },
+  { href: "/about", label: "会社概要" },
   { href: "/news", label: "お知らせ" },
   { href: "/recruit", label: "採用情報" },
-  { href: "/contact", label: "お問い合わせ" },
 ];
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
+    <header className="sticky top-0 z-50 bg-paper/90 backdrop-blur border-b border-line">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-18">
           {/* Logo */}
-          <Link href="/" className="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
-            株式会社ミチビキ
+          <Link href="/" className="group leading-tight">
+            <span className="block font-serif text-lg font-semibold tracking-wide text-ink group-hover:text-bronze-deep transition-colors">
+              株式会社ミチビキ
+            </span>
+            <span className="block text-[10px] tracking-[0.35em] text-ink-faint uppercase">
+              Michibiki Inc.
+            </span>
           </Link>
 
           {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden md:flex items-center gap-7">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors"
+                className="text-sm font-medium text-ink-soft hover:text-bronze-deep transition-colors"
               >
                 {link.label}
               </Link>
             ))}
             <Link
               href="/contact"
-              className="ml-4 px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-full hover:bg-blue-700 transition-colors"
+              className="ml-2 px-6 py-2.5 bg-ink text-paper text-sm font-medium hover:bg-bronze-deep transition-colors"
             >
-              お問い合わせ
+              無料相談
             </Link>
           </nav>
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden p-2 rounded-md text-gray-600"
+            className="md:hidden p-2 text-ink"
             onClick={() => setIsOpen(!isOpen)}
             aria-label="メニュー"
+            aria-expanded={isOpen}
           >
-            <div className="w-6 h-0.5 bg-current mb-1.5" />
-            <div className="w-6 h-0.5 bg-current mb-1.5" />
-            <div className="w-6 h-0.5 bg-current" />
+            <div className={`w-6 h-px bg-current transition-transform ${isOpen ? "translate-y-[5px] rotate-45" : ""}`} />
+            <div className={`w-6 h-px bg-current my-[9px] ${isOpen ? "opacity-0" : ""}`} />
+            <div className={`w-6 h-px bg-current transition-transform ${isOpen ? "-translate-y-[5px] -rotate-45" : ""}`} />
           </button>
         </div>
 
         {/* Mobile Nav */}
         {isOpen && (
-          <nav className="md:hidden py-4 border-t border-gray-100">
+          <nav className="md:hidden py-4 border-t border-line">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="block py-2 text-sm font-medium text-gray-600 hover:text-blue-600"
+                className="block py-3 text-sm font-medium text-ink-soft hover:text-bronze-deep border-b border-line/60"
                 onClick={() => setIsOpen(false)}
               >
                 {link.label}
               </Link>
             ))}
+            <Link
+              href="/contact"
+              className="block mt-4 mb-2 px-6 py-3 bg-ink text-paper text-sm font-medium text-center"
+              onClick={() => setIsOpen(false)}
+            >
+              無料相談
+            </Link>
           </nav>
         )}
       </div>

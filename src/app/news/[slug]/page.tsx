@@ -28,21 +28,28 @@ export default async function NewsDetailPage({ params }: Props) {
   const htmlContent = (await remark().use(remarkHtml).process(post.content)).toString();
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-      <Link href="/news" className="inline-flex items-center text-sm text-blue-600 hover:underline mb-8">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
+      <Link
+        href="/news"
+        className="inline-flex items-center text-sm text-bronze-deep hover:text-ink transition-colors mb-10"
+      >
         ← お知らせ一覧へ戻る
       </Link>
 
-      <article className="bg-white rounded-2xl shadow-sm p-8 md:p-12">
-        <div className="flex flex-wrap items-center gap-3 mb-4">
-          <span className="text-xs text-gray-400">{post.date}</span>
-          <span className="px-3 py-0.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full">
-            {post.category}
-          </span>
-        </div>
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8">{post.title}</h1>
+      <article>
+        <header className="mb-10 pb-8 border-b border-line">
+          <div className="flex flex-wrap items-center gap-4 mb-5">
+            <time className="text-xs text-ink-faint tracking-wider">{post.date}</time>
+            <span className="text-[10px] tracking-[0.2em] uppercase text-bronze-deep border border-bronze/40 px-2.5 py-0.5">
+              {post.category}
+            </span>
+          </div>
+          <h1 className="font-serif text-2xl md:text-3xl font-semibold leading-relaxed">
+            {post.title}
+          </h1>
+        </header>
         <div
-          className="prose prose-sm max-w-none text-gray-700 leading-relaxed"
+          className="article-body text-sm md:text-[15px] text-ink-soft"
           dangerouslySetInnerHTML={{ __html: htmlContent }}
         />
       </article>
