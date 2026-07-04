@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import type { Metadata } from "next";
 import { services } from "@/lib/services";
 import { getAllNews } from "@/lib/news";
@@ -36,12 +35,11 @@ export default function HomePage() {
     <>
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 md:pt-24 pb-16 md:pb-24">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-12 items-center">
-            <div className="md:col-span-7">
-              <p className="text-xs tracking-[0.35em] uppercase text-bronze mb-6">
-                SEO / AXO / LLMO Consulting
-              </p>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 md:pt-28 pb-16 md:pb-28">
+          <div className="max-w-3xl">
+            <p className="text-xs tracking-[0.35em] uppercase text-bronze mb-6">
+              SEO / AXO / LLMO Consulting
+            </p>
               <h1 className="font-serif text-4xl md:text-6xl font-semibold leading-[1.25] tracking-tight mb-8">
                 検索にも、
                 <br />
@@ -55,36 +53,19 @@ export default function HomePage() {
                 株式会社ミチビキは、SEOとAXO/LLMO（AI検索最適化）を軸に、
                 集客の仕組みを戦略から実装まで伴走してつくります。
               </p>
-              <div className="flex flex-wrap gap-4">
-                <Link
-                  href="/contact"
-                  className="px-8 py-3.5 bg-ink text-paper text-sm font-semibold hover:bg-bronze-deep transition-colors"
-                >
-                  無料相談する
-                </Link>
-                <Link
-                  href="/service"
-                  className="px-8 py-3.5 border border-ink/30 text-ink text-sm font-semibold hover:border-bronze-deep hover:text-bronze-deep transition-colors"
-                >
-                  サービスを見る
-                </Link>
-              </div>
-            </div>
-            <div className="md:col-span-5">
-              <div className="relative max-w-xs sm:max-w-sm mx-auto md:ml-auto">
-                <div className="absolute -bottom-4 -right-4 w-full h-full border border-bronze/50" aria-hidden />
-                <Image
-                  src="/images/ceo-upper.jpg"
-                  alt="株式会社ミチビキ 代表取締役 大沢翔己"
-                  width={900}
-                  height={1125}
-                  priority
-                  className="relative w-full h-auto object-cover"
-                />
-                <p className="mt-4 text-xs text-ink-faint tracking-wider">
-                  代表取締役　大沢 翔己
-                </p>
-              </div>
+            <div className="flex flex-wrap gap-4">
+              <Link
+                href="/contact"
+                className="px-8 py-3.5 bg-ink text-paper text-sm font-semibold hover:bg-bronze-deep transition-colors"
+              >
+                無料相談する
+              </Link>
+              <Link
+                href="/service"
+                className="px-8 py-3.5 border border-ink/30 text-ink text-sm font-semibold hover:border-bronze-deep hover:text-bronze-deep transition-colors"
+              >
+                サービスを見る
+              </Link>
             </div>
           </div>
         </div>
@@ -170,20 +151,8 @@ export default function HomePage() {
       {/* CEO */}
       <section className="py-20 md:py-28">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-10 md:gap-14 items-center">
-            <div className="md:col-span-4">
-              <div className="max-w-[260px] mx-auto md:mx-0">
-                <Image
-                  src="/images/ceo-upper.jpg"
-                  alt="代表取締役 大沢翔己"
-                  width={520}
-                  height={650}
-                  className="w-full h-auto object-cover"
-                />
-              </div>
-            </div>
-            <div className="md:col-span-8">
-              <p className="text-xs tracking-[0.3em] uppercase text-bronze mb-4">Message</p>
+          <div className="max-w-3xl">
+            <p className="text-xs tracking-[0.3em] uppercase text-bronze mb-4">Message</p>
               <h2 className="font-serif text-2xl md:text-3xl font-semibold leading-snug mb-6">
                 Webの世界で「道に迷わない」ための
                 <br className="hidden md:block" />
@@ -199,7 +168,6 @@ export default function HomePage() {
               >
                 会社概要・代表メッセージ →
               </Link>
-            </div>
           </div>
         </div>
       </section>
