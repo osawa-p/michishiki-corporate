@@ -21,7 +21,7 @@ const siteDescription =
   "株式会社ミチビキは、SEO・AXO/LLMO（AI検索最適化）・CVR改善・データ分析を軸に、検索エンジンとAIの両方から選ばれるWebマーケティングを戦略から実装まで支援します。";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://michi-biki.jp"),
+  metadataBase: new URL("https://www.michi-biki.jp"),
   title: {
     default: `${siteName} | SEO・AXO/LLMOコンサルティング`,
     template: `%s | ${siteName}`,
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "ja_JP",
-    url: "https://michi-biki.jp",
+    url: "https://www.michi-biki.jp",
     siteName,
     title: `${siteName} | SEO・AXO/LLMOコンサルティング`,
     description: siteDescription,

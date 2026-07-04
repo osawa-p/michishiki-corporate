@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { getAllNews } from "@/lib/news";
 import { services } from "@/lib/services";
 
-const baseUrl = "https://michi-biki.jp";
+const baseUrl = "https://www.michi-biki.jp";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
