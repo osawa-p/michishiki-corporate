@@ -34,25 +34,46 @@ export default function HomePage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 md:pt-28 pb-16 md:pb-28">
+      <section className="relative overflow-hidden border-b border-line">
+        {/* 羅針盤モチーフ（装飾） */}
+        <svg
+          className="pointer-events-none absolute top-1/2 -translate-y-[58%] -right-40 md:-right-16 lg:right-8 w-[560px] h-[560px] md:w-[640px] md:h-[640px] text-bronze opacity-35 md:opacity-100"
+          viewBox="0 0 640 640"
+          fill="none"
+          aria-hidden
+        >
+          <circle cx="320" cy="320" r="300" stroke="currentColor" strokeOpacity="0.25" strokeDasharray="2 10" />
+          <circle cx="320" cy="320" r="236" stroke="currentColor" strokeOpacity="0.35" />
+          <circle cx="320" cy="320" r="150" stroke="currentColor" strokeOpacity="0.25" />
+          <circle cx="320" cy="320" r="64" stroke="currentColor" strokeOpacity="0.35" strokeDasharray="1 7" />
+          <line x1="320" y1="20" x2="320" y2="84" stroke="currentColor" strokeOpacity="0.4" />
+          <line x1="320" y1="556" x2="320" y2="620" stroke="currentColor" strokeOpacity="0.4" />
+          <line x1="20" y1="320" x2="84" y2="320" stroke="currentColor" strokeOpacity="0.4" />
+          <line x1="556" y1="320" x2="620" y2="320" stroke="currentColor" strokeOpacity="0.4" />
+          {/* 針 */}
+          <path d="M446 194 L342 342 L298 298 Z" fill="currentColor" fillOpacity="0.16" />
+          <line x1="446" y1="194" x2="212" y2="428" stroke="currentColor" strokeOpacity="0.55" />
+          <circle cx="320" cy="320" r="5" fill="currentColor" fillOpacity="0.6" />
+        </svg>
+
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 md:pt-32 pb-14 md:pb-20">
           <div className="max-w-3xl">
             <p className="text-xs tracking-[0.35em] uppercase text-bronze mb-6">
               SEO / AXO / LLMO Consulting
             </p>
-              <h1 className="font-serif text-4xl md:text-6xl font-semibold leading-[1.25] tracking-tight mb-8">
-                検索にも、
-                <br />
-                AIにも、選ばれる。
-              </h1>
-              <p className="text-ink-soft text-base md:text-lg leading-relaxed mb-4 max-w-xl">
-                Googleの検索結果から、ChatGPT・Geminiの回答まで。
-                見つけられる場所は変わっても、「正しく見つけられること」の価値は変わりません。
-              </p>
-              <p className="text-ink-soft text-sm md:text-base leading-relaxed mb-10 max-w-xl">
-                株式会社ミチビキは、SEOとAXO/LLMO（AI検索最適化）を軸に、
-                集客の仕組みを戦略から実装まで伴走してつくります。
-              </p>
+            <h1 className="font-serif text-4xl md:text-7xl font-semibold leading-[1.25] md:leading-[1.2] tracking-tight mb-8">
+              検索にも、
+              <br />
+              AIにも、選ばれる。
+            </h1>
+            <p className="text-ink-soft text-base md:text-lg leading-relaxed mb-4 max-w-xl">
+              Googleの検索結果から、ChatGPT・Geminiの回答まで。
+              見つけられる場所は変わっても、「正しく見つけられること」の価値は変わりません。
+            </p>
+            <p className="text-ink-soft text-sm md:text-base leading-relaxed mb-10 max-w-xl">
+              株式会社ミチビキは、SEOとAXO/LLMO（AI検索最適化）を軸に、
+              集客の仕組みを戦略から実装まで伴走してつくります。
+            </p>
             <div className="flex flex-wrap gap-4">
               <Link
                 href="/contact"
@@ -68,23 +89,27 @@ export default function HomePage() {
               </Link>
             </div>
           </div>
+
+          {/* サービスインデックス */}
+          <div className="mt-16 md:mt-24 grid grid-cols-2 md:grid-cols-4 gap-px bg-line border-t border-line">
+            {services.map((service) => (
+              <Link
+                key={service.slug}
+                href={`/service/${service.slug}`}
+                className="group bg-paper py-5 pr-4 md:px-5 md:first:pl-0 hover:bg-white/70 transition-colors"
+              >
+                <span className="block font-serif text-lg text-bronze mb-1.5">{service.num}</span>
+                <span className="block text-[13px] font-semibold leading-snug group-hover:text-bronze-deep transition-colors">
+                  {service.title}
+                </span>
+                <span className="mt-2 block text-[10px] tracking-[0.2em] uppercase text-ink-faint">
+                  {service.en}
+                </span>
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
-
-      {/* Domain strip */}
-      <div className="border-y border-line bg-white/40">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-wrap gap-x-8 gap-y-2 justify-center text-xs tracking-[0.25em] uppercase text-ink-faint">
-          <span>SEO</span>
-          <span className="text-line">/</span>
-          <span>AXO</span>
-          <span className="text-line">/</span>
-          <span>LLMO</span>
-          <span className="text-line">/</span>
-          <span>CVR Optimization</span>
-          <span className="text-line">/</span>
-          <span>Data Analytics</span>
-        </div>
-      </div>
 
       {/* Services */}
       <section className="py-20 md:py-28">
