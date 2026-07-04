@@ -1,79 +1,98 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { services, serviceFlow } from "@/lib/services";
+import CtaSection from "@/components/CtaSection";
 
 export const metadata: Metadata = {
   title: "サービス",
-  description: "SEO・LLMO支援、DB型SEO設計・実装、コンテンツディレクション。株式会社ミチビキのサービス一覧。",
+  description:
+    "SEOコンサルティング、AXO・LLMO支援（AI検索最適化）、CVR改善、データ分析・マーケティングDX。株式会社ミチビキのサービス一覧。",
 };
-
-const services = [
-  {
-    icon: "🔍",
-    title: "SEO・LLMO支援",
-    subtitle: "SEO / LLMO / AXO / DB型SEO",
-    description:
-      "Googleなどの検索エンジン最適化（SEO）に加え、ChatGPT・Gemini・Claudeなど AIアシスタントが回答に引用するコンテンツへの最適化（LLMO）を一気通貫で支援します。DB型SEOの設計・実装とコンテンツディレクションを特に得意としています。",
-    features: [
-      "DB型SEO設計・実装（大量ページ自動生成・構造化データ対応）",
-      "LLMO（AIへの引用最適化）コンテンツ戦略",
-      "SEOディレクション・内製化支援",
-      "AXO（Answer Engine Optimization）対応",
-      "DX化・業務効率化の提案",
-    ],
-  },
-  {
-    icon: "🐕",
-    title: "犬のトリミングポータルサイト運営",
-    subtitle: "ペットサービスDB（運営準備中）",
-    description:
-      "犬のトリミングサロン情報を集約したDBポータルサイトを運営予定。エリア・犬種・料金・サービス内容で比較検索できるプラットフォームを構築し、ペットオーナーとサロンをつなぎます。",
-    features: [
-      "エリア・犬種での絞り込み検索",
-      "サービス・料金の比較",
-      "ユーザーレビュー・評価機能",
-      "サロンオーナー向け掲載管理",
-    ],
-  },
-];
 
 export default function ServicePage() {
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-      <div className="mb-14 text-center">
-        <p className="text-blue-600 text-sm font-semibold tracking-widest mb-2">SERVICES</p>
-        <h1 className="text-3xl md:text-4xl font-bold text-gray-900">サービス一覧</h1>
-      </div>
+    <>
+      {/* Page Header */}
+      <section className="border-b border-line">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
+          <p className="text-xs tracking-[0.3em] uppercase text-bronze mb-4">Services</p>
+          <h1 className="font-serif text-4xl md:text-5xl font-semibold mb-6">サービス</h1>
+          <p className="text-ink-soft text-sm md:text-base leading-relaxed max-w-2xl">
+            「見つけられる」から「成果になる」まで。
+            検索エンジンとAIの両方を見据えた集客戦略を、4つの領域で戦略から実装まで支援します。
+          </p>
+        </div>
+      </section>
 
-      <div className="space-y-10">
-        {services.map((service) => (
-          <div key={service.title} className="bg-white rounded-2xl shadow-sm p-8 md:p-10 flex flex-col md:flex-row gap-8">
-            <div className="text-6xl md:pt-1">{service.icon}</div>
-            <div className="flex-1">
-              <p className="text-blue-600 text-xs font-semibold tracking-widest mb-1">{service.subtitle}</p>
-              <h2 className="text-xl font-bold text-gray-900 mb-3">{service.title}</h2>
-              <p className="text-gray-600 text-sm leading-relaxed mb-5">{service.description}</p>
-              <ul className="space-y-2">
-                {service.features.map((feature) => (
-                  <li key={feature} className="flex items-center gap-2 text-sm text-gray-700">
-                    <span className="text-blue-500 font-bold">✓</span>
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-            </div>
+      {/* Service List */}
+      <section className="py-16 md:py-24">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-px">
+          {services.map((service) => (
+            <Link
+              key={service.slug}
+              href={`/service/${service.slug}`}
+              className="group grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 py-10 md:py-12 border-b border-line first:border-t hover:bg-white/60 transition-colors md:px-4"
+            >
+              <div className="md:col-span-2 flex md:block items-baseline gap-4">
+                <span className="font-serif text-4xl text-bronze">{service.num}</span>
+                <p className="text-[10px] tracking-[0.25em] uppercase text-ink-faint md:mt-3">
+                  {service.en}
+                </p>
+              </div>
+              <div className="md:col-span-7">
+                <h2 className="font-serif text-2xl font-semibold mb-3 group-hover:text-bronze-deep transition-colors">
+                  {service.title}
+                </h2>
+                <p className="text-sm text-ink-soft leading-relaxed mb-4">{service.short}</p>
+                <div className="flex flex-wrap gap-2">
+                  {service.keywords.map((kw) => (
+                    <span
+                      key={kw}
+                      className="text-xs text-ink-faint border border-line px-2.5 py-1"
+                    >
+                      {kw}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="md:col-span-3 flex md:items-center md:justify-end">
+                <span className="text-sm font-semibold text-bronze-deep">詳しく見る →</span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* Flow */}
+      <section className="bg-night text-paper py-20 md:py-28">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-xs tracking-[0.3em] uppercase text-bronze mb-4">Flow</p>
+          <h2 className="font-serif text-3xl md:text-4xl font-semibold mb-14">支援の進め方</h2>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-8 md:gap-6">
+            {serviceFlow.map((f) => (
+              <div key={f.step} className="border-t border-stone-700 pt-5">
+                <span className="font-serif text-xl text-bronze">{f.step}</span>
+                <h3 className="font-semibold mt-3 mb-2">{f.title}</h3>
+                <p className="text-xs text-stone-400 leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      </section>
 
-      <div className="mt-14 text-center">
-        <p className="text-gray-600 mb-6">サービスに関するご質問・お見積りはお気軽にご相談ください。</p>
-        <Link
-          href="/contact"
-          className="inline-block px-10 py-3 bg-blue-600 text-white font-semibold rounded-full hover:bg-blue-700 transition-colors"
-        >
-          無料相談する
-        </Link>
-      </div>
-    </div>
+      {/* Own service */}
+      <section className="py-16 md:py-20 border-b border-line">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-xs tracking-[0.3em] uppercase text-bronze mb-4">Own Service</p>
+          <h2 className="font-serif text-2xl font-semibold mb-4">自社事業</h2>
+          <p className="text-sm text-ink-soft leading-relaxed max-w-2xl">
+            犬のトリミングサロン情報を集約し、エリア・犬種・料金で比較検索できるDB型ポータルサイトを準備中です。
+            支援で培ったDB型SEOの知見を、自らの事業でも実践しています。
+          </p>
+        </div>
+      </section>
+
+      <CtaSection />
+    </>
   );
 }

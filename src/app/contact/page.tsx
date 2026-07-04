@@ -8,19 +8,26 @@ export const metadata: Metadata = {
 
 export default function ContactPage() {
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-      <div className="mb-12 text-center">
-        <p className="text-blue-600 text-sm font-semibold tracking-widest mb-2">CONTACT</p>
-        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">お問い合わせ</h1>
-        <p className="text-gray-600 text-sm">
-          ご質問・ご相談・お見積りのご依頼はこちらからお気軽にどうぞ。<br />
-          通常2営業日以内にご返信いたします。
-        </p>
-      </div>
+    <>
+      {/* Page Header */}
+      <section className="border-b border-line">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
+          <p className="text-xs tracking-[0.3em] uppercase text-bronze mb-4">Contact</p>
+          <h1 className="font-serif text-4xl md:text-5xl font-semibold mb-6">お問い合わせ</h1>
+          <p className="text-ink-soft text-sm leading-relaxed max-w-xl">
+            ご質問・ご相談・お見積りのご依頼はこちらからお気軽にどうぞ。
+            通常2営業日以内にご返信いたします。
+          </p>
+        </div>
+      </section>
 
-      <div className="bg-white rounded-2xl shadow-sm p-8 md:p-10">
-        <ContactForm />
-      </div>
-    </div>
+      <section className="py-16 md:py-24">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-white/60 border border-line p-8 md:p-12">
+            <ContactForm />
+          </div>
+        </div>
+      </section>
+    </>
   );
 }

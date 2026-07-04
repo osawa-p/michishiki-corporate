@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getAllNews } from "@/lib/news";
+import { services } from "@/lib/services";
 
 const baseUrl = "https://michi-biki.jp";
 
@@ -45,6 +46,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
   ];
 
+  const serviceRoutes: MetadataRoute.Sitemap = services.map((service) => ({
+    url: `${baseUrl}/service/${service.slug}`,
+    lastModified: now,
+    changeFrequency: "monthly",
+    priority: 0.8,
+  }));
+
   const newsRoutes: MetadataRoute.Sitemap = getAllNews().map((post) => ({
     url: `${baseUrl}/news/${post.slug}`,
     lastModified: post.date ? new Date(post.date) : now,
@@ -52,5 +60,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.6,
   }));
 
-  return [...staticRoutes, ...newsRoutes];
+  return [...staticRoutes, ...serviceRoutes, ...newsRoutes];
 }
