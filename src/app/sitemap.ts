@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getAllNews } from "@/lib/news";
+import { getAllBlogPosts } from "@/lib/blog";
 import { services } from "@/lib/services";
 
 const baseUrl = "https://www.michi-biki.jp";
@@ -33,6 +34,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     },
     {
+      url: `${baseUrl}/blog`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+    {
       url: `${baseUrl}/recruit`,
       lastModified: now,
       changeFrequency: "monthly",
@@ -60,5 +67,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.6,
   }));
 
-  return [...staticRoutes, ...serviceRoutes, ...newsRoutes];
+  const blogRoutes: MetadataRoute.Sitemap = getAllBlogPosts().map((post) => ({
+    url: `${baseUrl}/blog/${post.slug}`,
+    lastModified: post.date ? new Date(post.date) : now,
+    changeFrequency: "monthly",
+    priority: 0.6,
+  }));
+
+  return [...staticRoutes, ...serviceRoutes, ...newsRoutes, ...blogRoutes];
 }

@@ -43,6 +43,7 @@ export default function Footer() {
             <ul className="space-y-2.5 text-sm">
               <li><Link href="/about" className="hover:text-paper transition-colors">会社概要</Link></li>
               <li><Link href="/news" className="hover:text-paper transition-colors">お知らせ</Link></li>
+              <li><Link href="/blog" className="hover:text-paper transition-colors">ブログ</Link></li>
               <li><Link href="/recruit" className="hover:text-paper transition-colors">採用情報</Link></li>
               <li><Link href="/contact" className="hover:text-paper transition-colors">お問い合わせ</Link></li>
             </ul>
