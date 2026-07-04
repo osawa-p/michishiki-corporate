@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: "*",
       allow: "/",
     },
-    sitemap: "https://michi-biki.jp/sitemap.xml",
-    host: "https://michi-biki.jp",
+    sitemap: "https://www.michi-biki.jp/sitemap.xml",
+    host: "https://www.michi-biki.jp",
   };
 }
