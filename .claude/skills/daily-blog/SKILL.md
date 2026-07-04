@@ -26,6 +26,7 @@ curl -s "https://api.socialdata.tools/twitter/search?query=$(python -c "import u
 ```
 
 - クエリは X の高度な検索演算子がそのまま使える（`min_faves:` `min_retweets:` `lang:ja` `since:` など）
+- **`since:`（JSTで7日前）は必ず入れること。** 付けないと数年前のバズ投稿が上位に混ざり、話題性の判断を誤る
 - 2〜4クエリ程度に留める（従量課金: $0.20/1000ツイート。1回の実行で合計500ツイート以内を目安）
 - レスポンスの `tweets[]` から `full_text` と `favorite_count` を見て、何が・なぜ話題かを把握する
 - バズ投稿は「話題の種」として使い、**事実確認は必ず 2-b のWeb検索で一次情報に当たる**（投稿内容を裏取りなしに事実として書かない）
