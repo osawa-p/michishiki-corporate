@@ -21,11 +21,14 @@
 - `/service` サービス紹介
 - `/news` お知らせ一覧（Markdown）
 - `/news/[slug]` お知らせ詳細
+- `/blog` ブログ一覧（Markdown）
+- `/blog/[slug]` ブログ詳細
 - `/recruit` 採用情報
 - `/contact` お問い合わせフォーム
 
-## お知らせ記事の追加方法
-`src/content/news/` に Markdown ファイルを追加する。
+## お知らせ・ブログ記事の追加方法
+お知らせは `src/content/news/`、ブログは `src/content/blog/` に Markdown ファイルを追加する。
+（ブログの category 省略時は「コラム」になる）
 
 ```md
 ---
