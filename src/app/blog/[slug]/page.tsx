@@ -38,6 +38,12 @@ export default async function BlogDetailPage({ params }: Props) {
       </Link>
 
       <article>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={`/blog/${slug}/opengraph-image`}
+          alt=""
+          className="w-full aspect-[1200/630] object-cover border border-line mb-10"
+        />
         <header className="mb-10 pb-8 border-b border-line">
           <div className="flex flex-wrap items-center gap-4 mb-5">
             <time className="text-xs text-ink-faint tracking-wider">{post.date}</time>
