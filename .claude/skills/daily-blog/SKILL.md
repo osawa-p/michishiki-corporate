@@ -135,6 +135,7 @@ excerpt: 記事の要約（80〜120字。主要キーワードを自然に含め
 
 ## 注意
 
+- サムネイル/OGP画像は `src/app/blog/[slug]/opengraph-image.tsx` がタイトルから自動生成するため、画像の作成・指定は一切不要
 - 1回の実行で作る記事は1本のみ
 - ビルド確認は不要（Markdown追加のみのため）。frontmatter の YAML が正しいことだけ確認する
 - 当日分の記事PR（`feature/blog-YYYYMMDD`）が既に存在する場合は新たに作らず、その旨を報告して終了する
