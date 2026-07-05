@@ -34,6 +34,16 @@ export default function Footer() {
                   サービス一覧
                 </Link>
               </li>
+              <li>
+                <a
+                  href="https://trimming.michi-biki.jp"
+                  target="_blank"
+                  rel="noopener"
+                  className="hover:text-paper transition-colors"
+                >
+                  うちの犬スタイル（自社サービス）
+                </a>
+              </li>
             </ul>
           </div>
 

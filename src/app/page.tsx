@@ -148,9 +148,34 @@ export default function HomePage() {
             ))}
           </div>
 
-          <p className="mt-6 text-xs text-ink-faint leading-relaxed">
-            自社事業として、犬のトリミングサロンを比較できるDB型ポータルサイトを準備中です。
-          </p>
+          {/* 自社サービス */}
+          <div className="mt-14 border border-bronze/40 bg-white/60 p-8 md:p-10">
+            <div className="md:flex md:items-center md:justify-between gap-8">
+              <div>
+                <p className="text-xs tracking-[0.3em] uppercase text-bronze mb-3">Our Service</p>
+                <h3 className="font-serif text-xl md:text-2xl font-semibold mb-3">
+                  うちの犬スタイル
+                  <span className="ml-3 text-xs font-sans font-medium text-bronze-deep border border-bronze/40 px-2 py-0.5 align-middle">
+                    自社運営
+                  </span>
+                </h3>
+                <p className="text-sm text-ink-soft leading-relaxed max-w-2xl">
+                  地域・犬種・口コミ・料金から、愛犬に合うトリミングサロン探しをサポートする全国対応の検索サイト。
+                  当社のDB型SEOのノウハウを活かした自社サービスです。サロン情報の掲載申請は無料で受け付けています（審査制）。
+                </p>
+              </div>
+              <div className="mt-6 md:mt-0 shrink-0">
+                <a
+                  href="https://trimming.michi-biki.jp"
+                  target="_blank"
+                  rel="noopener"
+                  className="inline-block px-8 py-3.5 bg-ink text-paper text-sm font-semibold hover:bg-bronze-deep transition-colors"
+                >
+                  サイトを見る →
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
