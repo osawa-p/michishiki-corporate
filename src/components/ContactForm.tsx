@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { sendGTMEvent } from "@next/third-parties/google";
 
 type FormState = {
   name: string;
@@ -55,6 +56,7 @@ export default function ContactForm() {
       }
 
       setStatus("success");
+      sendGTMEvent({ event: "generate_lead", form_subject: form.subject });
       setForm(initialForm);
     } catch {
       setStatus("error");
