@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getAllBlogPosts, getBlogPostBySlug } from "@/lib/blog";
 import { remark } from "remark";
+import remarkGfm from "remark-gfm";
 import remarkHtml from "remark-html";
 
 type Props = {
@@ -25,7 +26,7 @@ export default async function BlogDetailPage({ params }: Props) {
   const post = getBlogPostBySlug(slug);
   if (!post) notFound();
 
-  const htmlContent = (await remark().use(remarkHtml).process(post.content)).toString();
+  const htmlContent = (await remark().use(remarkGfm).use(remarkHtml).process(post.content)).toString();
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
