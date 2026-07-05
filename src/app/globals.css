@@ -74,3 +74,21 @@ body {
 .article-body strong {
   font-weight: 700;
 }
+.article-body table {
+  width: 100%;
+  margin: 1.5rem 0;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+.article-body th,
+.article-body td {
+  border: 1px solid #e2ded2;
+  padding: 0.6rem 0.85rem;
+  text-align: left;
+  vertical-align: top;
+}
+.article-body th {
+  background: rgba(161, 124, 63, 0.08);
+  font-weight: 700;
+  white-space: nowrap;
+}
