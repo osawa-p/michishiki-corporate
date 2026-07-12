@@ -86,7 +86,7 @@ export default function ServicePage() {
           <p className="text-xs tracking-[0.3em] uppercase text-bronze mb-4">Own Service</p>
           <h2 className="font-serif text-2xl font-semibold mb-4">自社事業</h2>
           <p className="text-sm text-ink-soft leading-relaxed max-w-2xl">
-            犬のトリミングサロン情報を集約し、エリア・犬種・料金で比較検索できるDB型ポータルサイトを準備中です。
+            犬のトリミングサロン情報を集約し、エリア・犬種・料金で比較検索できるDB型ポータルサイト「うちの犬スタイル」を自社で運営しています。
             支援で培ったDB型SEOの知見を、自らの事業でも実践しています。
           </p>
         </div>
