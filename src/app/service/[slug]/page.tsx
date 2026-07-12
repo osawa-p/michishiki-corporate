@@ -114,7 +114,7 @@ export default async function ServiceDetailPage({ params }: Props) {
       <section className="border-t border-line py-16 md:py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <p className="text-xs tracking-[0.3em] uppercase text-bronze mb-8">Other Services</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-line border border-line">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-line border border-line">
             {others.map((s) => (
               <Link
                 key={s.slug}

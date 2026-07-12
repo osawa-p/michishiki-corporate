@@ -6,7 +6,7 @@ import CtaSection from "@/components/CtaSection";
 export const metadata: Metadata = {
   title: "サービス",
   description:
-    "SEOコンサルティング、AXO・LLMO支援（AI検索最適化）、CVR改善、データ分析・マーケティングDX。株式会社ミチビキのサービス一覧。",
+    "SEOコンサルティング、AXO・LLMO支援（AI検索最適化）、CVR改善、データ分析・マーケティングDX、店舗向けWeb制作・サイト運用。株式会社ミチビキのサービス一覧。",
 };
 
 export default function ServicePage() {
@@ -19,7 +19,7 @@ export default function ServicePage() {
           <h1 className="font-serif text-4xl md:text-5xl font-semibold mb-6">サービス</h1>
           <p className="text-ink-soft text-sm md:text-base leading-relaxed max-w-2xl">
             「見つけられる」から「成果になる」まで。
-            検索エンジンとAIの両方を見据えた集客戦略を、4つの領域で戦略から実装まで支援します。
+            検索エンジンとAIの両方を見据えた集客戦略から、店舗向けのWeb制作・運用まで、5つの領域で戦略から実装まで支援します。
           </p>
         </div>
       </section>

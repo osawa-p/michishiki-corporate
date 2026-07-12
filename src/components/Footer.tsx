@@ -62,7 +62,7 @@ export default function Footer() {
 
         <div className="mt-14 pt-6 border-t border-stone-800 flex flex-col sm:flex-row justify-between gap-2 text-xs text-stone-500">
           <p>&copy; {new Date().getFullYear()} Michibiki Inc. All rights reserved.</p>
-          <p className="tracking-wider">SEO / AXO / LLMO / CVR / DATA</p>
+          <p className="tracking-wider">SEO / AXO / LLMO / CVR / DATA / WEB</p>
         </div>
       </div>
     </footer>
