@@ -152,10 +152,22 @@ export default function ContactForm() {
           className="w-full px-4 py-3 bg-white border border-line text-sm focus:outline-none focus:border-bronze"
         >
           <option value="">選択してください</option>
-          <option>サービスに関するご質問</option>
-          <option>お見積りのご依頼</option>
-          <option>採用に関するお問い合わせ</option>
-          <option>その他</option>
+          <optgroup label="制作・Web関連">
+            <option>ホームページ新規制作（ペット店舗専用）</option>
+            <option>サイトのフルリニューアル</option>
+            <option>予約フォーム・予約システムの導入</option>
+            <option>保守・運用・更新代行</option>
+            <option>SEO対策・SEOコンサルティング</option>
+          </optgroup>
+          <optgroup label="ご相談・お見積り">
+            <option>無料相談（オンライン・全国対応）</option>
+            <option>お見積りのご依頼</option>
+            <option>サービスに関するご質問</option>
+          </optgroup>
+          <optgroup label="その他">
+            <option>採用に関するお問い合わせ</option>
+            <option>その他</option>
+          </optgroup>
         </select>
       </div>
 
