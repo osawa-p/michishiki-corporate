@@ -3,6 +3,13 @@ export type ServiceItem = {
   desc: string;
 };
 
+export type ServiceCta = {
+  /** 外部リンク先URL（別サイト＝別タブで開く） */
+  url: string;
+  label: string;
+  note?: string;
+};
+
 export type Service = {
   slug: string;
   num: string;
@@ -13,6 +20,8 @@ export type Service = {
   pains: string[];
   items: ServiceItem[];
   keywords: string[];
+  /** 詳細ページに出す外部リンクCTA（料金プラン等を別サイトで詳しく案内する場合） */
+  detailCta?: ServiceCta;
 };
 
 export const services: Service[] = [
@@ -205,11 +214,16 @@ export const services: Service[] = [
         desc: "サーバー・ドメイン管理、セキュリティ更新、掲載内容の修正までを代行します。契約範囲内で更新を継続でき、サイトを最新の状態に保ちやすくします。",
       },
       {
-        title: "ローカルSEO・MEO対応",
-        desc: "ローカルSEO（地域名での検索対策）・MEO（Googleビジネスプロフィールの整備など、地図検索への対応）に取り組みます。地域で探している人に、お店の情報が届きやすい状態を整えます。",
+        title: "ローカルSEO・検索対策",
+        desc: "地域名での検索で見つけてもらうためのサイト側の整備（タイトル・構成・地域コンテンツ）に取り組みます。MEO（Googleマップ対策）の代行はお受けしていませんが、考え方のご案内までは対応します。",
       },
     ],
-    keywords: ["ホームページ制作", "サイトリニューアル", "予約システム導入", "保守・運用", "ローカルSEO・MEO"],
+    keywords: ["ホームページ制作", "サイトリニューアル", "予約システム導入", "保守・運用", "ローカルSEO"],
+    detailCta: {
+      url: "https://trimming.michi-biki.jp/for-owners/web-services",
+      label: "料金プラン・制作サンプルを見る",
+      note: "ペット事業者さま向けの専門ページで、料金プラン（新規制作／リニューアル／保守・運用／SEO）や制作サンプル・よくあるご質問を詳しくご覧いただけます。",
+    },
   },
 ];
 
