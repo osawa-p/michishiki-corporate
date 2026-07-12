@@ -7,7 +7,7 @@ import CtaSection from "@/components/CtaSection";
 export const metadata: Metadata = {
   title: "株式会社ミチビキ | SEO・AXO/LLMOコンサルティング",
   description:
-    "検索にも、AIにも、選ばれる会社へ。SEO・AXO/LLMO（AI検索最適化）・CVR改善・データ分析を軸に、戦略から実装まで一貫して支援します。",
+    "検索にも、AIにも、選ばれる会社へ。SEO・AXO/LLMO（AI検索最適化）・CVR改善・データ分析に加え、店舗向けのWeb制作・サイト運用まで、戦略から実装まで一貫して支援します。",
 };
 
 const strengths = [
@@ -91,7 +91,7 @@ export default function HomePage() {
           </div>
 
           {/* サービスインデックス */}
-          <div className="mt-16 md:mt-24 grid grid-cols-2 md:grid-cols-4 gap-px bg-line border-t border-line">
+          <div className="mt-16 md:mt-24 grid grid-cols-2 md:grid-cols-5 gap-px bg-line border-t border-line">
             {services.map((service) => (
               <Link
                 key={service.slug}
@@ -120,11 +120,11 @@ export default function HomePage() {
               <h2 className="font-serif text-3xl md:text-4xl font-semibold">事業内容</h2>
             </div>
             <p className="mt-4 md:mt-0 text-sm text-ink-soft max-w-md leading-relaxed">
-              「見つけられる」から「成果になる」まで。集客の全工程を、4つの領域で支援します。
+              「見つけられる」から「成果になる」まで。集客の全工程を、5つの領域で支援します。
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-line border border-line">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-line border border-line md:[&>*:last-child]:col-span-2">
             {services.map((service) => (
               <Link
                 key={service.slug}
