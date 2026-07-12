@@ -93,6 +93,37 @@ export default async function ServiceDetailPage({ params }: Props) {
         </div>
       </section>
 
+      {/* External detail CTA（料金プラン等を別サイトで案内する場合） */}
+      {service.detailCta && (
+        <section className="border-b border-line py-14 md:py-20">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="border border-bronze/40 bg-white/60 p-8 md:p-10 md:flex md:items-center md:justify-between gap-8">
+              <div>
+                <p className="text-xs tracking-[0.3em] uppercase text-bronze mb-3">Plans &amp; Pricing</p>
+                <h2 className="font-serif text-xl md:text-2xl font-semibold mb-3">
+                  料金プラン・制作サンプルはこちら
+                </h2>
+                {service.detailCta.note && (
+                  <p className="text-sm text-ink-soft leading-relaxed max-w-2xl">
+                    {service.detailCta.note}
+                  </p>
+                )}
+              </div>
+              <div className="mt-6 md:mt-0 shrink-0">
+                <a
+                  href={service.detailCta.url}
+                  target="_blank"
+                  rel="noopener"
+                  className="inline-block px-8 py-3.5 bg-ink text-paper text-sm font-semibold hover:bg-bronze-deep transition-colors"
+                >
+                  {service.detailCta.label} →
+                </a>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Flow */}
       <section className="py-16 md:py-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
