@@ -27,7 +27,10 @@ export async function POST(request: Request) {
 
   const keyword = body.keyword?.trim() ?? "";
   const domain = body.domain?.trim() || DEFAULT_TARGET_DOMAIN;
-  const num = Math.min(Math.max(Math.trunc(body.num ?? 100), 1), 100);
+  // 非数値（"full" や {} 等）を渡されると NaN のまま素通りして「0件の空成功」を返してしまうため、
+  // 有限数でなければデフォルト100に落とす。数値文字列("50")は Number で数値化されるので許容。
+  const rawNum = Number(body.num ?? 100);
+  const num = Number.isFinite(rawNum) ? Math.min(Math.max(Math.trunc(rawNum), 1), 100) : 100;
 
   if (!keyword) {
     return NextResponse.json({ ok: false, error: "キーワードを入力してください。" }, { status: 400 });

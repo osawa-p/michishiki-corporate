@@ -12,12 +12,13 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 export async function GET(request: Request) {
+  // middleware は cron を Basic認証の対象外にするため、この検証が cron の唯一のゲート。
+  // CRON_SECRET 未設定なら fail-closed（誰も叩けない）で開放を防ぐ。Vercel Cron は
+  // CRON_SECRET 設定時に Authorization: Bearer を自動付与するため、常に照合する。
   const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = request.headers.get("authorization");
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
-    }
+  const auth = request.headers.get("authorization");
+  if (!secret || auth !== `Bearer ${secret}`) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
   const apiKey = process.env.JINA_API_KEY;
