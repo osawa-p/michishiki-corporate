@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { getAccess } from "@/lib/rank-tracker/auth";
 import { DEFAULT_TARGET_DOMAIN } from "@/lib/rank-tracker/keywords";
 import MeasureForm from "@/components/rank-tracker/MeasureForm";
 
@@ -7,7 +9,12 @@ export const metadata: Metadata = {
   title: "クイック計測",
 };
 
-export default function RankTrackerMeasurePage() {
+export default async function RankTrackerMeasurePage() {
+  // 計測はJINAトークンを消費するため管理者のみ
+  const access = await getAccess();
+  if (!access) redirect("/rank-tracker/login");
+  if (access.role !== "admin") redirect("/rank-tracker/dashboard");
+
   return (
     <>
       <section className="border-b border-line">

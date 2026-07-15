@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { TrackedDomain } from "@/lib/rank-tracker/bigquery";
 import { getTrackedDomainsCached } from "@/lib/rank-tracker/cached";
+import { getAccess, canViewDomain } from "@/lib/rank-tracker/auth";
 
 // SSRごとに実行するが、データ読み取りはタグ付きキャッシュ（更新時に即無効化）
 export const dynamic = "force-dynamic";
@@ -11,10 +13,14 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardIndexPage() {
+  const access = await getAccess();
+  if (!access) redirect("/rank-tracker/login");
+
   let domains: TrackedDomain[] = [];
   let loadError = false;
   try {
-    domains = await getTrackedDomainsCached();
+    // 閲覧のみメンバーには許可されたサイトのカードだけを見せる
+    domains = (await getTrackedDomainsCached()).filter((d) => canViewDomain(access, d.domain));
   } catch (e) {
     console.error("[rank-tracker] サイト一覧の取得に失敗:", e);
     loadError = true;

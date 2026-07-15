@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getAccess, canViewDomain } from "@/lib/rank-tracker/auth";
 import type { LatestRank, TrackedKeyword, KeywordTrendRow } from "@/lib/rank-tracker/bigquery";
 import {
   getLatestRanksCached,
@@ -34,6 +35,11 @@ export default async function DomainDashboardPage({ params }: Props) {
   const { domain: raw } = await params;
   const domain = safeDecode(raw);
   if (domain === null) notFound();
+
+  // 閲覧のみメンバーは許可されたサイト以外にアクセスできない（存在も知らせない）
+  const access = await getAccess();
+  if (!access) redirect("/rank-tracker/login");
+  if (!canViewDomain(access, domain)) notFound();
 
   let latest: LatestRank[] = [];
   let tracked: TrackedKeyword[] = [];

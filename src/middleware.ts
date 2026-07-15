@@ -1,40 +1,61 @@
 import { NextRequest, NextResponse } from "next/server";
+import { SESSION_COOKIE, verifySessionToken } from "@/lib/rank-tracker/session-token";
 
-// 順位計測ツールは社内専用。/rank-tracker と関連APIを Basic認証で保護する。
+// 順位計測ツールは社内＋招待メンバー専用。
+// 認証はセッションCookie（ログイン機能）を第一とし、移行期間中は Basic認証も
+// フォールバックとして受け付ける。ここ（Edge）では署名と有効期限のみ検証し、
+// メンバーの実在・権限は各ページ/API の getAccess()（BigQuery照合）が担う。
 export const config = {
   matcher: ["/rank-tracker", "/rank-tracker/:path*", "/api/rank-tracker/:path*"],
 };
 
-export function middleware(req: NextRequest) {
+// 認証なしで通すパス
+const PUBLIC_PREFIXES = [
+  "/rank-tracker/login",
+  "/rank-tracker/invite/", // 招待受諾（トークン自体が資格情報）
+  "/api/rank-tracker/auth/", // login / logout / invite受諾
+  "/api/rank-tracker/cron", // Vercel Cron（CRON_SECRET で別途保護）
+];
+
+function checkBasicAuth(header: string | null): boolean {
+  const user = process.env.RANK_TRACKER_USER;
+  const pass = process.env.RANK_TRACKER_PASS;
+  // user/pass 未設定なら fail-closed（Basic経路は誰も通れない）
+  if (!user || !pass || !header?.startsWith("Basic ")) return false;
+  try {
+    const decoded = atob(header.slice(6));
+    const sep = decoded.indexOf(":");
+    return decoded.slice(0, sep) === user && decoded.slice(sep + 1) === pass;
+  } catch {
+    return false;
+  }
+}
+
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Vercel Cron が叩くエンドポイントは Basic認証の対象外（CRON_SECRET で別途保護）
-  if (pathname.startsWith("/api/rank-tracker/cron")) {
+  if (PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 
-  const user = process.env.RANK_TRACKER_USER;
-  const pass = process.env.RANK_TRACKER_PASS;
-
-  const header = req.headers.get("authorization");
-  // user/pass 未設定なら fail-closed（誰も入れない）。ローカルは .env.local で設定する。
-  if (user && pass && header?.startsWith("Basic ")) {
-    try {
-      // 不正なbase64（atob例外）は握りつぶして401チャレンジに落とす
-      const decoded = atob(header.slice(6));
-      const sep = decoded.indexOf(":");
-      const u = decoded.slice(0, sep);
-      const p = decoded.slice(sep + 1);
-      if (u === user && p === pass) {
-        return NextResponse.next();
-      }
-    } catch {
-      // フォールスルーして401を返す
-    }
+  // 1) セッションCookie
+  const secret = process.env.AUTH_SESSION_SECRET;
+  const token = req.cookies.get(SESSION_COOKIE)?.value;
+  if (secret && token && (await verifySessionToken(token, secret))) {
+    return NextResponse.next();
   }
 
-  return new NextResponse("認証が必要です", {
-    status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="rank-tracker", charset="UTF-8"' },
-  });
+  // 2) Basic認証フォールバック（curl等の既存運用・移行期間）
+  if (checkBasicAuth(req.headers.get("authorization"))) {
+    return NextResponse.next();
+  }
+
+  // 未認証: APIはJSONの401、ページはログイン画面へ
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.json({ ok: false, error: "認証が必要です。" }, { status: 401 });
+  }
+  const url = req.nextUrl.clone();
+  url.pathname = "/rank-tracker/login";
+  url.search = `next=${encodeURIComponent(pathname + (req.nextUrl.search || ""))}`;
+  return NextResponse.redirect(url);
 }
