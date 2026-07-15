@@ -206,7 +206,7 @@ export async function fetchTrendWithCompetitors(
   opts: { fromDays?: number } = {}
 ): Promise<TrendSeriesPoint[]> {
   const target = targetKey(targetDomain);
-  const comps = [...new Set(competitors.map(targetKey).filter((d) => d && d !== target))].slice(0, 3);
+  const comps = [...new Set(competitors.map(targetKey).filter((d) => d && d !== target))].slice(0, 5);
   const fromDays = Math.max(0, Math.trunc(opts.fromDays ?? 0));
   const sql = `
     WITH scope AS (

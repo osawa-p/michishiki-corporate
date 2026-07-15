@@ -2,7 +2,7 @@
 
 // サイト別ダッシュボードの分析ワークスペース。
 // 左: キーワード一覧（タグ絞り込み・最新順位・前回差・ミニスパークライン）
-// 右: 選択キーワードの推移チャート（期間切替・競合最大3社）と競合サマリ
+// 右: 選択キーワードの推移チャート（期間切替・競合最大5社）と競合サマリ
 //
 // パフォーマンス設計: 直近90日分の全キーワード推移＋競合はサーバーで一括プリロード
 // されて props で渡ってくるため、キーワード切替・競合ON/OFF・期間切替（1ヶ月/3ヶ月）
@@ -22,7 +22,7 @@ import type {
 } from "@/lib/rank-tracker/bigquery";
 import { cadenceLabel } from "@/lib/rank-tracker/cadence";
 import { targetKey } from "@/lib/rank-tracker/domain";
-import RankChart, { TARGET_COLOR, COMP_COLORS } from "./RankChart";
+import RankChart, { TARGET_COLOR, COMP_COLORS, MAX_COMPS } from "./RankChart";
 
 const RANGES = [
   { value: 30, label: "1ヶ月" },
@@ -148,7 +148,7 @@ export default function DashboardWorkspace({
             .map((s) => targetKey(s))
             .filter((s) => s && s !== domainKey)
         ),
-      ].slice(0, 3),
+      ].slice(0, MAX_COMPS),
     [sp, domainKey]
   );
 
@@ -268,7 +268,7 @@ export default function DashboardWorkspace({
   function toggleComp(d: string) {
     const next = comps.includes(d)
       ? comps.filter((c) => c !== d)
-      : comps.length >= 3
+      : comps.length >= MAX_COMPS
         ? comps
         : [...comps, d];
     setUrl({ comps: next.join(",") });
@@ -478,7 +478,7 @@ export default function DashboardWorkspace({
                   {selectedCandidates.length > 0 && (
                     <div className="mt-5 overflow-x-auto">
                       <p className="text-xs font-semibold text-ink-soft mb-2">
-                        競合サマリ（直近90日のSERPから自動抽出・チェックでチャートに重ねる／最大3社）
+                        競合サマリ（直近90日のSERPから自動抽出・チェックでチャートに重ねる／最大5社）
                       </p>
                       <table className="w-full text-xs border border-line">
                         <thead>
@@ -491,7 +491,7 @@ export default function DashboardWorkspace({
                           </tr>
                         </thead>
                         <tbody>
-                          {selectedCandidates.slice(0, 6).map((c) => {
+                          {selectedCandidates.slice(0, 8).map((c) => {
                             const checked = comps.includes(c.domain);
                             const colorIdx = chartComps.indexOf(c.domain);
                             return (
@@ -501,7 +501,7 @@ export default function DashboardWorkspace({
                                     <input
                                       type="checkbox"
                                       checked={checked}
-                                      disabled={!checked && comps.length >= 3}
+                                      disabled={!checked && comps.length >= MAX_COMPS}
                                       onChange={() => toggleComp(c.domain)}
                                       className="h-3.5 w-3.5 accent-bronze-deep"
                                     />

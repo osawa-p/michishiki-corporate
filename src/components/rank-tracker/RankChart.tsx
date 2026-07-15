@@ -1,6 +1,6 @@
 "use client";
 
-// 順位推移チャート（自社＋競合最大3社）。
+// 順位推移チャート（自社＋競合最大5社）。
 // - Y軸: 1位が上。データに応じて 10/20/30/50/100 に段階スナップ
 // - Top10 の帯を薄く表示
 // - 未検出（取得N件内に不在）は線を切り、下端に × を表示
@@ -8,9 +8,12 @@
 import { useRef, useState } from "react";
 import type { TrendSeriesPoint } from "@/lib/rank-tracker/bigquery";
 
+// チャートに重ねられる競合の上限（色・線種のセット数と揃えること）
+export const MAX_COMPS = 5;
 export const TARGET_COLOR = "#86672f"; // bronze-deep
-export const COMP_COLORS = ["#3f5c5a", "#7a5145", "#5f596f"]; // 青鈍・弁柄・紫鼠
-const COMP_DASHES = ["7 4", "2 4", "10 4"];
+// 青鈍・弁柄・紫鼠・灰青・鶯茶（色覚差があっても線種で区別できるようダッシュも変える）
+export const COMP_COLORS = ["#3f5c5a", "#7a5145", "#5f596f", "#4a6b8a", "#7d7038"];
+const COMP_DASHES = ["7 4", "2 4", "10 4", "4 2 1 2", "14 4 2 4"];
 
 const W = 760;
 const H = 300;
@@ -32,7 +35,7 @@ export default function RankChart({
 }: {
   series: TrendSeriesPoint[];
   target: string;
-  competitors: string[]; // 表示中の競合（最大3）
+  competitors: string[]; // 表示中の競合（最大 MAX_COMPS 社）
 }) {
   const [hover, setHover] = useState<number | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -43,7 +46,7 @@ export default function RankChart({
     return <p className="text-sm text-ink-faint py-8 text-center">この期間の計測データがありません。</p>;
   }
 
-  const domains = [target, ...competitors.slice(0, 3)];
+  const domains = [target, ...competitors.slice(0, MAX_COMPS)];
   const allRanks = series.flatMap((p) =>
     domains.map((d) => p.ranks[d]).filter((r): r is number => r != null)
   );
@@ -137,7 +140,7 @@ export default function RankChart({
           <line x1={x(hover)} y1={T} x2={x(hover)} y2={H - B} stroke="#c9c3b2" strokeWidth={1} />
         )}
         {/* 競合（自社より下に描画） */}
-        {competitors.slice(0, 3).map((c, ci) => {
+        {competitors.slice(0, MAX_COMPS).map((c, ci) => {
           const vals = seriesFor(c);
           return (
             <g key={c}>
@@ -180,7 +183,7 @@ export default function RankChart({
               ? `${hovered.ranks[target]}位`
               : `${hovered.total}件内で未検出`}
           </span>
-          {competitors.slice(0, 3).map((c) => (
+          {competitors.slice(0, MAX_COMPS).map((c) => (
             <span key={c}>
               <br />
               {c} {hovered.ranks[c] != null ? `${hovered.ranks[c]}位` : "未検出"}
