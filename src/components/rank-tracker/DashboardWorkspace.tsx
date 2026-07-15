@@ -3,7 +3,8 @@
 // サイト別ダッシュボードの分析ワークスペース。
 // 左: キーワード一覧（タグ絞り込み・最新順位・前回差・ミニスパークライン）
 // 右: 選択キーワードの推移チャート（期間切替・競合最大3社）と競合サマリ
-// 選択キーワード・期間・競合は URL クエリに保持する（リロード・共有・戻るに耐える）。
+// 選択キーワード・期間・競合は URL クエリに保持する（リロード・共有に耐える。
+// replace() を使うため履歴は増やさない）。
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -15,6 +16,7 @@ import type {
   CompetitorCandidate,
 } from "@/lib/rank-tracker/bigquery";
 import { cadenceLabel } from "@/lib/rank-tracker/cadence";
+import { targetKey } from "@/lib/rank-tracker/domain";
 import RankChart, { TARGET_COLOR, COMP_COLORS } from "./RankChart";
 
 const RANGES = [
@@ -78,6 +80,10 @@ export default function DashboardWorkspace({
   const pathname = usePathname();
   const sp = useSearchParams();
 
+  // series.ranks のキーは正規化済みドメイン。URL直打ち（www付き等）でも一致するよう
+  // 表示用 domain と照合キーを分離する
+  const domainKey = targetKey(domain);
+
   const latestBy = useMemo(() => new Map(latest.map((l) => [l.keyword, l])), [latest]);
   const sparkBy = useMemo(() => {
     const m = new Map<string, { rank: number | null }[]>();
@@ -95,14 +101,23 @@ export default function DashboardWorkspace({
   const rawRange = Number(sp.get("range") ?? 30);
   const range = RANGES.some((r) => r.value === rawRange) ? rawRange : 30;
   const comps = useMemo(
-    () => (sp.get("comps") ?? "").split(",").map((s) => s.trim()).filter(Boolean).slice(0, 3),
-    [sp]
+    () =>
+      [
+        ...new Set(
+          (sp.get("comps") ?? "")
+            .split(",")
+            .map((s) => targetKey(s))
+            .filter((s) => s && s !== domainKey)
+        ),
+      ].slice(0, 3),
+    [sp, domainKey]
   );
 
   const [tagFilter, setTagFilter] = useState("");
   const shownKeywords = tracked.filter((t) => !tagFilter || t.tags.includes(tagFilter));
+  // タグ絞り込みで選択中キーワードが一覧から消えたら、表示中の先頭へ選択を移す
   const selected =
-    urlKw && tracked.some((t) => t.keyword === urlKw)
+    urlKw && shownKeywords.some((t) => t.keyword === urlKw)
       ? urlKw
       : (shownKeywords[0]?.keyword ?? "");
 
@@ -129,6 +144,8 @@ export default function DashboardWorkspace({
     if (hit) {
       setDetail(hit);
       setErr(false);
+      // 直前の未完了fetchのfinallyはaborted扱いでloadingを触らないため、ここで確実に解除する
+      setLoading(false);
       return;
     }
     let aborted = false;
@@ -394,7 +411,7 @@ export default function DashboardWorkspace({
                 <p className="text-sm text-red-600 py-8">推移の取得に失敗しました。</p>
               ) : detail ? (
                 <>
-                  <RankChart series={detail.series} target={domain} competitors={comps} />
+                  <RankChart series={detail.series} target={domainKey} competitors={comps} />
 
                   {/* 競合サマリ */}
                   {detail.candidates.length > 0 && (
@@ -471,10 +488,10 @@ export default function DashboardWorkspace({
                                 <td className="px-4 py-1.5 text-ink-soft tabular-nums">{p.checked_at}</td>
                                 <td
                                   className={`px-4 py-1.5 text-right tabular-nums font-medium ${
-                                    p.ranks[domain] != null ? "text-bronze-deep" : "text-ink-faint"
+                                    p.ranks[domainKey] != null ? "text-bronze-deep" : "text-ink-faint"
                                   }`}
                                 >
-                                  {p.ranks[domain] != null ? `${p.ranks[domain]}位` : "未検出"}
+                                  {p.ranks[domainKey] != null ? `${p.ranks[domainKey]}位` : "未検出"}
                                 </td>
                                 <td className="px-4 py-1.5 text-right tabular-nums text-ink-faint">{p.total}</td>
                               </tr>

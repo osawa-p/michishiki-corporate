@@ -23,15 +23,18 @@ function badJson() {
   return NextResponse.json({ ok: false, error: "Invalid JSON body" }, { status: 400 });
 }
 
-// 文字列配列だけを受理してタグを整形（非文字列は無視、最大10個・各30文字）
+// 文字列配列だけを受理してタグを整形（非文字列は無視、重複除去、最大10個・各30文字）
 function sanitizeTags(v: unknown): string[] | undefined {
   if (!Array.isArray(v)) return undefined;
-  return v
-    .filter((t): t is string => typeof t === "string")
-    .map((t) => t.trim())
-    .filter(Boolean)
-    .map((t) => t.slice(0, 30))
-    .slice(0, 10);
+  return [
+    ...new Set(
+      v
+        .filter((t): t is string => typeof t === "string")
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .map((t) => t.slice(0, 30))
+    ),
+  ].slice(0, 10);
 }
 
 export async function GET(request: Request) {

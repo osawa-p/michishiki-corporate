@@ -14,7 +14,9 @@ export const maxDuration = 300;
 
 // 1回のcron実行で計測するキーワード数の上限。超過分は翌日の実行に回る
 // （期限の古い順に処理するため取り残しは発生しない）。
-const MAX_KEYWORDS_PER_RUN = Number(process.env.CRON_MAX_KEYWORDS ?? 15);
+// 環境変数が非数値・0以下のときは既定値15に落とす（NaN で全計測停止させない）。
+const rawMax = Number(process.env.CRON_MAX_KEYWORDS ?? 15);
+const MAX_KEYWORDS_PER_RUN = Number.isFinite(rawMax) && rawMax > 0 ? Math.trunc(rawMax) : 15;
 // 新しいキーワードの計測を開始しない残り時間のしきい値（maxDuration に対する余白）
 const TIME_BUDGET_MS = 240_000;
 
@@ -71,6 +73,13 @@ export async function GET(request: Request) {
       const results = await searchJina(keyword, apiKey, { num: 100 });
       const inserted =
         results.length > 0 ? await insertResults(results, keyword, domain, checkedAt) : 0;
+      // スケジュール送りは1件ずつ即時に行う。ループ後にまとめると、Vercel の
+      // 300秒キルに遭ったとき計測済み分まで翌日再計測（トークン二重消費）になるため。
+      try {
+        await markMeasured([keyword]);
+      } catch (err) {
+        console.error(`[rank-tracker] next_run_at の更新に失敗しました (${keyword}):`, err);
+      }
       summary.push({ keyword, count: results.length, inserted });
       measured.push(keyword);
     } catch (err) {
@@ -82,13 +91,6 @@ export async function GET(request: Request) {
         error: err instanceof Error ? err.message : "failed",
       });
     }
-  }
-
-  // 計測できたキーワードだけ次回取得日時を先送りする（失敗分は翌日再試行）
-  try {
-    if (measured.length > 0) await markMeasured(measured);
-  } catch (err) {
-    console.error("[rank-tracker] next_run_at の更新に失敗しました（cron）:", err);
   }
 
   // 読み取りキャッシュを無効化して新しい計測結果を反映

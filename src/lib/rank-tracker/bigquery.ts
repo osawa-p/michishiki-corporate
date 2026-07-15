@@ -488,12 +488,14 @@ export async function deleteTrackedKeyword(keyword: string, domain: string): Pro
 
 // 計測済みキーワードの next_run_at を各行の頻度に応じて先送りする（cron用）。
 // 期限が来ていた行だけを動かす（期限前の行のスケジュールは保持）。
+// 次回時刻は「当日0:00 UTC + n日」に丸める。CURRENT_TIMESTAMP() 起点にすると
+// 計測処理の数分の遅れが毎回積み上がり、毎日設定が実質2日ごとになるため。
 export async function markMeasured(keywords: string[]): Promise<number> {
   const uniq = [...new Set(keywords.map((k) => k.trim()).filter(Boolean))];
   if (uniq.length === 0) return 0;
   const sql = `
     UPDATE ${KW_TABLE_FQN}
-    SET next_run_at = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL
+    SET next_run_at = TIMESTAMP_ADD(TIMESTAMP_TRUNC(CURRENT_TIMESTAMP(), DAY), INTERVAL
           CASE COALESCE(cadence, 'weekly') ${CADENCE_DAYS_CASE} ELSE 7 END DAY),
         updated_at = CURRENT_TIMESTAMP()
     WHERE keyword IN UNNEST(@keywords)

@@ -78,6 +78,11 @@ export async function searchJina(
     } catch (err) {
       // 1ページ目の失敗は上に伝える。2ページ目以降はそこまでの結果で打ち切る
       if (page === 1) {
+        // AbortController のタイムアウトは "This operation was aborted" という
+        // 汎用文言になるため、原因が分かるメッセージに置き換える
+        if (err instanceof Error && err.name === "AbortError") {
+          throw new Error(`JINA検索がタイムアウトしました (${timeoutMs}ms)`);
+        }
         throw err instanceof Error ? err : new Error("JINA検索に失敗しました");
       }
       break;
