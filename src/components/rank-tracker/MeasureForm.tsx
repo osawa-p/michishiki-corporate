@@ -191,7 +191,15 @@ function MeasureResultView({ result, tkey }: { result: MeasureResponse; tkey: st
                       <div className={`font-medium ${isTarget ? "text-bronze-deep" : "text-ink"}`}>
                         {r.domain}
                       </div>
-                      <div className="text-xs text-ink-faint line-clamp-1">{r.title}</div>
+                      <div className="text-xs text-ink line-clamp-1">{r.title}</div>
+                      <a
+                        href={r.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-0.5 block text-xs text-bronze-deep underline underline-offset-2 line-clamp-1 break-all"
+                      >
+                        {r.url}
+                      </a>
                     </td>
                   </tr>
                 );

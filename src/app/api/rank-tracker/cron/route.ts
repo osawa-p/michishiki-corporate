@@ -1,11 +1,11 @@
 // 定期自動計測API（Vercel Cronが叩く）。
-// 登録キーワード（keywords.ts）を順に計測してBigQueryへ蓄積する。
+// BigQuery の tracked_keywords テーブルから enabled=true の追跡キーワードを読み、
+// 順に計測して serp_results へ蓄積する。
 // Vercel Cron は CRON_SECRET 設定時に Authorization: Bearer を自動付与するため、
 // それを検証して外部からの無断実行を弾く。
 import { NextResponse } from "next/server";
 import { searchJina } from "@/lib/rank-tracker/jina";
-import { insertResults } from "@/lib/rank-tracker/bigquery";
-import { TRACKED_KEYWORDS } from "@/lib/rank-tracker/keywords";
+import { insertResults, listTrackedKeywords } from "@/lib/rank-tracker/bigquery";
 
 export const runtime = "nodejs";
 // 複数KWを順に計測する。VercelはProプランなので300秒まで延長できる。
@@ -27,10 +27,26 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: "JINA未設定" }, { status: 500 });
   }
 
+  // enabled な追跡キーワードを取得。取得自体が失敗したら計測せず500。
+  let tracked;
+  try {
+    tracked = await listTrackedKeywords({ enabledOnly: true });
+  } catch (err) {
+    console.error("[rank-tracker] 追跡キーワードの取得に失敗しました（cron）:", err);
+    return NextResponse.json({ ok: false, error: "追跡キーワードの取得に失敗しました。" }, { status: 500 });
+  }
+
+  // 同じキーワードは複数サイトで登録されていても JINA は1回だけ叩く（SERPはKW依存・サイト非依存）。
+  // domain は is_target 計算用の代表値でよい（読み取り時は @target で再判定するため）。
+  const byKeyword = new Map<string, string>();
+  for (const t of tracked) {
+    if (!byKeyword.has(t.keyword)) byKeyword.set(t.keyword, t.target_domain);
+  }
+
   const checkedAt = new Date().toISOString();
   const summary: Array<{ keyword: string; count: number; inserted: number; error?: string }> = [];
 
-  for (const { keyword, domain } of TRACKED_KEYWORDS) {
+  for (const [keyword, domain] of byKeyword) {
     try {
       const results = await searchJina(keyword, apiKey, { num: 100 });
       const inserted =
@@ -42,5 +58,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, checkedAt, summary });
+  return NextResponse.json({ ok: true, checkedAt, count: byKeyword.size, summary });
 }

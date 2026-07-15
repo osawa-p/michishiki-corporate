@@ -1,14 +1,7 @@
-// 定期自動計測（Vercel Cron）で追跡するキーワード一覧。
-// まずは配列で管理し、必要に応じてUI/DB管理へ拡張する。
+// 順位計測ツールの既定値。
+// 追跡キーワードは BigQuery の tracked_keywords テーブルで管理する
+// （CRUDは src/lib/rank-tracker/bigquery.ts の listTrackedKeywords / addTrackedKeywords ほか）。
+// 以前はここに TRACKED_KEYWORDS 配列をハードコードしていたが、UI/DB管理へ移行して撤去した。
 
-export type TrackedKeyword = {
-  keyword: string;
-  domain: string;
-};
-
-// 自社ドメインの既定値
+// 自社ドメインの既定値（入力フォームのプレースホルダや一括登録の既定ドメイン等で使用）
 export const DEFAULT_TARGET_DOMAIN = "michi-biki.jp";
-
-export const TRACKED_KEYWORDS: TrackedKeyword[] = [
-  { keyword: "生成AI 研修", domain: DEFAULT_TARGET_DOMAIN },
-];
