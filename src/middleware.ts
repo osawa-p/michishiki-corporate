@@ -15,6 +15,7 @@ const PUBLIC_PREFIXES = [
   "/rank-tracker/invite/", // 招待受諾（トークン自体が資格情報）
   "/api/rank-tracker/auth/", // login / logout / invite受諾
   "/api/rank-tracker/cron", // Vercel Cron（CRON_SECRET で別途保護）
+  "/api/rank-tracker/seo/cron", // SEO観測の日次取り込み（CRON_SECRET で別途保護）
 ];
 
 function checkBasicAuth(header: string | null): boolean {
