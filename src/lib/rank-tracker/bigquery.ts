@@ -14,9 +14,12 @@ import type { SerpResult, SerpRow } from "./types";
 const GCP_PROJECT = process.env.GCP_PROJECT ?? "tidal-fusion-439015-e8";
 const BQ_DATASET = process.env.BQ_DATASET ?? "rank_tracking";
 const BQ_TABLE = process.env.BQ_TABLE ?? "serp_results";
+// 定期取得の追跡キーワード設定テーブル（keyword, target_domain, enabled）
+const BQ_KEYWORDS_TABLE = process.env.BQ_KEYWORDS_TABLE ?? "tracked_keywords";
 const BQ_LOCATION = process.env.BQ_LOCATION ?? "asia-northeast1";
 
 const TABLE_FQN = `\`${GCP_PROJECT}.${BQ_DATASET}.${BQ_TABLE}\``;
+const KW_TABLE_FQN = `\`${GCP_PROJECT}.${BQ_DATASET}.${BQ_KEYWORDS_TABLE}\``;
 
 let cached: BigQuery | null = null;
 
@@ -80,12 +83,22 @@ export type LatestRank = {
   url: string | null;
 };
 
-export async function fetchLatestRanks(targetDomain: string): Promise<LatestRank[]> {
+export async function fetchLatestRanks(
+  targetDomain: string,
+  opts: { onlyTracked?: boolean } = {}
+): Promise<LatestRank[]> {
   const target = targetKey(targetDomain);
+  // onlyTracked=true のときは tracked_keywords に登録済みのキーワードだけに絞る
+  // （サイト別ダッシュボード用）。false（既定）なら serp_results 内の全キーワード。
+  const onlyTracked = opts.onlyTracked ?? false;
   const sql = `
-    WITH latest AS (
+    WITH tracked AS (
+      SELECT DISTINCT keyword FROM ${KW_TABLE_FQN} WHERE target_domain = @target
+    ),
+    latest AS (
       SELECT keyword, MAX(checked_at) AS checked_at
       FROM ${TABLE_FQN}
+      WHERE (@onlyTracked = FALSE OR keyword IN (SELECT keyword FROM tracked))
       GROUP BY keyword
     ),
     batch AS (
@@ -106,7 +119,7 @@ export async function fetchLatestRanks(targetDomain: string): Promise<LatestRank
   const [rows] = await getBigQuery().query({
     query: sql,
     location: BQ_LOCATION,
-    params: { target },
+    params: { target, onlyTracked },
   });
   return rows as LatestRank[];
 }
@@ -141,4 +154,127 @@ export async function fetchRankTrend(
     params: { keyword, target },
   });
   return rows as RankTrendPoint[];
+}
+
+// ───────────────────────────────────────────────────────────
+// 追跡キーワード設定（tracked_keywords）の CRUD
+// 更新系はすべて DML（MERGE/UPDATE/DELETE）で行い、ストリーミング挿入は使わない
+// （削除・更新のバッファ制約を避けるため）。行数は極小・低頻度なので DML で十分。
+// ───────────────────────────────────────────────────────────
+
+// 追跡キーワード1件（表示用に日時はJSTの文字列へ整形）
+export type TrackedKeyword = {
+  keyword: string;
+  target_domain: string;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+// 追跡キーワード一覧。domain 指定でそのサイトのみ、enabledOnly で有効行のみに絞る。
+export async function listTrackedKeywords(
+  opts: { domain?: string; enabledOnly?: boolean } = {}
+): Promise<TrackedKeyword[]> {
+  const conds: string[] = [];
+  const params: Record<string, string> = {};
+  if (opts.domain) {
+    conds.push("target_domain = @domain");
+    params.domain = targetKey(opts.domain);
+  }
+  if (opts.enabledOnly) {
+    conds.push("enabled = TRUE");
+  }
+  const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
+  const sql = `
+    SELECT
+      keyword,
+      target_domain,
+      enabled,
+      FORMAT_TIMESTAMP('%Y-%m-%d %H:%M', created_at, 'Asia/Tokyo') AS created_at,
+      FORMAT_TIMESTAMP('%Y-%m-%d %H:%M', updated_at, 'Asia/Tokyo') AS updated_at
+    FROM ${KW_TABLE_FQN}
+    ${where}
+    ORDER BY target_domain, keyword
+  `;
+  const [rows] = await getBigQuery().query({ query: sql, location: BQ_LOCATION, params });
+  return rows as TrackedKeyword[];
+}
+
+// 追跡サイト一覧（ダッシュボードのサイトカード用）。各サイトの登録数と有効数を返す。
+export type TrackedDomain = { domain: string; total: number; enabled: number };
+
+export async function listTrackedDomains(): Promise<TrackedDomain[]> {
+  const sql = `
+    SELECT target_domain AS domain, COUNT(*) AS total, COUNTIF(enabled) AS enabled
+    FROM ${KW_TABLE_FQN}
+    GROUP BY target_domain
+    ORDER BY target_domain
+  `;
+  const [rows] = await getBigQuery().query({ query: sql, location: BQ_LOCATION });
+  return rows as TrackedDomain[];
+}
+
+// キーワードを一括登録（MERGEで重複は無視）。正規化・batch内重複除去して処理件数を返す。
+export async function addTrackedKeywords(
+  items: { keyword: string; domain: string }[]
+): Promise<number> {
+  const seen = new Set<string>();
+  const uniq: { keyword: string; target_domain: string }[] = [];
+  for (const it of items) {
+    const keyword = (it.keyword ?? "").trim();
+    const target_domain = targetKey(it.domain ?? "");
+    if (!keyword || !target_domain) continue;
+    const k = `${keyword} ${target_domain}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    uniq.push({ keyword, target_domain });
+  }
+  if (uniq.length === 0) return 0;
+
+  const sql = `
+    MERGE ${KW_TABLE_FQN} T
+    USING UNNEST(@items) S
+    ON T.keyword = S.keyword AND T.target_domain = S.target_domain
+    WHEN NOT MATCHED THEN
+      INSERT (keyword, target_domain, enabled, created_at, updated_at)
+      VALUES (S.keyword, S.target_domain, TRUE, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP())
+  `;
+  await getBigQuery().query({
+    query: sql,
+    location: BQ_LOCATION,
+    params: { items: uniq },
+    types: { items: [{ keyword: "STRING", target_domain: "STRING" }] },
+  });
+  return uniq.length;
+}
+
+// 定期取得のON/OFFトグル
+export async function setKeywordEnabled(
+  keyword: string,
+  domain: string,
+  enabled: boolean
+): Promise<void> {
+  const sql = `
+    UPDATE ${KW_TABLE_FQN}
+    SET enabled = @enabled, updated_at = CURRENT_TIMESTAMP()
+    WHERE keyword = @keyword AND target_domain = @domain
+  `;
+  await getBigQuery().query({
+    query: sql,
+    location: BQ_LOCATION,
+    params: { enabled, keyword: keyword.trim(), domain: targetKey(domain) },
+  });
+}
+
+// 追跡キーワードの削除
+export async function deleteTrackedKeyword(keyword: string, domain: string): Promise<void> {
+  const sql = `
+    DELETE FROM ${KW_TABLE_FQN}
+    WHERE keyword = @keyword AND target_domain = @domain
+  `;
+  await getBigQuery().query({
+    query: sql,
+    location: BQ_LOCATION,
+    params: { keyword: keyword.trim(), domain: targetKey(domain) },
+  });
 }
