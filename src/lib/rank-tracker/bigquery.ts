@@ -338,7 +338,7 @@ export async function fetchSiteSeriesRows(
       WHERE domain != @target
       GROUP BY keyword, domain
       HAVING AVG(rank) <= 30
-      QUALIFY ROW_NUMBER() OVER (PARTITION BY keyword ORDER BY COUNT(*) DESC, AVG(rank) ASC) <= 8
+      QUALIFY ROW_NUMBER() OVER (PARTITION BY keyword ORDER BY COUNT(*) DESC, AVG(rank) ASC, domain) <= 8
     ),
     filtered AS (
       SELECT s.keyword, s.checked_at, s.domain, s.rank
@@ -392,7 +392,7 @@ export async function fetchSiteCandidates(
     WHERE s.domain != @target
     GROUP BY s.keyword, s.domain
     HAVING AVG(s.rank) <= 30
-    QUALIFY ROW_NUMBER() OVER (PARTITION BY s.keyword ORDER BY COUNT(*) DESC, AVG(s.rank) ASC) <= 8
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY s.keyword ORDER BY COUNT(*) DESC, AVG(s.rank) ASC, s.domain) <= 8
     ORDER BY s.keyword, appearances DESC, avg_rank ASC
   `;
   const { rows } = await runQuery<SiteCandidateRow>({

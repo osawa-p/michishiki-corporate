@@ -41,9 +41,12 @@ function diffBadge(l: LatestRank | undefined): { label: string; cls: string } {
   return { label: "→0", cls: "text-ink-faint border-line" };
 }
 
-// 「今からn日前」のJST日時文字列（"YYYY-MM-DD HH:MM"）。checked_at と辞書順比較できる
-function jstCutoff(days: number): string {
-  const d = new Date(Date.now() - days * 86_400_000);
+// 最新計測日時から n 日前のJST日時文字列（"YYYY-MM-DD HH:MM"）。checked_at と辞書順比較できる。
+// 現在時刻でなくデータ側の最新時刻を起点にすることで、SSRとhydrationの時刻差による
+// 表示ずれ（hydration mismatch）を避け、純粋な導出にする。
+function cutoffFrom(latestCheckedAt: string, days: number): string {
+  const d = new Date(latestCheckedAt.replace(" ", "T") + ":00+09:00");
+  d.setTime(d.getTime() - days * 86_400_000);
   return new Intl.DateTimeFormat("sv-SE", {
     timeZone: "Asia/Tokyo",
     dateStyle: "short",
@@ -170,6 +173,7 @@ export default function DashboardWorkspace({
   // ローディングは「まだ allTime に無い」ことから導出する（effect内の同期setStateを避ける）
   const [allTime, setAllTime] = useState<Record<string, TrendSeriesPoint[]>>({});
   const [errKey, setErrKey] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
   const fetchedRef = useRef(new Set<string>());
   const compsKey = comps.join(",");
 
@@ -178,6 +182,10 @@ export default function DashboardWorkspace({
     const key = `${selected}|${compsKey}`;
     if (fetchedRef.current.has(key)) return;
     let aborted = false;
+    // 再取得の開始時に前回のエラー表示を消す（effect本文の同期setStateを避けるため遅延）
+    queueMicrotask(() => {
+      if (!aborted) setErrKey((k) => (k === key ? null : k));
+    });
     const qs = new URLSearchParams({
       domain,
       keyword: selected,
@@ -191,7 +199,7 @@ export default function DashboardWorkspace({
         if (!data.ok) throw new Error();
         fetchedRef.current.add(key);
         setAllTime((m) => ({ ...m, [key]: data.series as TrendSeriesPoint[] }));
-        setErrKey(null);
+        setErrKey((k) => (k === key ? null : k));
       })
       .catch(() => {
         if (!aborted) setErrKey(key);
@@ -199,7 +207,7 @@ export default function DashboardWorkspace({
     return () => {
       aborted = true;
     };
-  }, [range, selected, compsKey, domain]);
+  }, [range, selected, compsKey, domain, retry]);
 
   if (loadError) {
     return (
@@ -239,13 +247,23 @@ export default function DashboardWorkspace({
 
   // 表示する時系列: 1ヶ月/3ヶ月はプリロードからクライアントで切り出し、全期間はオンデマンド
   const preloaded = seriesBy.get(selected) ?? [];
-  const points: TrendSeriesPoint[] | null =
-    range === 0
-      ? (allTime[`${selected}|${compsKey}`] ?? null)
-      : range === 90
-        ? preloaded
-        : preloaded.filter((p) => p.checked_at >= jstCutoff(30));
+  let points: TrendSeriesPoint[] | null;
+  if (range === 0) {
+    points = allTime[`${selected}|${compsKey}`] ?? null;
+  } else if (range === 90 || preloaded.length === 0) {
+    points = preloaded;
+  } else {
+    const cutoff = cutoffFrom(preloaded[preloaded.length - 1].checked_at, 30);
+    points = preloaded.filter((p) => p.checked_at >= cutoff);
+  }
   const waiting = range === 0 && points === null;
+
+  // URL直打ち等でプリロードに存在しない競合ドメインが指定された場合、30日/90日表示では
+  // 線を描けない（候補上位8社のみプリロード対象）ため、存在するものだけをチャートへ渡す。
+  // 全期間はAPIが指定ドメインを明示的に取得するのでそのまま。
+  const presentDomains = new Set<string>();
+  for (const p of preloaded) for (const d of Object.keys(p.ranks)) presentDomains.add(d);
+  const chartComps = range === 0 ? comps : comps.filter((c) => presentDomains.has(c));
 
   function toggleComp(d: string) {
     const next = comps.includes(d)
@@ -424,7 +442,7 @@ export default function DashboardWorkspace({
                   <span className="inline-block w-5 border-t-[3px]" style={{ borderColor: TARGET_COLOR }} />
                   {domain}（自社）
                 </span>
-                {comps.map((c, i) => (
+                {chartComps.map((c, i) => (
                   <span key={c} className="inline-flex items-center gap-1.5">
                     <span
                       className="inline-block w-5 border-t-[3px] border-dashed"
@@ -437,7 +455,16 @@ export default function DashboardWorkspace({
 
               {waiting ? (
                 errKey === `${selected}|${compsKey}` ? (
-                  <p className="text-sm text-red-600 py-8">推移の取得に失敗しました。</p>
+                  <p className="text-sm text-red-600 py-8">
+                    推移の取得に失敗しました。
+                    <button
+                      type="button"
+                      onClick={() => setRetry((r) => r + 1)}
+                      className="ml-3 px-3 py-1 text-xs border border-line bg-white text-bronze-deep hover:border-bronze"
+                    >
+                      再試行
+                    </button>
+                  </p>
                 ) : (
                   <div className="h-[300px] flex items-center justify-center">
                     <p className="text-sm text-ink-faint animate-pulse">全期間の推移を読み込み中…</p>
@@ -445,7 +472,7 @@ export default function DashboardWorkspace({
                 )
               ) : points ? (
                 <>
-                  <RankChart series={points} target={domainKey} competitors={comps} />
+                  <RankChart series={points} target={domainKey} competitors={chartComps} />
 
                   {/* 競合サマリ */}
                   {selectedCandidates.length > 0 && (
@@ -466,7 +493,7 @@ export default function DashboardWorkspace({
                         <tbody>
                           {selectedCandidates.slice(0, 6).map((c) => {
                             const checked = comps.includes(c.domain);
-                            const colorIdx = comps.indexOf(c.domain);
+                            const colorIdx = chartComps.indexOf(c.domain);
                             return (
                               <tr key={c.domain} className="odd:bg-white even:bg-paper">
                                 <td className="px-3 py-1.5">
