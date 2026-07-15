@@ -3,11 +3,17 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getAccess, canViewDomain } from "@/lib/rank-tracker/auth";
-import type { LatestRank, TrackedKeyword, KeywordTrendRow } from "@/lib/rank-tracker/bigquery";
+import type {
+  LatestRank,
+  TrackedKeyword,
+  SiteSeriesRow,
+  SiteCandidateRow,
+} from "@/lib/rank-tracker/bigquery";
 import {
   getLatestRanksCached,
   getTrackedKeywordsCached,
-  getRecentTrendsCached,
+  getSiteSeriesCached,
+  getSiteCandidatesCached,
 } from "@/lib/rank-tracker/cached";
 import DashboardWorkspace from "@/components/rank-tracker/DashboardWorkspace";
 
@@ -43,13 +49,17 @@ export default async function DomainDashboardPage({ params }: Props) {
 
   let latest: LatestRank[] = [];
   let tracked: TrackedKeyword[] = [];
-  let trends: KeywordTrendRow[] = [];
+  let seriesRows: SiteSeriesRow[] = [];
+  let candidates: SiteCandidateRow[] = [];
   let loadError = false;
   try {
-    [latest, tracked, trends] = await Promise.all([
+    // 表示に必要な90日分をここで一括プリロードする。以降のキーワード切替・
+    // 競合ON/OFF・期間切替（1ヶ月/3ヶ月）はBigQueryへ行かずクライアントで即時。
+    [latest, tracked, seriesRows, candidates] = await Promise.all([
       getLatestRanksCached(domain),
       getTrackedKeywordsCached(domain),
-      getRecentTrendsCached(domain),
+      getSiteSeriesCached(domain),
+      getSiteCandidatesCached(domain),
     ]);
   } catch (e) {
     console.error("[rank-tracker] サイト別ダッシュボードの取得に失敗:", e);
@@ -81,7 +91,8 @@ export default async function DomainDashboardPage({ params }: Props) {
               domain={domain}
               tracked={tracked}
               latest={latest}
-              trends={trends}
+              seriesRows={seriesRows}
+              candidates={candidates}
               loadError={loadError}
             />
           </Suspense>

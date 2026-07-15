@@ -296,33 +296,106 @@ export async function listCompetitorCandidates(
   return rows;
 }
 
-// サイト内全追跡キーワードの直近推移（一覧のミニスパークライン用・1クエリ）
-export type KeywordTrendRow = {
+// サイト内全キーワードの推移＋競合を一括で返す行（ダッシュボードのプリロード用）。
+// domain は自社または競合候補のみ。自社がその計測に不在の場合 domain は NULL になる。
+export type SiteSeriesRow = {
   keyword: string;
   checked_at: string;
+  total: number;
+  domain: string | null;
   rank: number | null;
 };
 
-export async function fetchAllRecentTrends(
+// サイト内全キーワードの推移＋競合候補の順位を1クエリで取得する。
+// キーワード切替・競合ON/OFFのたびにBigQueryへ往復しないための一括プリロード。
+export async function fetchSiteSeriesRows(
   targetDomain: string,
   opts: { fromDays?: number } = {}
-): Promise<KeywordTrendRow[]> {
+): Promise<SiteSeriesRow[]> {
   const target = targetKey(targetDomain);
-  const fromDays = Math.max(1, Math.trunc(opts.fromDays ?? 30));
+  const fromDays = Math.max(1, Math.trunc(opts.fromDays ?? 90));
   const sql = `
     WITH tracked AS (
       SELECT DISTINCT keyword FROM ${KW_TABLE_FQN} WHERE target_domain = @target
+    ),
+    scope AS (
+      SELECT keyword, checked_at, domain, MIN(rank) AS rank
+      FROM ${TABLE_FQN}
+      WHERE keyword IN (SELECT keyword FROM tracked)
+        AND checked_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL @fromDays DAY)
+      GROUP BY keyword, checked_at, domain
+    ),
+    totals AS (
+      SELECT keyword, checked_at, COUNT(*) AS total
+      FROM ${TABLE_FQN}
+      WHERE keyword IN (SELECT keyword FROM tracked)
+        AND checked_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL @fromDays DAY)
+      GROUP BY keyword, checked_at
+    ),
+    cand AS (
+      SELECT keyword, domain
+      FROM scope
+      WHERE domain != @target
+      GROUP BY keyword, domain
+      HAVING AVG(rank) <= 30
+      QUALIFY ROW_NUMBER() OVER (PARTITION BY keyword ORDER BY COUNT(*) DESC, AVG(rank) ASC) <= 8
+    ),
+    filtered AS (
+      SELECT s.keyword, s.checked_at, s.domain, s.rank
+      FROM scope s
+      LEFT JOIN cand c ON c.keyword = s.keyword AND c.domain = s.domain
+      WHERE s.domain = @target OR c.domain IS NOT NULL
     )
-    SELECT keyword,
-           FORMAT_TIMESTAMP('%Y-%m-%d %H:%M', checked_at, 'Asia/Tokyo') AS checked_at,
-           MIN(IF(domain = @target, rank, NULL)) AS rank
-    FROM ${TABLE_FQN}
-    WHERE keyword IN (SELECT keyword FROM tracked)
-      AND checked_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL @fromDays DAY)
-    GROUP BY keyword, checked_at
-    ORDER BY keyword, checked_at
+    SELECT t.keyword,
+           FORMAT_TIMESTAMP('%Y-%m-%d %H:%M', t.checked_at, 'Asia/Tokyo') AS checked_at,
+           t.total, f.domain, f.rank
+    FROM totals t
+    LEFT JOIN filtered f ON f.keyword = t.keyword AND f.checked_at = t.checked_at
+    ORDER BY t.keyword, t.checked_at
   `;
-  const { rows } = await runQuery<KeywordTrendRow>({
+  const { rows } = await runQuery<SiteSeriesRow>({
+    query: sql,
+    params: { target, fromDays },
+  });
+  return rows;
+}
+
+// サイト内全キーワードの競合候補サマリを1クエリで取得する（プリロード用）。
+export type SiteCandidateRow = CompetitorCandidate & { keyword: string };
+
+export async function fetchSiteCandidates(
+  targetDomain: string,
+  opts: { fromDays?: number } = {}
+): Promise<SiteCandidateRow[]> {
+  const target = targetKey(targetDomain);
+  const fromDays = Math.max(1, Math.trunc(opts.fromDays ?? 90));
+  const sql = `
+    WITH tracked AS (
+      SELECT DISTINCT keyword FROM ${KW_TABLE_FQN} WHERE target_domain = @target
+    ),
+    scope AS (
+      SELECT keyword, checked_at, domain, MIN(rank) AS rank
+      FROM ${TABLE_FQN}
+      WHERE keyword IN (SELECT keyword FROM tracked)
+        AND checked_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL @fromDays DAY)
+      GROUP BY keyword, checked_at, domain
+    ),
+    n AS (SELECT keyword, COUNT(DISTINCT checked_at) AS batches FROM scope GROUP BY keyword)
+    SELECT s.keyword, s.domain,
+           COUNT(*) AS appearances,
+           ANY_VALUE(n.batches) AS batches,
+           ROUND(AVG(s.rank), 1) AS avg_rank,
+           MIN(s.rank) AS best_rank,
+           ARRAY_AGG(s.rank ORDER BY s.checked_at DESC LIMIT 1)[SAFE_OFFSET(0)] AS latest_rank
+    FROM scope s
+    JOIN n ON n.keyword = s.keyword
+    WHERE s.domain != @target
+    GROUP BY s.keyword, s.domain
+    HAVING AVG(s.rank) <= 30
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY s.keyword ORDER BY COUNT(*) DESC, AVG(s.rank) ASC) <= 8
+    ORDER BY s.keyword, appearances DESC, avg_rank ASC
+  `;
+  const { rows } = await runQuery<SiteCandidateRow>({
     query: sql,
     params: { target, fromDays },
   });
