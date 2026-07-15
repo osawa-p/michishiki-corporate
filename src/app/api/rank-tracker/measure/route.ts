@@ -3,6 +3,7 @@
 import { NextResponse } from "next/server";
 import { searchJina } from "@/lib/rank-tracker/jina";
 import { insertResults, targetKey } from "@/lib/rank-tracker/bigquery";
+import { invalidateRankTrackerCache } from "@/lib/rank-tracker/cached";
 import { DEFAULT_TARGET_DOMAIN } from "@/lib/rank-tracker/keywords";
 
 // @google-cloud/bigquery は Node API 必須のため Edge 不可
@@ -54,6 +55,8 @@ export async function POST(request: Request) {
     let inserted = 0;
     if (!body.noBq && results.length > 0) {
       inserted = await insertResults(results, keyword, domain, checkedAt);
+      // ダッシュボード等の読み取りキャッシュへ新しい計測を即時反映
+      invalidateRankTrackerCache();
     }
 
     return NextResponse.json({

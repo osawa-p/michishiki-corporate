@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { listTrackedKeywords, type TrackedKeyword } from "@/lib/rank-tracker/bigquery";
+import type { TrackedKeyword, TrackedDomain } from "@/lib/rank-tracker/bigquery";
+import { getTrackedKeywordsCached, getTrackedDomainsCached } from "@/lib/rank-tracker/cached";
 import { DEFAULT_TARGET_DOMAIN } from "@/lib/rank-tracker/keywords";
 import KeywordManager from "@/components/rank-tracker/KeywordManager";
 
-// 常に最新の設定をBigQueryから取得する
+// SSRごとに実行するが、データ読み取りはタグ付きキャッシュ（更新時に即無効化）
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
@@ -12,9 +13,13 @@ export const metadata: Metadata = {
 
 export default async function KeywordsPage() {
   let initial: TrackedKeyword[] = [];
+  let domains: TrackedDomain[] = [];
   let loadError = false;
   try {
-    initial = await listTrackedKeywords();
+    [initial, domains] = await Promise.all([
+      getTrackedKeywordsCached(),
+      getTrackedDomainsCached(),
+    ]);
   } catch (e) {
     console.error("[rank-tracker] 追跡キーワードの取得に失敗:", e);
     loadError = true;
@@ -23,12 +28,12 @@ export default async function KeywordsPage() {
   return (
     <>
       <section className="border-b border-line">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
           <p className="text-xs tracking-[0.3em] uppercase text-bronze mb-4">Keywords</p>
           <h1 className="font-serif text-3xl md:text-4xl font-semibold">キーワード管理</h1>
           <p className="mt-4 text-sm text-ink-soft max-w-2xl leading-relaxed">
-            定期取得（週1回）の対象キーワードを登録・管理します。ONにしたキーワードだけが自動計測され、
-            サイトごとにダッシュボードへ集計されます。
+            定期取得の対象キーワードを登録・管理します。キーワードごとに取得頻度
+            （毎日〜月1）とタグを設定でき、サイトごとにダッシュボードへ集計されます。
           </p>
         </div>
       </section>
@@ -37,6 +42,7 @@ export default async function KeywordsPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <KeywordManager
             initial={initial}
+            domains={domains.map((d) => d.domain)}
             loadError={loadError}
             defaultDomain={DEFAULT_TARGET_DOMAIN}
           />

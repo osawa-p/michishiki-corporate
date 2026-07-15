@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { fetchLatestRanks, type LatestRank } from "@/lib/rank-tracker/bigquery";
-import DashboardView from "@/components/rank-tracker/DashboardView";
+import type { LatestRank, TrackedKeyword, KeywordTrendRow } from "@/lib/rank-tracker/bigquery";
+import {
+  getLatestRanksCached,
+  getTrackedKeywordsCached,
+  getRecentTrendsCached,
+} from "@/lib/rank-tracker/cached";
+import DashboardWorkspace from "@/components/rank-tracker/DashboardWorkspace";
 
-// 常に最新の順位をBigQueryから取得する
+// SSRごとに実行するが、データ読み取りはタグ付きキャッシュ（計測・更新時に即無効化）
 export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ domain: string }> };
@@ -30,35 +36,49 @@ export default async function DomainDashboardPage({ params }: Props) {
   if (domain === null) notFound();
 
   let latest: LatestRank[] = [];
+  let tracked: TrackedKeyword[] = [];
+  let trends: KeywordTrendRow[] = [];
   let loadError = false;
   try {
-    latest = await fetchLatestRanks(domain, { onlyTracked: true });
+    [latest, tracked, trends] = await Promise.all([
+      getLatestRanksCached(domain),
+      getTrackedKeywordsCached(domain),
+      getRecentTrendsCached(domain),
+    ]);
   } catch (e) {
-    console.error("[rank-tracker] サイト別最新順位の取得に失敗:", e);
+    console.error("[rank-tracker] サイト別ダッシュボードの取得に失敗:", e);
     loadError = true;
   }
 
   return (
     <>
       <section className="border-b border-line">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
           <Link
             href="/rank-tracker/dashboard"
             className="text-xs text-ink-faint hover:text-bronze-deep transition-colors"
           >
             ← サイト一覧
           </Link>
-          <p className="text-xs tracking-[0.3em] uppercase text-bronze mt-4 mb-2">Dashboard</p>
+          <p className="text-xs tracking-[0.3em] uppercase text-bronze mt-3 mb-2">Dashboard</p>
           <h1 className="font-serif text-2xl md:text-3xl font-semibold break-all">{domain}</h1>
-          <p className="mt-3 text-sm text-ink-soft">
-            登録キーワードの最新順位。カードを選ぶと順位の推移を表示します。
-          </p>
         </div>
       </section>
 
-      <section className="py-10 md:py-14">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <DashboardView domain={domain} latest={latest} loadError={loadError} />
+      <section className="py-8 md:py-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* useSearchParams を使うクライアント側の状態復元のため Suspense で包む */}
+          <Suspense
+            fallback={<p className="text-sm text-ink-faint animate-pulse">読み込み中…</p>}
+          >
+            <DashboardWorkspace
+              domain={domain}
+              tracked={tracked}
+              latest={latest}
+              trends={trends}
+              loadError={loadError}
+            />
+          </Suspense>
         </div>
       </section>
     </>
