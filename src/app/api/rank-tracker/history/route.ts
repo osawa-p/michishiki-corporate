@@ -1,7 +1,7 @@
 // 履歴読み取りAPI。
 //   ?domain=...                                  → 各キーワードの最新順位サマリ（前回差付き）
 //   ?domain=...&keyword=..&range=30              → そのキーワードの順位推移（rangeは日数、0=全期間）
-//   ?domain=...&keyword=..&competitors=a,b       → 競合込みの推移（最大3ドメイン）
+//   ?domain=...&keyword=..&competitors=a,b       → 競合込みの推移（最大5ドメイン）
 //   ?domain=...&keyword=..&withCandidates=1      → 競合候補リストも同時に返す
 import { NextResponse } from "next/server";
 import {
