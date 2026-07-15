@@ -141,7 +141,16 @@ export async function PATCH(request: Request) {
         );
       }
     }
-    const affected = await updateMember(email, { role, domains });
+    // 管理者には allowed_domains を持たせない（昇格時に旧権限が残り、後で降格したとき
+    // 意図しないサイト権限が復活するのを防ぐ）。既存管理者への domains 設定も同様に無効化
+    let effDomains = domains;
+    if (role === "admin") {
+      effDomains = [];
+    } else if (!role && domains) {
+      const target = await getMemberAuth(email);
+      if (target?.role === "admin") effDomains = [];
+    }
+    const affected = await updateMember(email, { role, domains: effDomains });
     if (affected === 0) {
       return NextResponse.json(
         { ok: false, error: "対象のメンバーが見つかりません。" },

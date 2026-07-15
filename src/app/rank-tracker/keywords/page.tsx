@@ -56,7 +56,12 @@ export default async function KeywordsPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <KeywordManager
             initial={initial}
-            domains={domains.map((d) => d.domain)}
+            // editor は「許可されているがまだキーワードが無いサイト」も選べるようにする
+            domains={
+              mode === "editor"
+                ? [...new Set([...domains.map((d) => d.domain), ...access.domains])].sort()
+                : domains.map((d) => d.domain)
+            }
             loadError={loadError}
             defaultDomain={mode === "admin" ? DEFAULT_TARGET_DOMAIN : (access.domains[0] ?? "")}
             mode={mode}

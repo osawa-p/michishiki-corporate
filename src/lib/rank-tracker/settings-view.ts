@@ -32,15 +32,20 @@ export async function buildSiteSettingsView(): Promise<SiteSettingsView[]> {
   const settingsBy = new Map(settings.map((s) => [s.domain, s]));
   const usedBy = new Map(consumption.map((c) => [c.domain, c]));
 
-  return domains.map((d) => {
-    const s = settingsBy.get(d.domain);
-    const eff = s ?? { domain: d.domain, ...DEFAULT_SITE_SETTINGS };
-    const kws = allKeywords.filter((k) => k.target_domain === d.domain);
+  // 「設定はあるがキーワードが0件」のサイトも編集できるよう、両方の和集合を対象にする
+  const names = [
+    ...new Set([...domains.map((d) => d.domain), ...settings.map((s) => s.domain)]),
+  ].sort();
+
+  return names.map((domain) => {
+    const s = settingsBy.get(domain);
+    const eff = s ?? { domain, ...DEFAULT_SITE_SETTINGS };
+    const kws = allKeywords.filter((k) => k.target_domain === domain);
     const counts: Partial<Record<Cadence, number>> = {};
     for (const k of kws) counts[k.cadence] = (counts[k.cadence] ?? 0) + 1;
-    const used = usedBy.get(d.domain);
+    const used = usedBy.get(domain);
     return {
-      domain: d.domain,
+      domain,
       max_keywords: eff.max_keywords,
       max_depth: eff.max_depth,
       min_interval_days: eff.min_interval_days,

@@ -46,10 +46,19 @@ export async function PATCH(request: Request) {
   }
 
   const domain = typeof body.domain === "string" ? targetKey(body.domain) : "";
+  // 全フィールド必須（省略で null に落ちて黙って無制限化する事故を防ぐ）
+  if (!("max_keywords" in body) || !("monthly_budget" in body)) {
+    return NextResponse.json(
+      { ok: false, error: "max_keywords と monthly_budget は明示してください（無制限は null）。" },
+      { status: 400 }
+    );
+  }
   const maxKeywords =
     body.max_keywords == null
       ? null
-      : Number.isInteger(body.max_keywords) && (body.max_keywords as number) >= 1
+      : Number.isSafeInteger(body.max_keywords) &&
+          (body.max_keywords as number) >= 1 &&
+          (body.max_keywords as number) <= 100_000
         ? (body.max_keywords as number)
         : undefined;
   const maxDepth = isDepth(body.max_depth) ? body.max_depth : undefined;
@@ -60,7 +69,9 @@ export async function PATCH(request: Request) {
   const budget =
     body.monthly_budget == null
       ? null
-      : Number.isInteger(body.monthly_budget) && (body.monthly_budget as number) >= 10_000
+      : Number.isSafeInteger(body.monthly_budget) &&
+          (body.monthly_budget as number) >= 10_000 &&
+          (body.monthly_budget as number) <= 1_000_000_000_000
         ? (body.monthly_budget as number)
         : undefined;
 

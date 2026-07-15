@@ -57,17 +57,18 @@ async function checkAddLimits(
   }
   for (const [dom, list] of byDomain) {
     const settings = await getSiteSettings(dom);
-    for (const it of list) {
-      if (!isCadenceAllowed(it.cadence, settings)) {
-        return `${dom} で使える頻度は「${slowestAllowedLabel(settings)}」より低頻度のみです（「${cadenceLabel(it.cadence)}」は不可）。`;
-      }
-    }
     const existing = await listTrackedKeywords({ domain: dom });
     const existingSet = new Set(existing.map((r) => r.keyword));
+    // 既存キーワードの再送はMERGEで無視される（頻度も変わらない）ため、新規分だけ検証する
     const fresh = [
       ...new Map(list.filter((it) => !existingSet.has(it.keyword)).map((it) => [it.keyword, it])).values(),
     ];
     if (fresh.length === 0) continue;
+    for (const it of fresh) {
+      if (!isCadenceAllowed(it.cadence, settings)) {
+        return `${dom} で使える頻度は「${slowestAllowedLabel(settings)}」より低頻度のみです（「${cadenceLabel(it.cadence)}」は不可）。`;
+      }
+    }
     if (settings.max_keywords != null && existing.length + fresh.length > settings.max_keywords) {
       return `${dom} の上限キーワード数（${settings.max_keywords}件）を超えます（登録済み${existing.length}件＋新規${fresh.length}件）。`;
     }
@@ -97,10 +98,15 @@ async function checkCadenceLimits(
   }
   if (settings.monthly_budget != null && cadence !== "stopped") {
     const existing = await listTrackedKeywords({ domain: dom });
-    const cadences = existing.map((r) => (r.keyword === keyword ? cadence : r.cadence));
-    const predicted = predictMonthlyTokens(cadences, settings);
-    if (predicted > settings.monthly_budget) {
-      return `${dom} の月間クレジット予算（${formatTokens(settings.monthly_budget)}）を超えます（この変更後の予測消費 約${formatTokens(predicted)}）。`;
+    const before = predictMonthlyTokens(existing.map((r) => r.cadence), settings);
+    const after = predictMonthlyTokens(
+      existing.map((r) => (r.keyword === keyword ? cadence : r.cadence)),
+      settings
+    );
+    // 予算超過中でも「消費を減らす方向」の変更は常に許可する
+    // （絶対値だけで判定すると、頻度を下げる操作までブロックされ身動きが取れなくなる）
+    if (after > settings.monthly_budget && after > before) {
+      return `${dom} の月間クレジット予算（${formatTokens(settings.monthly_budget)}）を超えます（この変更後の予測消費 約${formatTokens(after)}）。`;
     }
   }
   return null;
