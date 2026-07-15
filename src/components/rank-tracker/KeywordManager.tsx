@@ -24,12 +24,16 @@ export default function KeywordManager({
   domains,
   loadError,
   defaultDomain,
+  mode = "admin",
 }: {
   initial: Row[];
   domains: string[];
   loadError: boolean;
   defaultDomain: string;
+  // admin=全機能 / editor=許可サイトのみ・新規サイト追加不可 / readonly=閲覧のみ
+  mode?: "admin" | "editor" | "readonly";
 }) {
+  const readonly = mode === "readonly";
   const [rows, setRows] = useState<Row[]>(initial);
   const [tab, setTab] = useState<"single" | "bulk">("single");
   const [busy, setBusy] = useState(false);
@@ -231,7 +235,8 @@ export default function KeywordManager({
 
   return (
     <div className="space-y-10">
-      {/* 登録カード */}
+      {/* 登録カード（読み取り専用権限では非表示） */}
+      {!readonly && (
       <div className="bg-white border border-line">
         {/* 対象サイト（単一/一括で共有） */}
         <div className="p-5 border-b border-line bg-bronze/5">
@@ -240,7 +245,13 @@ export default function KeywordManager({
               <label htmlFor="dm" className={labelCls}>
                 対象サイト
               </label>
-              <DomainPicker id="dm" domains={knownDomains} value={dm} onChange={setDm} />
+              <DomainPicker
+                id="dm"
+                domains={knownDomains}
+                value={dm}
+                onChange={setDm}
+                allowNew={mode === "admin"}
+              />
             </div>
             <div className="grid gap-5 grid-cols-2">
               <div>
@@ -378,6 +389,7 @@ export default function KeywordManager({
           )}
         </div>
       </div>
+      )}
 
       {/* 一覧 */}
       <div>
@@ -446,20 +458,30 @@ export default function KeywordManager({
               const editing = tagEditKey === k;
               return (
                 <div key={k} className="flex flex-wrap items-center gap-x-4 gap-y-2 p-4 bg-white">
-                  <select
-                    aria-label={`「${row.keyword}」の取得頻度`}
-                    value={row.cadence}
-                    onChange={(e) => changeCadence(row, e.target.value as Cadence)}
-                    className={`px-2 py-1.5 border border-line text-xs focus:outline-none focus:border-bronze ${
-                      row.cadence === "stopped" ? "text-ink-faint bg-paper" : "text-bronze-deep bg-white"
-                    }`}
-                  >
-                    {CADENCES.map((c) => (
-                      <option key={c.value} value={c.value}>
-                        {c.label}
-                      </option>
-                    ))}
-                  </select>
+                  {readonly ? (
+                    <span
+                      className={`px-2.5 py-1 border border-line text-xs ${
+                        row.cadence === "stopped" ? "text-ink-faint bg-paper" : "text-bronze-deep bg-white"
+                      }`}
+                    >
+                      {CADENCES.find((c) => c.value === row.cadence)?.label ?? row.cadence}
+                    </span>
+                  ) : (
+                    <select
+                      aria-label={`「${row.keyword}」の取得頻度`}
+                      value={row.cadence}
+                      onChange={(e) => changeCadence(row, e.target.value as Cadence)}
+                      className={`px-2 py-1.5 border border-line text-xs focus:outline-none focus:border-bronze ${
+                        row.cadence === "stopped" ? "text-ink-faint bg-paper" : "text-bronze-deep bg-white"
+                      }`}
+                    >
+                      {CADENCES.map((c) => (
+                        <option key={c.value} value={c.value}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
 
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-medium text-ink">{row.keyword}</div>
@@ -471,7 +493,7 @@ export default function KeywordManager({
                             {t}
                           </span>
                         ))}
-                      {!editing && (
+                      {!editing && !readonly && (
                         <button
                           type="button"
                           onClick={() => {
@@ -519,14 +541,16 @@ export default function KeywordManager({
                     )}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => remove(row)}
-                    disabled={busy}
-                    className="text-xs text-ink-faint hover:text-red-600 transition-colors disabled:opacity-60"
-                  >
-                    削除
-                  </button>
+                  {!readonly && (
+                    <button
+                      type="button"
+                      onClick={() => remove(row)}
+                      disabled={busy}
+                      className="text-xs text-ink-faint hover:text-red-600 transition-colors disabled:opacity-60"
+                    >
+                      削除
+                    </button>
+                  )}
                 </div>
               );
             })}

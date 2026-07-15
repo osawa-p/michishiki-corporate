@@ -13,12 +13,11 @@ const MEMBERS_FQN = `\`${GCP_PROJECT}.${BQ_DATASET}.${BQ_MEMBERS_TABLE}\``;
 
 const INVITE_TTL_DAYS = 7;
 
-export type MemberRole = "admin" | "viewer";
-export type MemberStatus = "invited" | "active";
+export type { MemberRole } from "./roles";
+export { isMemberRole } from "./roles";
+import type { MemberRole } from "./roles";
 
-export function isMemberRole(v: unknown): v is MemberRole {
-  return v === "admin" || v === "viewer";
-}
+export type MemberStatus = "invited" | "active";
 
 // 一覧表示用（ハッシュ類は含めない）
 export type Member = {

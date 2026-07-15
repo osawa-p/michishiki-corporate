@@ -12,16 +12,19 @@ export default function DomainPicker({
   domains,
   value,
   onChange,
+  allowNew = true,
 }: {
   id: string;
   domains: string[];
   value: string;
   onChange: (domain: string) => void;
+  // editor は許可サイト以外を追加できないため false（selectのみ）
+  allowNew?: boolean;
 }) {
   // 登録済みに value が無い場合（初期値が新規ドメイン等）は新規入力モードで開始
   const isExisting = domains.includes(targetKey(value));
   const [mode, setMode] = useState<"select" | "new">(
-    domains.length > 0 && isExisting ? "select" : "new"
+    (domains.length > 0 && isExisting) || !allowNew ? "select" : "new"
   );
   const [draft, setDraft] = useState(isExisting ? "" : value);
 
@@ -50,7 +53,7 @@ export default function DomainPicker({
             {d}
           </option>
         ))}
-        <option value={NEW}>＋ 新しいサイトを追加…</option>
+        {allowNew && <option value={NEW}>＋ 新しいサイトを追加…</option>}
       </select>
     );
   }

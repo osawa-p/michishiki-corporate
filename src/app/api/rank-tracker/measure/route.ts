@@ -2,7 +2,13 @@
 // JINAでSERPを取得し、BigQueryへ追記して結果を返す。
 import { NextResponse } from "next/server";
 import { searchJina } from "@/lib/rank-tracker/jina";
-import { insertResults, targetKey } from "@/lib/rank-tracker/bigquery";
+import {
+  insertResults,
+  targetKey,
+  getSiteSettings,
+  fetchMonthlyConsumption,
+} from "@/lib/rank-tracker/bigquery";
+import { formatTokens } from "@/lib/rank-tracker/limits";
 import { invalidateRankTrackerCache } from "@/lib/rank-tracker/cached";
 import { requireAdminApi } from "@/lib/rank-tracker/auth";
 import { DEFAULT_TARGET_DOMAIN } from "@/lib/rank-tracker/keywords";
@@ -51,7 +57,24 @@ export async function POST(request: Request) {
   }
 
   try {
-    const results = await searchJina(keyword, apiKey, { num });
+    // サイト設定の計測深度を上限として適用し、月間予算に達していれば計測しない
+    const settings = await getSiteSettings(domain);
+    const cappedNum = Math.min(num, settings.max_depth);
+    if (settings.monthly_budget != null) {
+      const consumption = await fetchMonthlyConsumption();
+      const used = consumption.find((c) => c.domain === targetKey(domain))?.tokens ?? 0;
+      if (used >= settings.monthly_budget) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: `${targetKey(domain)} は今月のクレジット予算（${formatTokens(settings.monthly_budget)}）に達しています。サイト設定で予算を変更するか、来月まで待ってください。`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    const results = await searchJina(keyword, apiKey, { num: cappedNum });
     const target = targetKey(domain);
     const hit = results.find((r) => r.domain === target) ?? null;
 

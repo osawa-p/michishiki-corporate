@@ -6,7 +6,8 @@ import { cookies, headers } from "next/headers";
 import { unstable_cache, revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { SESSION_COOKIE, SESSION_MAX_AGE_SEC, signSession, verifySessionToken } from "./session-token";
-import { getMemberAuth, type MemberAuth, type MemberRole } from "./members";
+import { getMemberAuth, type MemberAuth } from "./members";
+import { canSeeKeywords, canEditKeywords, type MemberRole } from "./roles";
 import { targetKey } from "./domain";
 
 export const MEMBERS_CACHE_TAG = "rank-tracker-members";
@@ -64,6 +65,17 @@ export async function getAccess(): Promise<Access | null> {
 }
 
 export function canViewDomain(access: Access, domain: string): boolean {
+  return access.role === "admin" || access.domains.includes(targetKey(domain));
+}
+
+// キーワード管理ページを開ける権限か（editor=編集可 / viewer_kw=読み取りのみ）
+export function canAccessKeywords(access: Access): boolean {
+  return canSeeKeywords(access.role);
+}
+
+// 指定ドメインのキーワードを編集できるか（editorは許可サイトのみ）
+export function canEditKeywordsFor(access: Access, domain: string): boolean {
+  if (!canEditKeywords(access.role)) return false;
   return access.role === "admin" || access.domains.includes(targetKey(domain));
 }
 

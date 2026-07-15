@@ -11,6 +11,7 @@
 import { BigQuery, type Query } from "@google-cloud/bigquery";
 import type { SerpResult, SerpRow } from "./types";
 import { CADENCES, type Cadence } from "./cadence";
+import { DEFAULT_SITE_SETTINGS, type SiteSettings } from "./limits";
 import { targetKey } from "./domain";
 
 // 互換のため再エクスポート（正規化ロジック本体は ./domain に移動）
@@ -557,6 +558,100 @@ export async function deleteTrackedKeyword(keyword: string, domain: string): Pro
     params: { keyword: keyword.trim(), domain: targetKey(domain) },
   });
   return affected;
+}
+
+// ───────────────────────────────────────────────────────────
+// サイト別制限（site_settings）とクレジット消費
+// ───────────────────────────────────────────────────────────
+
+const BQ_SETTINGS_TABLE = process.env.BQ_SETTINGS_TABLE ?? "site_settings";
+const SETTINGS_FQN = `\`${GCP_PROJECT}.${BQ_DATASET}.${BQ_SETTINGS_TABLE}\``;
+
+// 全サイトの制限設定。未設定サイトは呼び出し側で DEFAULT_SITE_SETTINGS を補う。
+export async function listSiteSettings(): Promise<SiteSettings[]> {
+  const sql = `
+    SELECT domain, max_keywords, max_depth, min_interval_days, monthly_budget
+    FROM ${SETTINGS_FQN}
+    ORDER BY domain
+  `;
+  const { rows } = await runQuery<SiteSettings>({ query: sql });
+  return rows;
+}
+
+// 単一サイトの実効設定（未設定ならデフォルト値）
+export async function getSiteSettings(domain: string): Promise<SiteSettings> {
+  const key = targetKey(domain);
+  const sql = `
+    SELECT domain, max_keywords, max_depth, min_interval_days, monthly_budget
+    FROM ${SETTINGS_FQN}
+    WHERE domain = @domain
+    LIMIT 1
+  `;
+  const { rows } = await runQuery<SiteSettings>({ query: sql, params: { domain: key } });
+  return rows[0] ?? { domain: key, ...DEFAULT_SITE_SETTINGS };
+}
+
+// 制限設定の作成/更新（MERGE upsert）
+export async function upsertSiteSettings(settings: SiteSettings): Promise<void> {
+  const sql = `
+    MERGE ${SETTINGS_FQN} T
+    USING (SELECT @domain AS domain) S
+    ON T.domain = S.domain
+    WHEN MATCHED THEN UPDATE SET
+      max_keywords = @maxKeywords,
+      max_depth = @maxDepth,
+      min_interval_days = @minIntervalDays,
+      monthly_budget = @monthlyBudget,
+      updated_at = CURRENT_TIMESTAMP()
+    WHEN NOT MATCHED THEN INSERT
+      (domain, max_keywords, max_depth, min_interval_days, monthly_budget, created_at, updated_at)
+      VALUES (@domain, @maxKeywords, @maxDepth, @minIntervalDays, @monthlyBudget,
+              CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP())
+  `;
+  await runQuery({
+    query: sql,
+    params: {
+      domain: targetKey(settings.domain),
+      maxKeywords: settings.max_keywords,
+      maxDepth: settings.max_depth,
+      minIntervalDays: settings.min_interval_days,
+      monthlyBudget: settings.monthly_budget,
+    },
+    // NULL許容のパラメータは型の明示が必要
+    types: { maxKeywords: "INT64", monthlyBudget: "INT64" },
+  });
+}
+
+// 当月（JST）のサイト別クレジット消費実績。
+// serp_results の計測実績からトークン量を推定する: 1計測 ≒ (ceil(取得件数/10)+1)万トークン。
+// 同一キーワードを複数サイトで追跡している場合、それぞれのサイトに計上される
+// （実際のJINA消費は1回分。サイト単位では上限側に倒した集計になる）。
+export type MonthlyConsumption = {
+  domain: string;
+  tokens: number;
+  measurements: number;
+};
+
+export async function fetchMonthlyConsumption(): Promise<MonthlyConsumption[]> {
+  const sql = `
+    WITH month_batches AS (
+      SELECT keyword, checked_at, COUNT(*) AS total
+      FROM ${TABLE_FQN}
+      WHERE checked_at >= TIMESTAMP(
+        DATETIME_TRUNC(DATETIME(CURRENT_TIMESTAMP(), 'Asia/Tokyo'), MONTH), 'Asia/Tokyo')
+      GROUP BY keyword, checked_at
+    )
+    SELECT t.target_domain AS domain,
+           SUM((CAST(CEIL(b.total / 10) AS INT64) + 1) * 10000) AS tokens,
+           COUNT(*) AS measurements
+    FROM month_batches b
+    JOIN (SELECT DISTINCT keyword, target_domain FROM ${KW_TABLE_FQN}) t
+      ON t.keyword = b.keyword
+    GROUP BY domain
+    ORDER BY domain
+  `;
+  const { rows } = await runQuery<MonthlyConsumption>({ query: sql });
+  return rows.map((r) => ({ ...r, tokens: Number(r.tokens), measurements: Number(r.measurements) }));
 }
 
 // 計測済みキーワードの next_run_at を各行の頻度に応じて先送りする（cron用）。
