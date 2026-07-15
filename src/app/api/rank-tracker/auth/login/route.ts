@@ -16,7 +16,8 @@ export async function POST(request: Request) {
   }
   const email = typeof body.email === "string" ? body.email.trim() : "";
   const password = typeof body.password === "string" ? body.password : "";
-  if (!isValidEmail(email) || !password) {
+  // 長さ上限は scrypt の計算コスト膨張（DoS）防止
+  if (!isValidEmail(email) || !password || password.length > 128) {
     return NextResponse.json(
       { ok: false, error: "メールアドレスとパスワードを入力してください。" },
       { status: 400 }

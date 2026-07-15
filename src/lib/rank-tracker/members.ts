@@ -185,13 +185,21 @@ export async function acceptInvite(
   return affected > 0 ? { email } : null;
 }
 
+// タイミング差によるメール列挙（実在アカウントだけ scrypt が走り遅くなる）を防ぐための
+// ダミーハッシュ。モジュール初期化時に1回だけ計算する。
+const DUMMY_HASH = hashPassword("timing-equalizer-dummy");
+
 // ログイン検証。成功時はメンバー情報を返し last_login_at を更新する。
 export async function verifyLogin(
   email: string,
   password: string
 ): Promise<{ email: string; role: MemberRole } | null> {
   const m = await getMemberAuth(email);
-  if (!m || m.status !== "active" || !m.password_hash) return null;
+  if (!m || m.status !== "active" || !m.password_hash) {
+    // 実在アカウントと同等の計算コストを常に消費する（結果は必ず不一致）
+    verifyPassword(password, DUMMY_HASH);
+    return null;
+  }
   if (!verifyPassword(password, m.password_hash)) return null;
 
   try {
@@ -226,6 +234,14 @@ export async function updateMember(
   const sql = `UPDATE ${MEMBERS_FQN} SET ${sets.join(", ")} WHERE email = @email`;
   const { affected } = await runQuery({ query: sql, params, types });
   return affected;
+}
+
+// 有効な管理者数（最後の管理者の削除・降格ガード用）
+export async function countActiveAdmins(): Promise<number> {
+  const { rows } = await runQuery<{ n: number }>({
+    query: `SELECT COUNT(*) AS n FROM ${MEMBERS_FQN} WHERE role = 'admin' AND status = 'active'`,
+  });
+  return Number(rows[0]?.n ?? 0);
 }
 
 export async function deleteMember(email: string): Promise<number> {

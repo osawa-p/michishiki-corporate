@@ -49,7 +49,8 @@ export default function MemberManager({
       const res = await fetch(API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), role, domains }),
+        // 管理者は全サイト閲覧のため domains を持たせない（サーバー側でも強制）
+        body: JSON.stringify({ email: email.trim(), role, domains: role === "admin" ? [] : domains }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || "招待の発行に失敗しました。");

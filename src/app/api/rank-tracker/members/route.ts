@@ -9,6 +9,8 @@ import {
   createInvite,
   updateMember,
   deleteMember,
+  getMemberAuth,
+  countActiveAdmins,
   isMemberRole,
   isValidEmail,
   normalizeEmail,
@@ -62,13 +64,17 @@ export async function POST(request: Request) {
   }
   const email = typeof body.email === "string" ? body.email.trim() : "";
   const role = isMemberRole(body.role) ? body.role : null;
-  const domains = sanitizeDomains(body.domains) ?? [];
-  if (!isValidEmail(email) || !role || domains === null) {
+  // undefined（未指定）は空扱い、不正値は null のまま残して400にする
+  const rawDomains = body.domains === undefined ? [] : sanitizeDomains(body.domains);
+  if (!isValidEmail(email) || !role || rawDomains == null) {
     return NextResponse.json(
       { ok: false, error: "email / role / domains の形式が正しくありません。" },
       { status: 400 }
     );
   }
+  // 管理者は全サイト閲覧できるため allowed_domains は持たせない
+  // （後で閲覧のみに降格したとき、意図しないサイト権限が残るのを防ぐ）
+  const domains = role === "admin" ? [] : rawDomains;
   if (role === "viewer" && domains.length === 0) {
     return NextResponse.json(
       { ok: false, error: "閲覧のみメンバーには閲覧できるサイトを1つ以上指定してください。" },
@@ -125,6 +131,16 @@ export async function PATCH(request: Request) {
   }
 
   try {
+    // 最後の有効な管理者の降格は不可（Basic認証フォールバック経由の操作でも守る）
+    if (role === "viewer") {
+      const target = await getMemberAuth(email);
+      if (target?.role === "admin" && target.status === "active" && (await countActiveAdmins()) <= 1) {
+        return NextResponse.json(
+          { ok: false, error: "最後の管理者を閲覧のみに変更することはできません。" },
+          { status: 400 }
+        );
+      }
+    }
     const affected = await updateMember(email, { role, domains });
     if (affected === 0) {
       return NextResponse.json(
@@ -162,6 +178,14 @@ export async function DELETE(request: Request) {
   }
 
   try {
+    // 最後の有効な管理者の削除は不可（ロックアウト防止）
+    const target = await getMemberAuth(email);
+    if (target?.role === "admin" && target.status === "active" && (await countActiveAdmins()) <= 1) {
+      return NextResponse.json(
+        { ok: false, error: "最後の管理者は削除できません。" },
+        { status: 400 }
+      );
+    }
     await deleteMember(email);
     invalidateMembersCache();
     return NextResponse.json({ ok: true });

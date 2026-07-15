@@ -25,9 +25,9 @@ export async function POST(request: Request) {
   if (!token || !/^[0-9a-f]{64}$/.test(token)) {
     return NextResponse.json({ ok: false, error: "招待リンクが不正です。" }, { status: 400 });
   }
-  if (password.length < MIN_PASSWORD_LENGTH) {
+  if (password.length < MIN_PASSWORD_LENGTH || password.length > 128) {
     return NextResponse.json(
-      { ok: false, error: `パスワードは${MIN_PASSWORD_LENGTH}文字以上にしてください。` },
+      { ok: false, error: `パスワードは${MIN_PASSWORD_LENGTH}〜128文字にしてください。` },
       { status: 400 }
     );
   }
