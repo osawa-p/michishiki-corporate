@@ -30,6 +30,7 @@ const TABLES = [
       { name: "ga4_enabled", type: "BOOL" },
       { name: "ga4_property_id", type: "STRING" },
       { name: "sitemap_url", type: "STRING" },
+      { name: "crawl_enabled", type: "BOOL" },
       { name: "inspection_daily_limit", type: "INT64" },
       { name: "stale_days", type: "INT64" },
       { name: "updated_at", type: "TIMESTAMP" },

@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import {
   listSeoSites,
   mergeSeoUrls,
+  mergeSeoUrlsFromQueryStats,
   listInspectionTargets,
   markUrlsInspected,
   hasQueryStats,
@@ -85,15 +86,25 @@ export async function GET(request: Request) {
     const sum: SiteSummary = { site: s.site, errors: [] };
     summaries.push(sum);
 
-    // ── GSC 系（gsc_enabled のサイトのみ。もしも様のような対象外サイトはここをスキップ） ──
+    // ── GSC 系（gsc_enabled のサイトのみ） ──
     if (s.gsc_enabled && s.gsc_site_url) {
-      // 1) sitemap → URL台帳
+      // 1) URL台帳の更新。sitemap取得はサイト本体へのアクセスなので crawl_enabled のサイトのみ。
+      //    クロール不可サイト（例: RASIK）はGSC検索結果に出たURLから台帳を構築する。
+      if (s.crawl_enabled) {
+        try {
+          const urls = await fetchSitemapUrls(s.sitemap_url ?? defaultSitemapUrl(s.site));
+          sum.sitemapAdded = urls.length > 0 ? await mergeSeoUrls(s.site, urls, "sitemap") : 0;
+        } catch (err) {
+          console.error(`[seo-monitor] sitemap取得に失敗 (${s.site}):`, err);
+          sum.errors.push("sitemap");
+        }
+      }
       try {
-        const urls = await fetchSitemapUrls(s.sitemap_url ?? defaultSitemapUrl(s.site));
-        sum.sitemapAdded = urls.length > 0 ? await mergeSeoUrls(s.site, urls, "sitemap") : 0;
+        const added = await mergeSeoUrlsFromQueryStats(s.site);
+        sum.sitemapAdded = (sum.sitemapAdded ?? 0) + added;
       } catch (err) {
-        console.error(`[seo-monitor] sitemap取得に失敗 (${s.site}):`, err);
-        sum.errors.push("sitemap");
+        console.error(`[seo-monitor] GSC由来URLの台帳更新に失敗 (${s.site}):`, err);
+        sum.errors.push("url-ledger");
       }
 
       // 2) 検索アナリティクス（冪等: 同一日を二重取り込みしない）

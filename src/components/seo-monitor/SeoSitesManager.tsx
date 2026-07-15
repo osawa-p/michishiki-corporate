@@ -11,6 +11,7 @@ type FormState = {
   ga4_enabled: boolean;
   ga4_property_id: string;
   sitemap_url: string;
+  crawl_enabled: boolean;
   inspection_daily_limit: string;
   stale_days: string;
 };
@@ -22,6 +23,7 @@ const EMPTY: FormState = {
   ga4_enabled: false,
   ga4_property_id: "",
   sitemap_url: "",
+  crawl_enabled: true,
   inspection_daily_limit: String(DEFAULT_SEO_SITE.inspection_daily_limit),
   stale_days: String(DEFAULT_SEO_SITE.stale_days),
 };
@@ -34,6 +36,7 @@ function toForm(s: SeoSite): FormState {
     ga4_enabled: s.ga4_enabled,
     ga4_property_id: s.ga4_property_id ?? "",
     sitemap_url: s.sitemap_url ?? "",
+    crawl_enabled: s.crawl_enabled,
     inspection_daily_limit: String(s.inspection_daily_limit),
     stale_days: String(s.stale_days),
   };
@@ -70,6 +73,7 @@ export default function SeoSitesManager({
           ga4_enabled: form.ga4_enabled,
           ga4_property_id: form.ga4_property_id || null,
           sitemap_url: form.sitemap_url || null,
+          crawl_enabled: form.crawl_enabled,
           inspection_daily_limit: Number(form.inspection_daily_limit),
           stale_days: Number(form.stale_days),
         }),
@@ -192,6 +196,21 @@ export default function SeoSitesManager({
             />
           </label>
 
+          <div className="sm:col-span-2">
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.crawl_enabled}
+                onChange={(e) => set("crawl_enabled", e.target.checked)}
+              />
+              サイトへの直接アクセス（sitemap取得）を許可する
+            </label>
+            <p className="mt-1 text-[11px] text-ink-faint">
+              クロール不可のサイト（例: RASIK＝高頻度アクセスでブロックされる）はOFF。
+              OFFでもGSC API・URL検査は使え、URL台帳は検索結果に出たURLから自動構築されます。
+            </p>
+          </div>
+
           <div className="sm:col-span-2 border-t border-line pt-4">
             <label className="inline-flex items-center gap-2 text-sm">
               <input
@@ -202,7 +221,7 @@ export default function SeoSitesManager({
               サーチコンソール取得を有効にする
             </label>
             <p className="mt-1 text-[11px] text-ink-faint">
-              クライアント要件でGSCが使えないサイト（例: もしも様）はOFFのまま。GA4のみの表示になります。
+              クライアント要件でGSC自体が使えないサイトはOFFのまま。GA4のみの表示になります。
             </p>
           </div>
           <label className="text-xs text-ink-soft">

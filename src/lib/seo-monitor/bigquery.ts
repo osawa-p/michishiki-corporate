@@ -53,6 +53,7 @@ export async function listSeoSites(): Promise<SeoSite[]> {
     ga4_enabled: Boolean(r.ga4_enabled),
     ga4_property_id: (r.ga4_property_id as string) ?? null,
     sitemap_url: (r.sitemap_url as string) ?? null,
+    crawl_enabled: r.crawl_enabled == null ? true : Boolean(r.crawl_enabled),
     inspection_daily_limit:
       Number(r.inspection_daily_limit) > 0
         ? Number(r.inspection_daily_limit)
@@ -73,14 +74,15 @@ export async function upsertSeoSite(s: SeoSite): Promise<void> {
         ga4_enabled = @ga4_enabled,
         ga4_property_id = @ga4_property_id,
         sitemap_url = @sitemap_url,
+        crawl_enabled = @crawl_enabled,
         inspection_daily_limit = @inspection_daily_limit,
         stale_days = @stale_days,
         updated_at = CURRENT_TIMESTAMP()
       WHEN NOT MATCHED THEN INSERT
         (site, gsc_enabled, gsc_site_url, ga4_enabled, ga4_property_id, sitemap_url,
-         inspection_daily_limit, stale_days, updated_at)
+         crawl_enabled, inspection_daily_limit, stale_days, updated_at)
       VALUES (@site, @gsc_enabled, @gsc_site_url, @ga4_enabled, @ga4_property_id, @sitemap_url,
-        @inspection_daily_limit, @stale_days, CURRENT_TIMESTAMP())`,
+        @crawl_enabled, @inspection_daily_limit, @stale_days, CURRENT_TIMESTAMP())`,
     params: {
       site: s.site,
       gsc_enabled: s.gsc_enabled,
@@ -88,6 +90,7 @@ export async function upsertSeoSite(s: SeoSite): Promise<void> {
       ga4_enabled: s.ga4_enabled,
       ga4_property_id: s.ga4_property_id,
       sitemap_url: s.sitemap_url,
+      crawl_enabled: s.crawl_enabled,
       inspection_daily_limit: s.inspection_daily_limit,
       stale_days: s.stale_days,
     },
@@ -111,6 +114,26 @@ export async function mergeSeoUrls(site: string, urls: string[], source: string)
       VALUES (@site, s.url, @source, TRUE, TRUE, NULL, CURRENT_TIMESTAMP(), NULL)`,
     params: { site, urls, source },
     types: { urls: ["STRING"] },
+  });
+  return affected;
+}
+
+// GSC検索結果に出たURLを台帳へ追加する（クロール不可サイトのsitemap代替。
+// Google側のデータのみで構築するため、サイト本体へのアクセスは発生しない）
+export async function mergeSeoUrlsFromQueryStats(site: string, days = 28): Promise<number> {
+  const { affected } = await runQuery({
+    query: `
+      MERGE ${T_URLS} t
+      USING (
+        SELECT DISTINCT page AS url FROM ${T_QUERY}
+        WHERE site = @site
+          AND date >= DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL @days DAY)
+          AND STARTS_WITH(page, 'http')
+      ) s ON t.site = @site AND t.url = s.url
+      WHEN NOT MATCHED THEN INSERT
+        (site, url, source, index_target, active, exclude_reason, discovered_at, last_inspected_at)
+      VALUES (@site, s.url, 'gsc', TRUE, TRUE, NULL, CURRENT_TIMESTAMP(), NULL)`,
+    params: { site, days },
   });
   return affected;
 }

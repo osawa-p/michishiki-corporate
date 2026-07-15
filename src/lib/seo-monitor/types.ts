@@ -11,6 +11,10 @@ export type SeoSite = {
   ga4_property_id: string | null;
   // 省略時は https://{site}/sitemap.xml
   sitemap_url: string | null;
+  // サイト本体へのアクセス（sitemap取得等）を許可するか。
+  // クライアント要件でクロール不可のサイト（例: RASIK＝ブロック対策で高頻度アクセス禁止）は false。
+  // false の場合、URL台帳はGSC検索結果に出たURLから構築する（GSC APIはGoogle側のデータなので使用可）。
+  crawl_enabled: boolean;
   // URL検査ローテーションの1日あたり件数（APIクォータはサイトあたり2,000件/日）
   inspection_daily_limit: number;
   // 「長期未クロール」と判定する経過日数のしきい値
@@ -24,6 +28,7 @@ export const DEFAULT_SEO_SITE: Omit<SeoSite, "site"> = {
   ga4_enabled: false,
   ga4_property_id: null,
   sitemap_url: null,
+  crawl_enabled: true,
   inspection_daily_limit: 60,
   stale_days: 40,
 };

@@ -60,6 +60,8 @@ export async function PATCH(request: Request) {
         : undefined;
   const gscEnabled = Boolean(body.gsc_enabled);
   const ga4Enabled = Boolean(body.ga4_enabled);
+  // 省略時はクロール許可（既存サイトの互換）。明示的に false のときだけ無効化。
+  const crawlEnabled = body.crawl_enabled == null ? true : Boolean(body.crawl_enabled);
 
   if (
     !isValidTargetDomain(site) ||
@@ -105,6 +107,7 @@ export async function PATCH(request: Request) {
       ga4_enabled: ga4Enabled,
       ga4_property_id: ga4PropertyId,
       sitemap_url: sitemapUrl,
+      crawl_enabled: crawlEnabled,
       inspection_daily_limit: inspectionLimit,
       stale_days: staleDays,
     });
