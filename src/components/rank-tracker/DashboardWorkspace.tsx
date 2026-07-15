@@ -259,7 +259,7 @@ export default function DashboardWorkspace({
   const waiting = range === 0 && points === null;
 
   // URL直打ち等でプリロードに存在しない競合ドメインが指定された場合、30日/90日表示では
-  // 線を描けない（候補上位8社のみプリロード対象）ため、存在するものだけをチャートへ渡す。
+  // 線を描けない（候補上位20社のみプリロード対象）ため、存在するものだけをチャートへ渡す。
   // 全期間はAPIが指定ドメインを明示的に取得するのでそのまま。
   const presentDomains = new Set<string>();
   for (const p of preloaded) for (const d of Object.keys(p.ranks)) presentDomains.add(d);
@@ -476,7 +476,7 @@ export default function DashboardWorkspace({
 
                   {/* 競合サマリ */}
                   {selectedCandidates.length > 0 && (
-                    <div className="mt-5 overflow-x-auto">
+                    <div className="mt-5 overflow-x-auto max-h-72 overflow-y-auto border-b border-line">
                       <p className="text-xs font-semibold text-ink-soft mb-2">
                         競合サマリ（直近90日のSERPから自動抽出・チェックでチャートに重ねる／最大5社）
                       </p>
@@ -491,7 +491,7 @@ export default function DashboardWorkspace({
                           </tr>
                         </thead>
                         <tbody>
-                          {selectedCandidates.slice(0, 8).map((c) => {
+                          {selectedCandidates.map((c) => {
                             const checked = comps.includes(c.domain);
                             const colorIdx = chartComps.indexOf(c.domain);
                             return (
