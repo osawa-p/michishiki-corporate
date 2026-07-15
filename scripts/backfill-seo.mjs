@@ -131,6 +131,7 @@ for (const s of sites) {
     const encoded = encodeURIComponent(s.gsc_site_url);
     let inserted = 0;
     let skipped = 0;
+    let fetched = 0;
     for (const date of dateRange(DAYS, 3)) {
       if (done.has(date)) {
         skipped++;
@@ -169,7 +170,9 @@ for (const s of sites) {
         }
         if (rows.length > 0) await insert("gsc_query_stats", rows);
         inserted += rows.length;
-        process.stdout.write(`\r[GSC] ${date} まで取り込み（累計 ${inserted} 行）   `);
+        fetched++;
+        // 進捗は10日ごとに改行つきで出す（\rの連続出力はバックグラウンド実行のパイプを詰まらせる）
+        if (fetched % 10 === 0) console.log(`[GSC] ${date} まで取り込み（累計 ${inserted} 行）`);
         await sleep(150); // クォータへの配慮
       } catch (err) {
         console.error(`\n[GSC] ${date} の取得に失敗:`, err?.message ?? err);
