@@ -5,11 +5,13 @@ import {
   listTrackedKeywords,
   listTrackedDomains,
   fetchLatestRanks,
-  fetchAllRecentTrends,
+  fetchSiteSeriesRows,
+  fetchSiteCandidates,
   type TrackedKeyword,
   type TrackedDomain,
   type LatestRank,
-  type KeywordTrendRow,
+  type SiteSeriesRow,
+  type SiteCandidateRow,
 } from "./bigquery";
 
 export const CACHE_TAG = "rank-tracker";
@@ -42,11 +44,20 @@ export function getLatestRanksCached(domain: string): Promise<LatestRank[]> {
   )();
 }
 
-// 左ペインのミニスパークライン用（直近35日・サイト内全キーワードを1クエリで）
-export function getRecentTrendsCached(domain: string): Promise<KeywordTrendRow[]> {
+// ダッシュボードの一括プリロード（直近90日の全キーワード推移＋競合）。
+// キーワード切替・競合ON/OFF・期間切替をクライアント側で即時に行うための土台。
+export function getSiteSeriesCached(domain: string): Promise<SiteSeriesRow[]> {
   return unstable_cache(
-    () => fetchAllRecentTrends(domain, { fromDays: 35 }),
-    ["rt-trends", domain],
+    () => fetchSiteSeriesRows(domain, { fromDays: 90 }),
+    ["rt-site-series", domain],
+    { revalidate: 300, tags: [CACHE_TAG] }
+  )();
+}
+
+export function getSiteCandidatesCached(domain: string): Promise<SiteCandidateRow[]> {
+  return unstable_cache(
+    () => fetchSiteCandidates(domain, { fromDays: 90 }),
+    ["rt-site-candidates", domain],
     { revalidate: 300, tags: [CACHE_TAG] }
   )();
 }

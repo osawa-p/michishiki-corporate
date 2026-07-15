@@ -3,6 +3,10 @@
 // サイト別ダッシュボードの分析ワークスペース。
 // 左: キーワード一覧（タグ絞り込み・最新順位・前回差・ミニスパークライン）
 // 右: 選択キーワードの推移チャート（期間切替・競合最大3社）と競合サマリ
+//
+// パフォーマンス設計: 直近90日分の全キーワード推移＋競合はサーバーで一括プリロード
+// されて props で渡ってくるため、キーワード切替・競合ON/OFF・期間切替（1ヶ月/3ヶ月）
+// は BigQuery へ行かずクライアント側で即時に完結する。「全期間」だけオンデマンド取得。
 // 選択キーワード・期間・競合は URL クエリに保持する（リロード・共有に耐える。
 // replace() を使うため履歴は増やさない）。
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -11,8 +15,9 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type {
   LatestRank,
   TrackedKeyword,
-  KeywordTrendRow,
   TrendSeriesPoint,
+  SiteSeriesRow,
+  SiteCandidateRow,
   CompetitorCandidate,
 } from "@/lib/rank-tracker/bigquery";
 import { cadenceLabel } from "@/lib/rank-tracker/cadence";
@@ -25,8 +30,6 @@ const RANGES = [
   { value: 0, label: "全期間" },
 ] as const;
 
-type Detail = { series: TrendSeriesPoint[]; candidates: CompetitorCandidate[] };
-
 function diffBadge(l: LatestRank | undefined): { label: string; cls: string } {
   if (!l) return { label: "未計測", cls: "text-ink-faint border-line" };
   if (l.rank == null) return { label: "未検出", cls: "text-ink-faint border-line" };
@@ -38,8 +41,21 @@ function diffBadge(l: LatestRank | undefined): { label: string; cls: string } {
   return { label: "→0", cls: "text-ink-faint border-line" };
 }
 
-function Sparkline({ points }: { points: { rank: number | null }[] }) {
-  const vals = points.slice(-16).map((p) => p.rank);
+// 最新計測日時から n 日前のJST日時文字列（"YYYY-MM-DD HH:MM"）。checked_at と辞書順比較できる。
+// 現在時刻でなくデータ側の最新時刻を起点にすることで、SSRとhydrationの時刻差による
+// 表示ずれ（hydration mismatch）を避け、純粋な導出にする。
+function cutoffFrom(latestCheckedAt: string, days: number): string {
+  const d = new Date(latestCheckedAt.replace(" ", "T") + ":00+09:00");
+  d.setTime(d.getTime() - days * 86_400_000);
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Tokyo",
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(d);
+}
+
+function Sparkline({ ranks }: { ranks: (number | null)[] }) {
+  const vals = ranks.slice(-16);
   if (vals.filter((v) => v != null).length < 2) return <span className="w-16" aria-hidden />;
   const w = 64;
   const h = 22;
@@ -67,13 +83,15 @@ export default function DashboardWorkspace({
   domain,
   tracked,
   latest,
-  trends,
+  seriesRows,
+  candidates,
   loadError,
 }: {
   domain: string;
   tracked: TrackedKeyword[];
   latest: LatestRank[];
-  trends: KeywordTrendRow[];
+  seriesRows: SiteSeriesRow[];
+  candidates: SiteCandidateRow[];
   loadError: boolean;
 }) {
   const router = useRouter();
@@ -85,15 +103,36 @@ export default function DashboardWorkspace({
   const domainKey = targetKey(domain);
 
   const latestBy = useMemo(() => new Map(latest.map((l) => [l.keyword, l])), [latest]);
-  const sparkBy = useMemo(() => {
-    const m = new Map<string, { rank: number | null }[]>();
-    for (const t of trends) {
-      const arr = m.get(t.keyword) ?? [];
-      arr.push({ rank: t.rank });
-      m.set(t.keyword, arr);
+
+  // プリロード行 → キーワードごとの時系列（昇順・ranksマップ）へ組み立て
+  const seriesBy = useMemo(() => {
+    const m = new Map<string, TrendSeriesPoint[]>();
+    for (const r of seriesRows) {
+      let arr = m.get(r.keyword);
+      if (!arr) {
+        arr = [];
+        m.set(r.keyword, arr);
+      }
+      let p = arr[arr.length - 1];
+      if (!p || p.checked_at !== r.checked_at) {
+        p = { checked_at: r.checked_at, total: r.total, ranks: {} };
+        arr.push(p);
+      }
+      if (r.domain) p.ranks[r.domain] = r.rank;
     }
     return m;
-  }, [trends]);
+  }, [seriesRows]);
+
+  const candidatesBy = useMemo(() => {
+    const m = new Map<string, CompetitorCandidate[]>();
+    for (const c of candidates) {
+      const arr = m.get(c.keyword) ?? [];
+      arr.push(c);
+      m.set(c.keyword, arr);
+    }
+    return m;
+  }, [candidates]);
+
   const allTags = useMemo(() => [...new Set(tracked.flatMap((t) => t.tags))].sort(), [tracked]);
 
   // ── URL 状態 ──
@@ -130,56 +169,45 @@ export default function DashboardWorkspace({
     router.replace(`${pathname}?${next.toString()}`, { scroll: false });
   }
 
-  // ── 選択キーワードの詳細（推移＋競合候補） ──
-  const [detail, setDetail] = useState<Detail | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState(false);
-  const cacheRef = useRef(new Map<string, Detail>());
+  // ── 「全期間」だけオンデマンド取得（90日を超える過去分が必要なため） ──
+  // ローディングは「まだ allTime に無い」ことから導出する（effect内の同期setStateを避ける）
+  const [allTime, setAllTime] = useState<Record<string, TrendSeriesPoint[]>>({});
+  const [errKey, setErrKey] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
+  const fetchedRef = useRef(new Set<string>());
   const compsKey = comps.join(",");
 
   useEffect(() => {
-    if (!selected) return;
-    const key = `${selected}|${range}|${compsKey}`;
-    const hit = cacheRef.current.get(key);
-    if (hit) {
-      setDetail(hit);
-      setErr(false);
-      // 直前の未完了fetchのfinallyはaborted扱いでloadingを触らないため、ここで確実に解除する
-      setLoading(false);
-      return;
-    }
+    if (range !== 0 || !selected) return;
+    const key = `${selected}|${compsKey}`;
+    if (fetchedRef.current.has(key)) return;
     let aborted = false;
-    setLoading(true);
-    setErr(false);
+    // 再取得の開始時に前回のエラー表示を消す（effect本文の同期setStateを避けるため遅延）
+    queueMicrotask(() => {
+      if (!aborted) setErrKey((k) => (k === key ? null : k));
+    });
     const qs = new URLSearchParams({
       domain,
       keyword: selected,
-      range: String(range),
+      range: "0",
       competitors: compsKey,
-      withCandidates: "1",
     });
     fetch(`/api/rank-tracker/history?${qs.toString()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
         if (aborted) return;
         if (!data.ok) throw new Error();
-        const d: Detail = {
-          series: data.series as TrendSeriesPoint[],
-          candidates: (data.candidates ?? []) as CompetitorCandidate[],
-        };
-        cacheRef.current.set(key, d);
-        setDetail(d);
+        fetchedRef.current.add(key);
+        setAllTime((m) => ({ ...m, [key]: data.series as TrendSeriesPoint[] }));
+        setErrKey((k) => (k === key ? null : k));
       })
       .catch(() => {
-        if (!aborted) setErr(true);
-      })
-      .finally(() => {
-        if (!aborted) setLoading(false);
+        if (!aborted) setErrKey(key);
       });
     return () => {
       aborted = true;
     };
-  }, [selected, range, compsKey, domain]);
+  }, [range, selected, compsKey, domain, retry]);
 
   if (loadError) {
     return (
@@ -215,6 +243,27 @@ export default function DashboardWorkspace({
   const selectedTracked = tracked.find((t) => t.keyword === selected);
   const selectedLatest = latestBy.get(selected);
   const selBadge = diffBadge(selectedLatest);
+  const selectedCandidates = candidatesBy.get(selected) ?? [];
+
+  // 表示する時系列: 1ヶ月/3ヶ月はプリロードからクライアントで切り出し、全期間はオンデマンド
+  const preloaded = seriesBy.get(selected) ?? [];
+  let points: TrendSeriesPoint[] | null;
+  if (range === 0) {
+    points = allTime[`${selected}|${compsKey}`] ?? null;
+  } else if (range === 90 || preloaded.length === 0) {
+    points = preloaded;
+  } else {
+    const cutoff = cutoffFrom(preloaded[preloaded.length - 1].checked_at, 30);
+    points = preloaded.filter((p) => p.checked_at >= cutoff);
+  }
+  const waiting = range === 0 && points === null;
+
+  // URL直打ち等でプリロードに存在しない競合ドメインが指定された場合、30日/90日表示では
+  // 線を描けない（候補上位8社のみプリロード対象）ため、存在するものだけをチャートへ渡す。
+  // 全期間はAPIが指定ドメインを明示的に取得するのでそのまま。
+  const presentDomains = new Set<string>();
+  for (const p of preloaded) for (const d of Object.keys(p.ranks)) presentDomains.add(d);
+  const chartComps = range === 0 ? comps : comps.filter((c) => presentDomains.has(c));
 
   function toggleComp(d: string) {
     const next = comps.includes(d)
@@ -312,6 +361,7 @@ export default function DashboardWorkspace({
             const l = latestBy.get(t.keyword);
             const badge = diffBadge(l);
             const sel = t.keyword === selected;
+            const spark = (seriesBy.get(t.keyword) ?? []).map((p) => p.ranks[domainKey] ?? null);
             return (
               <button
                 key={t.keyword}
@@ -346,7 +396,7 @@ export default function DashboardWorkspace({
                   >
                     {l ? (l.rank ? `${l.rank}位` : "圏外") : "—"}
                   </div>
-                  <Sparkline points={sparkBy.get(t.keyword) ?? []} />
+                  <Sparkline ranks={spark} />
                 </div>
               </button>
             );
@@ -392,7 +442,7 @@ export default function DashboardWorkspace({
                   <span className="inline-block w-5 border-t-[3px]" style={{ borderColor: TARGET_COLOR }} />
                   {domain}（自社）
                 </span>
-                {comps.map((c, i) => (
+                {chartComps.map((c, i) => (
                   <span key={c} className="inline-flex items-center gap-1.5">
                     <span
                       className="inline-block w-5 border-t-[3px] border-dashed"
@@ -403,21 +453,32 @@ export default function DashboardWorkspace({
                 ))}
               </div>
 
-              {loading ? (
-                <div className="h-[300px] flex items-center justify-center">
-                  <p className="text-sm text-ink-faint animate-pulse">推移を読み込み中…</p>
-                </div>
-              ) : err ? (
-                <p className="text-sm text-red-600 py-8">推移の取得に失敗しました。</p>
-              ) : detail ? (
+              {waiting ? (
+                errKey === `${selected}|${compsKey}` ? (
+                  <p className="text-sm text-red-600 py-8">
+                    推移の取得に失敗しました。
+                    <button
+                      type="button"
+                      onClick={() => setRetry((r) => r + 1)}
+                      className="ml-3 px-3 py-1 text-xs border border-line bg-white text-bronze-deep hover:border-bronze"
+                    >
+                      再試行
+                    </button>
+                  </p>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center">
+                    <p className="text-sm text-ink-faint animate-pulse">全期間の推移を読み込み中…</p>
+                  </div>
+                )
+              ) : points ? (
                 <>
-                  <RankChart series={detail.series} target={domainKey} competitors={comps} />
+                  <RankChart series={points} target={domainKey} competitors={chartComps} />
 
                   {/* 競合サマリ */}
-                  {detail.candidates.length > 0 && (
+                  {selectedCandidates.length > 0 && (
                     <div className="mt-5 overflow-x-auto">
                       <p className="text-xs font-semibold text-ink-soft mb-2">
-                        競合サマリ（この期間のSERPから自動抽出・チェックでチャートに重ねる／最大3社）
+                        競合サマリ（直近90日のSERPから自動抽出・チェックでチャートに重ねる／最大3社）
                       </p>
                       <table className="w-full text-xs border border-line">
                         <thead>
@@ -430,9 +491,9 @@ export default function DashboardWorkspace({
                           </tr>
                         </thead>
                         <tbody>
-                          {detail.candidates.slice(0, 6).map((c) => {
+                          {selectedCandidates.slice(0, 6).map((c) => {
                             const checked = comps.includes(c.domain);
-                            const colorIdx = comps.indexOf(c.domain);
+                            const colorIdx = chartComps.indexOf(c.domain);
                             return (
                               <tr key={c.domain} className="odd:bg-white even:bg-paper">
                                 <td className="px-3 py-1.5">
@@ -468,10 +529,10 @@ export default function DashboardWorkspace({
                   )}
 
                   {/* 計測履歴 */}
-                  {detail.series.length > 0 && (
+                  {points.length > 0 && (
                     <details className="mt-4 border border-line">
                       <summary className="px-4 py-2.5 text-xs text-ink-soft cursor-pointer select-none">
-                        計測履歴（{detail.series.length}回）を表で見る
+                        計測履歴（{points.length}回）を表で見る
                       </summary>
                       <div className="border-t border-line max-h-52 overflow-y-auto">
                         <table className="w-full text-xs">
@@ -483,7 +544,7 @@ export default function DashboardWorkspace({
                             </tr>
                           </thead>
                           <tbody>
-                            {[...detail.series].reverse().map((p) => (
+                            {[...points].reverse().map((p) => (
                               <tr key={p.checked_at} className="odd:bg-white even:bg-paper">
                                 <td className="px-4 py-1.5 text-ink-soft tabular-nums">{p.checked_at}</td>
                                 <td
