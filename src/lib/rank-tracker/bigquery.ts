@@ -45,9 +45,19 @@ export function getBigQuery(): BigQuery {
   return cached;
 }
 
-// ターゲットドメインの正規化（www. 除去・小文字化）
+// ターゲットドメインの正規化。URL貼り付けにも耐えるようホスト名だけを取り出し、
+// 小文字化・www. 除去する（serp_results.domain 側の正規化と揃える）。
 export function targetKey(domain: string): string {
-  return domain.toLowerCase().replace(/^www\./, "");
+  let d = domain.trim().toLowerCase();
+  d = d.replace(/^[a-z][a-z0-9+.-]*:\/\//, ""); // スキーム（https:// 等）
+  d = d.split(/[/?#]/, 1)[0]; // パス・クエリ・フラグメント
+  d = d.replace(/:\d*$/, ""); // ポート
+  return d.replace(/^www\./, "");
+}
+
+// 正規化後のドメインがホスト名として妥当か（空白・記号の混入を弾く）
+export function isValidTargetDomain(domain: string): boolean {
+  return /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/.test(domain);
 }
 
 // SERP結果を serp_results に追記する。書き込んだ行数を返す。
@@ -214,7 +224,8 @@ export async function listTrackedDomains(): Promise<TrackedDomain[]> {
   return rows as TrackedDomain[];
 }
 
-// キーワードを一括登録（MERGEで重複は無視）。正規化・batch内重複除去して処理件数を返す。
+// キーワードを一括登録（MERGEで重複は無視）。正規化・batch内重複除去のうえ、
+// 実際に新規挿入された行数（既存重複を除いた数）を返す。
 export async function addTrackedKeywords(
   items: { keyword: string; domain: string }[]
 ): Promise<number> {
@@ -239,13 +250,16 @@ export async function addTrackedKeywords(
       INSERT (keyword, target_domain, enabled, created_at, updated_at)
       VALUES (S.keyword, S.target_domain, TRUE, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP())
   `;
-  await getBigQuery().query({
+  const [job] = await getBigQuery().createQueryJob({
     query: sql,
     location: BQ_LOCATION,
     params: { items: uniq },
     types: { items: [{ keyword: "STRING", target_domain: "STRING" }] },
   });
-  return uniq.length;
+  await job.getQueryResults();
+  const [meta] = await job.getMetadata();
+  const affected = Number(meta?.statistics?.query?.numDmlAffectedRows ?? NaN);
+  return Number.isFinite(affected) ? affected : uniq.length;
 }
 
 // 定期取得のON/OFFトグル

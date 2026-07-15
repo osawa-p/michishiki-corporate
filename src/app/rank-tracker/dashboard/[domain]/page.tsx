@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { fetchLatestRanks, type LatestRank } from "@/lib/rank-tracker/bigquery";
 import DashboardView from "@/components/rank-tracker/DashboardView";
 
@@ -8,14 +9,25 @@ export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ domain: string }> };
 
+// 不正なパーセントエンコーディング（例: %zz）で decodeURIComponent が投げると
+// 500 になるため、失敗時は null を返して 404 に落とす
+function safeDecode(segment: string): string | null {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return null;
+  }
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { domain } = await params;
-  return { title: `${decodeURIComponent(domain)} ダッシュボード` };
+  return { title: `${safeDecode(domain) ?? domain} ダッシュボード` };
 }
 
 export default async function DomainDashboardPage({ params }: Props) {
   const { domain: raw } = await params;
-  const domain = decodeURIComponent(raw);
+  const domain = safeDecode(raw);
+  if (domain === null) notFound();
 
   let latest: LatestRank[] = [];
   let loadError = false;

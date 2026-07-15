@@ -9,6 +9,8 @@ import {
   addTrackedKeywords,
   setKeywordEnabled,
   deleteTrackedKeyword,
+  targetKey,
+  isValidTargetDomain,
 } from "@/lib/rank-tracker/bigquery";
 import { DEFAULT_TARGET_DOMAIN } from "@/lib/rank-tracker/keywords";
 
@@ -52,20 +54,43 @@ export async function POST(request: Request) {
   //  1) { keyword, domain }             単一
   //  2) { keywords: string[], domain }  一括（ドメイン共通・改行分割はUI側）
   //  3) { items: [{keyword, domain}] }  明示
-  let items: { keyword: string; domain: string }[] = [];
+  const commonDomain =
+    typeof body.domain === "string" && body.domain.trim() ? body.domain : DEFAULT_TARGET_DOMAIN;
+  let raw: { keyword?: unknown; domain?: unknown }[] = [];
   if (Array.isArray(body.items)) {
-    items = body.items;
+    raw = body.items.map((it) => ({ keyword: it?.keyword, domain: it?.domain ?? commonDomain }));
   } else if (Array.isArray(body.keywords)) {
-    const domain = (body.domain || DEFAULT_TARGET_DOMAIN).trim();
-    items = body.keywords.map((k) => ({ keyword: k, domain }));
+    raw = body.keywords.map((k) => ({ keyword: k, domain: commonDomain }));
   } else if (body.keyword) {
-    items = [{ keyword: body.keyword, domain: (body.domain || DEFAULT_TARGET_DOMAIN).trim() }];
+    raw = [{ keyword: body.keyword, domain: commonDomain }];
   }
 
-  items = items.filter((it) => it && (it.keyword ?? "").trim());
+  // 文字列以外・空キーワードを弾く（非文字列で .trim() が落ちて500になるのを防ぐ）
+  const items: { keyword: string; domain: string }[] = [];
+  for (const it of raw) {
+    if (typeof it.keyword !== "string" || typeof it.domain !== "string") continue;
+    const keyword = it.keyword.trim();
+    if (!keyword) continue;
+    items.push({ keyword, domain: it.domain });
+  }
   if (items.length === 0) {
     return NextResponse.json(
       { ok: false, error: "登録するキーワードがありません。" },
+      { status: 400 }
+    );
+  }
+  if (items.length > 500) {
+    return NextResponse.json(
+      { ok: false, error: "一度に登録できるのは500件までです。" },
+      { status: 400 }
+    );
+  }
+
+  // ドメインはホスト名として妥当なものだけ受理（URL貼り付けは targetKey が hostname 抽出で救済）
+  const invalid = [...new Set(items.map((it) => it.domain).filter((d) => !isValidTargetDomain(targetKey(d))))];
+  if (invalid.length > 0) {
+    return NextResponse.json(
+      { ok: false, error: `対象ドメインが不正です: ${invalid.join(", ")}` },
       { status: 400 }
     );
   }
@@ -86,8 +111,8 @@ export async function PATCH(request: Request) {
   } catch {
     return badJson();
   }
-  const keyword = body.keyword?.trim();
-  const domain = body.domain?.trim();
+  const keyword = typeof body.keyword === "string" ? body.keyword.trim() : "";
+  const domain = typeof body.domain === "string" ? body.domain.trim() : "";
   if (!keyword || !domain || typeof body.enabled !== "boolean") {
     return NextResponse.json(
       { ok: false, error: "keyword / domain / enabled が必要です。" },
@@ -110,8 +135,8 @@ export async function DELETE(request: Request) {
   } catch {
     return badJson();
   }
-  const keyword = body.keyword?.trim();
-  const domain = body.domain?.trim();
+  const keyword = typeof body.keyword === "string" ? body.keyword.trim() : "";
+  const domain = typeof body.domain === "string" ? body.domain.trim() : "";
   if (!keyword || !domain) {
     return NextResponse.json(
       { ok: false, error: "keyword / domain が必要です。" },

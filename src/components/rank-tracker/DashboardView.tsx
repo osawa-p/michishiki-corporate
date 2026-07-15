@@ -51,7 +51,9 @@ export default function DashboardView({
     } catch {
       setErrorKw(keyword);
     } finally {
-      setLoadingKw(null);
+      // 別キーワードを連続で開いたとき、古いリクエストの完了が新しい方の
+      // ローディング表示を消さないようにする
+      setLoadingKw((cur) => (cur === keyword ? null : cur));
     }
   }
 

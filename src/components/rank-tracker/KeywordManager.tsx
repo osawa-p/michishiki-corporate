@@ -51,7 +51,8 @@ export default function KeywordManager({
     if (data.ok) setRows(data.items as Row[]);
   }
 
-  async function postAdd(body: Record<string, unknown>) {
+  // 登録成功時のみ true を返す（呼び出し側は成功時だけ入力欄をクリアする）
+  async function postAdd(body: Record<string, unknown>): Promise<boolean> {
     setBusy(true);
     setMsg(null);
     try {
@@ -62,10 +63,16 @@ export default function KeywordManager({
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || "登録に失敗しました。");
-      await refresh();
       setMsg({ kind: "ok", text: `${data.added}件を登録しました（重複は無視）。` });
+      try {
+        await refresh();
+      } catch {
+        // 一覧の再取得失敗は登録の成否と無関係なので握りつぶす（再読み込みで復帰）
+      }
+      return true;
     } catch (err) {
       setMsg({ kind: "err", text: err instanceof Error ? err.message : "登録に失敗しました。" });
+      return false;
     } finally {
       setBusy(false);
     }
@@ -74,8 +81,9 @@ export default function KeywordManager({
   async function addSingle(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!kw.trim()) return;
-    await postAdd({ keyword: kw.trim(), domain: dm.trim() || defaultDomain });
-    setKw("");
+    if (await postAdd({ keyword: kw.trim(), domain: dm.trim() || defaultDomain })) {
+      setKw("");
+    }
   }
 
   async function addBulk(e: React.FormEvent<HTMLFormElement>) {
@@ -85,8 +93,9 @@ export default function KeywordManager({
       .map((s) => s.trim())
       .filter(Boolean);
     if (keywords.length === 0) return;
-    await postAdd({ keywords, domain: bulkDm.trim() || defaultDomain });
-    setBulk("");
+    if (await postAdd({ keywords, domain: bulkDm.trim() || defaultDomain })) {
+      setBulk("");
+    }
   }
 
   async function toggle(row: Row) {
