@@ -16,6 +16,13 @@ import {
 
 export const CACHE_TAG = "rank-tracker";
 
+// 読み取りキャッシュの寿命。データが変わるのは cron（1日1回）と手動編集だけで、
+// いずれも invalidateRankTrackerCache() でタグ即時無効化している。そのため
+// 時間ベースの失効は「タグ無効化を取りこぼした場合の保険」でよく、短くすると
+// 低トラフィック時に毎回コールドヒット（＝重いBQクエリ実行）になって遅くなる。
+// 1日を保険の下限に置き、実際の鮮度はタグ無効化で保つ。
+const READ_TTL = 60 * 60 * 24; // 24h
+
 // 更新系APIから呼ぶキャッシュ無効化（Next 16 は profile 引数が必須。"max" = 即時破棄）
 export function invalidateRankTrackerCache(): void {
   revalidateTag(CACHE_TAG, "max");
@@ -25,13 +32,13 @@ export function getTrackedKeywordsCached(domain?: string): Promise<TrackedKeywor
   return unstable_cache(
     () => listTrackedKeywords(domain ? { domain } : {}),
     ["rt-keywords", domain ?? "__all__"],
-    { revalidate: 60, tags: [CACHE_TAG] }
+    { revalidate: READ_TTL, tags: [CACHE_TAG] }
   )();
 }
 
 export function getTrackedDomainsCached(): Promise<TrackedDomain[]> {
   return unstable_cache(() => listTrackedDomains(), ["rt-domains"], {
-    revalidate: 300,
+    revalidate: READ_TTL,
     tags: [CACHE_TAG],
   })();
 }
@@ -40,7 +47,7 @@ export function getLatestRanksCached(domain: string): Promise<LatestRank[]> {
   return unstable_cache(
     () => fetchLatestRanks(domain, { onlyTracked: true }),
     ["rt-latest", domain],
-    { revalidate: 300, tags: [CACHE_TAG] }
+    { revalidate: READ_TTL, tags: [CACHE_TAG] }
   )();
 }
 
@@ -50,7 +57,7 @@ export function getSiteSeriesCached(domain: string): Promise<SiteSeriesRow[]> {
   return unstable_cache(
     () => fetchSiteSeriesRows(domain, { fromDays: 90 }),
     ["rt-site-series", domain],
-    { revalidate: 300, tags: [CACHE_TAG] }
+    { revalidate: READ_TTL, tags: [CACHE_TAG] }
   )();
 }
 
@@ -58,6 +65,6 @@ export function getSiteCandidatesCached(domain: string): Promise<SiteCandidateRo
   return unstable_cache(
     () => fetchSiteCandidates(domain, { fromDays: 90 }),
     ["rt-site-candidates", domain],
-    { revalidate: 300, tags: [CACHE_TAG] }
+    { revalidate: READ_TTL, tags: [CACHE_TAG] }
   )();
 }
