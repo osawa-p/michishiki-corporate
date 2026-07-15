@@ -1,12 +1,16 @@
 // Google API クライアント（Search Console / GA4 Data API）。
 // googleapis パッケージは重いため、google-auth-library + REST を直接叩く。
-// 認証は BigQuery と同じサービスアカウントを共用する:
-//   - 本番(Vercel): GCP_SA_KEY_BASE64（SA鍵JSONのbase64）
-//   - ローカル: ADC
-// 前提: この SA のメールアドレスを Search Console プロパティ（フル/制限付き）と
-// GA4 プロパティ（閲覧者）に追加しておくこと。
+// 認証は次の優先順位で選ぶ:
+//   1. OAuth（GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET / GOOGLE_OAUTH_REFRESH_TOKEN）
+//      — 運用者のGoogleアカウント経由。本人がアクセスできるGSC/GA4プロパティを
+//      そのまま参照できるため、プロパティごとのSA追加が不要。
+//      トークン取得は scripts/get-google-oauth-token.mjs を使う。
+//      注意: GCPのOAuth同意画面が「テスト」のままだとリフレッシュトークンが7日で失効する。
+//   2. サービスアカウント（GCP_SA_KEY_BASE64・BigQueryと共用）
+//      — SAのメールアドレスを各プロパティに追加しておく必要がある。
+//   3. ADC（ローカル開発）
 
-import { GoogleAuth, type AuthClient } from "google-auth-library";
+import { GoogleAuth, UserRefreshClient, type AuthClient } from "google-auth-library";
 
 const SCOPES = [
   "https://www.googleapis.com/auth/webmasters.readonly",
@@ -17,6 +21,15 @@ let cachedClient: AuthClient | null = null;
 
 async function getClient(): Promise<AuthClient> {
   if (cachedClient) return cachedClient;
+
+  const oauthClientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+  const oauthClientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  const oauthRefreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
+  if (oauthClientId && oauthClientSecret && oauthRefreshToken) {
+    cachedClient = new UserRefreshClient(oauthClientId, oauthClientSecret, oauthRefreshToken);
+    return cachedClient;
+  }
+
   const b64 = process.env.GCP_SA_KEY_BASE64;
   const auth =
     b64 && b64.trim() !== ""
