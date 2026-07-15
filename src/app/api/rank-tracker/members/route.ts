@@ -75,9 +75,9 @@ export async function POST(request: Request) {
   // 管理者は全サイト閲覧できるため allowed_domains は持たせない
   // （後で閲覧のみに降格したとき、意図しないサイト権限が残るのを防ぐ）
   const domains = role === "admin" ? [] : rawDomains;
-  if (role === "viewer" && domains.length === 0) {
+  if (role !== "admin" && domains.length === 0) {
     return NextResponse.json(
-      { ok: false, error: "閲覧のみメンバーには閲覧できるサイトを1つ以上指定してください。" },
+      { ok: false, error: "管理者以外のメンバーには対象サイトを1つ以上指定してください。" },
       { status: 400 }
     );
   }
@@ -123,25 +123,34 @@ export async function PATCH(request: Request) {
     );
   }
   // 自分自身の権限降格は不可（管理者が誰もいなくなる事故の防止）
-  if (email === access!.email && role === "viewer") {
+  if (email === access!.email && role && role !== "admin") {
     return NextResponse.json(
-      { ok: false, error: "自分自身を閲覧のみに変更することはできません。" },
+      { ok: false, error: "自分自身を管理者以外に変更することはできません。" },
       { status: 400 }
     );
   }
 
   try {
     // 最後の有効な管理者の降格は不可（Basic認証フォールバック経由の操作でも守る）
-    if (role === "viewer") {
+    if (role && role !== "admin") {
       const target = await getMemberAuth(email);
       if (target?.role === "admin" && target.status === "active" && (await countActiveAdmins()) <= 1) {
         return NextResponse.json(
-          { ok: false, error: "最後の管理者を閲覧のみに変更することはできません。" },
+          { ok: false, error: "最後の管理者を降格することはできません。" },
           { status: 400 }
         );
       }
     }
-    const affected = await updateMember(email, { role, domains });
+    // 管理者には allowed_domains を持たせない（昇格時に旧権限が残り、後で降格したとき
+    // 意図しないサイト権限が復活するのを防ぐ）。既存管理者への domains 設定も同様に無効化
+    let effDomains = domains;
+    if (role === "admin") {
+      effDomains = [];
+    } else if (!role && domains) {
+      const target = await getMemberAuth(email);
+      if (target?.role === "admin") effDomains = [];
+    }
+    const affected = await updateMember(email, { role, domains: effDomains });
     if (affected === 0) {
       return NextResponse.json(
         { ok: false, error: "対象のメンバーが見つかりません。" },

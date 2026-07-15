@@ -9,11 +9,23 @@ import {
   addTrackedKeywords,
   updateTrackedKeyword,
   deleteTrackedKeyword,
+  getSiteSettings,
 } from "@/lib/rank-tracker/bigquery";
 import { invalidateRankTrackerCache } from "@/lib/rank-tracker/cached";
-import { requireAdminApi } from "@/lib/rank-tracker/auth";
+import {
+  requireAccessApi,
+  canAccessKeywords,
+  canEditKeywordsFor,
+  type Access,
+} from "@/lib/rank-tracker/auth";
 import { targetKey, isValidTargetDomain } from "@/lib/rank-tracker/domain";
-import { isCadence, DEFAULT_CADENCE, type Cadence } from "@/lib/rank-tracker/cadence";
+import { isCadence, DEFAULT_CADENCE, cadenceLabel, CADENCES, type Cadence } from "@/lib/rank-tracker/cadence";
+import {
+  isCadenceAllowed,
+  predictMonthlyTokens,
+  formatTokens,
+  type SiteSettings,
+} from "@/lib/rank-tracker/limits";
 import { DEFAULT_TARGET_DOMAIN } from "@/lib/rank-tracker/keywords";
 
 // @google-cloud/bigquery は Node API 必須のため Edge 不可
@@ -22,6 +34,92 @@ export const dynamic = "force-dynamic";
 
 function badJson() {
   return NextResponse.json({ ok: false, error: "Invalid JSON body" }, { status: 400 });
+}
+
+function forbidden(msg: string) {
+  return NextResponse.json({ ok: false, error: msg }, { status: 403 });
+}
+
+function slowestAllowedLabel(settings: SiteSettings): string {
+  return CADENCES.find((c) => c.days === settings.min_interval_days)?.label ?? "週1";
+}
+
+// サイト制限（頻度・上限キーワード数・月間予算）の検証。違反時はエラーメッセージを返す。
+async function checkAddLimits(
+  items: { keyword: string; domain: string; cadence: Cadence }[]
+): Promise<string | null> {
+  const byDomain = new Map<string, { keyword: string; cadence: Cadence }[]>();
+  for (const it of items) {
+    const d = targetKey(it.domain);
+    const arr = byDomain.get(d) ?? [];
+    arr.push({ keyword: it.keyword, cadence: it.cadence });
+    byDomain.set(d, arr);
+  }
+  for (const [dom, list] of byDomain) {
+    const settings = await getSiteSettings(dom);
+    const existing = await listTrackedKeywords({ domain: dom });
+    const existingSet = new Set(existing.map((r) => r.keyword));
+    // 既存キーワードの再送はMERGEで無視される（頻度も変わらない）ため、新規分だけ検証する
+    const fresh = [
+      ...new Map(list.filter((it) => !existingSet.has(it.keyword)).map((it) => [it.keyword, it])).values(),
+    ];
+    if (fresh.length === 0) continue;
+    for (const it of fresh) {
+      if (!isCadenceAllowed(it.cadence, settings)) {
+        return `${dom} で使える頻度は「${slowestAllowedLabel(settings)}」より低頻度のみです（「${cadenceLabel(it.cadence)}」は不可）。`;
+      }
+    }
+    if (settings.max_keywords != null && existing.length + fresh.length > settings.max_keywords) {
+      return `${dom} の上限キーワード数（${settings.max_keywords}件）を超えます（登録済み${existing.length}件＋新規${fresh.length}件）。`;
+    }
+    if (settings.monthly_budget != null) {
+      const predicted = predictMonthlyTokens(
+        [...existing.map((r) => r.cadence), ...fresh.map((it) => it.cadence)],
+        settings
+      );
+      if (predicted > settings.monthly_budget) {
+        return `${dom} の月間クレジット予算（${formatTokens(settings.monthly_budget)}）を超えます（この登録後の予測消費 約${formatTokens(predicted)}）。頻度を下げるか予算の変更を管理者に依頼してください。`;
+      }
+    }
+  }
+  return null;
+}
+
+// 頻度変更時のサイト制限検証
+async function checkCadenceLimits(
+  keyword: string,
+  domain: string,
+  cadence: Cadence
+): Promise<string | null> {
+  const dom = targetKey(domain);
+  const settings = await getSiteSettings(dom);
+  if (!isCadenceAllowed(cadence, settings)) {
+    return `${dom} で使える頻度は「${slowestAllowedLabel(settings)}」より低頻度のみです（「${cadenceLabel(cadence)}」は不可）。`;
+  }
+  if (settings.monthly_budget != null && cadence !== "stopped") {
+    const existing = await listTrackedKeywords({ domain: dom });
+    const before = predictMonthlyTokens(existing.map((r) => r.cadence), settings);
+    const after = predictMonthlyTokens(
+      existing.map((r) => (r.keyword === keyword ? cadence : r.cadence)),
+      settings
+    );
+    // 予算超過中でも「消費を減らす方向」の変更は常に許可する
+    // （絶対値だけで判定すると、頻度を下げる操作までブロックされ身動きが取れなくなる）
+    if (after > settings.monthly_budget && after > before) {
+      return `${dom} の月間クレジット予算（${formatTokens(settings.monthly_budget)}）を超えます（この変更後の予測消費 約${formatTokens(after)}）。`;
+    }
+  }
+  return null;
+}
+
+// editor は許可サイトのキーワードだけ編集できる
+function checkDomainAcl(access: Access, domains: string[]): string | null {
+  for (const d of domains) {
+    if (!canEditKeywordsFor(access, d)) {
+      return `${targetKey(d)} のキーワードを編集する権限がありません。`;
+    }
+  }
+  return null;
 }
 
 // 文字列配列だけを受理してタグを整形（非文字列は無視、重複除去、最大10個・各30文字）
@@ -39,12 +137,19 @@ function sanitizeTags(v: unknown): string[] | undefined {
 }
 
 export async function GET(request: Request) {
-  const { error } = await requireAdminApi();
+  const { access, error } = await requireAccessApi();
   if (error) return error;
+  if (!canAccessKeywords(access!)) {
+    return forbidden("キーワード一覧を見る権限がありません。");
+  }
   const { searchParams } = new URL(request.url);
   const domain = searchParams.get("domain")?.trim() || undefined;
   try {
-    const items = await listTrackedKeywords({ domain });
+    let items = await listTrackedKeywords({ domain });
+    // 管理者以外は許可サイトの分だけ
+    if (access!.role !== "admin") {
+      items = items.filter((r) => access!.domains.includes(r.target_domain));
+    }
     return NextResponse.json({ ok: true, items });
   } catch (err) {
     console.error("[rank-tracker] キーワード一覧の取得に失敗:", err);
@@ -62,7 +167,7 @@ type PostBody = {
 };
 
 export async function POST(request: Request) {
-  const { error } = await requireAdminApi();
+  const { access, error } = await requireAccessApi();
   if (error) return error;
   let body: PostBody;
   try {
@@ -131,7 +236,16 @@ export async function POST(request: Request) {
     );
   }
 
+  // ドメインのACL（editorは許可サイトのみ）
+  const aclErr = checkDomainAcl(access!, items.map((it) => it.domain));
+  if (aclErr) return forbidden(aclErr);
+
   try {
+    // サイト制限（頻度・上限数・月間予算）を検証してから登録する
+    const limitErr = await checkAddLimits(items);
+    if (limitErr) {
+      return NextResponse.json({ ok: false, error: limitErr }, { status: 400 });
+    }
     const added = await addTrackedKeywords(items);
     invalidateRankTrackerCache();
     return NextResponse.json({ ok: true, added, requested: items.length });
@@ -142,7 +256,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const { error } = await requireAdminApi();
+  const { access, error } = await requireAccessApi();
   if (error) return error;
   let body: { keyword?: unknown; domain?: unknown; cadence?: unknown; tags?: unknown };
   try {
@@ -160,7 +274,15 @@ export async function PATCH(request: Request) {
       { status: 400 }
     );
   }
+  const aclErr = checkDomainAcl(access!, [domain]);
+  if (aclErr) return forbidden(aclErr);
   try {
+    if (cadence) {
+      const limitErr = await checkCadenceLimits(keyword, domain, cadence);
+      if (limitErr) {
+        return NextResponse.json({ ok: false, error: limitErr }, { status: 400 });
+      }
+    }
     const affected = await updateTrackedKeyword(keyword, domain, { cadence, tags });
     if (affected === 0) {
       return NextResponse.json(
@@ -177,7 +299,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const { error } = await requireAdminApi();
+  const { access, error } = await requireAccessApi();
   if (error) return error;
   let body: { keyword?: unknown; domain?: unknown };
   try {
@@ -193,6 +315,8 @@ export async function DELETE(request: Request) {
       { status: 400 }
     );
   }
+  const aclErr = checkDomainAcl(access!, [domain]);
+  if (aclErr) return forbidden(aclErr);
   try {
     await deleteTrackedKeyword(keyword, domain);
     invalidateRankTrackerCache();

@@ -4,19 +4,20 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 // 社内ツール共通のタブナビ。rank-tracker 配下の各ページで共有する（layout に配置）。
-// 権限でタブを出し分ける: 閲覧のみ=ダッシュボードだけ / 管理者=全タブ+メンバー管理。
-const TABS: { href: string; label: string; adminOnly?: boolean }[] = [
-  { href: "/rank-tracker/dashboard", label: "ダッシュボード" },
-  { href: "/rank-tracker/keywords", label: "キーワード管理", adminOnly: true },
-  { href: "/rank-tracker/measure", label: "クイック計測", adminOnly: true },
-  { href: "/rank-tracker/members", label: "メンバー", adminOnly: true },
+// 権限でタブを出し分ける。
+const TABS: { href: string; label: string; roles: string[] }[] = [
+  { href: "/rank-tracker/dashboard", label: "ダッシュボード", roles: ["admin", "editor", "viewer_kw", "viewer"] },
+  { href: "/rank-tracker/keywords", label: "キーワード管理", roles: ["admin", "editor", "viewer_kw"] },
+  { href: "/rank-tracker/measure", label: "クイック計測", roles: ["admin"] },
+  { href: "/rank-tracker/members", label: "メンバー", roles: ["admin"] },
+  { href: "/rank-tracker/settings", label: "サイト設定", roles: ["admin"] },
 ];
 
 export default function RankTrackerNav({
   role,
   email,
 }: {
-  role: "admin" | "viewer" | null;
+  role: string | null;
   email: string | null;
 }) {
   const pathname = usePathname();
@@ -31,7 +32,7 @@ export default function RankTrackerNav({
     }
   }
 
-  const tabs = role ? TABS.filter((t) => role === "admin" || !t.adminOnly) : [];
+  const tabs = role ? TABS.filter((t) => t.roles.includes(role)) : [];
 
   return (
     <div className="sticky top-0 z-30 border-b border-line bg-paper/95 backdrop-blur">

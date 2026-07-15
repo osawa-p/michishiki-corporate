@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { Member, MemberRole } from "@/lib/rank-tracker/members";
+import type { Member } from "@/lib/rank-tracker/members";
+import { ROLE_LABELS, type MemberRole } from "@/lib/rank-tracker/roles";
 
 type Msg = { kind: "ok" | "err"; text: string };
 
@@ -156,15 +157,17 @@ export default function MemberManager({
               onChange={(e) => setRole(e.target.value as MemberRole)}
               className={inputCls}
             >
-              <option value="viewer">閲覧のみ</option>
-              <option value="admin">管理者</option>
+              <option value="viewer">{ROLE_LABELS.viewer}</option>
+              <option value="viewer_kw">{ROLE_LABELS.viewer_kw}</option>
+              <option value="editor">{ROLE_LABELS.editor}</option>
+              <option value="admin">{ROLE_LABELS.admin}</option>
             </select>
           </div>
         </div>
 
-        {role === "viewer" && (
+        {role !== "admin" && (
           <div>
-            <span className={labelCls}>閲覧できるサイト（1つ以上）</span>
+            <span className={labelCls}>対象サイト（1つ以上）</span>
             {knownDomains.length === 0 ? (
               <p className="text-xs text-ink-faint">
                 追跡サイトがまだありません。先にキーワードを登録してください。
@@ -194,9 +197,16 @@ export default function MemberManager({
           </div>
         )}
 
+        <p className="text-[11px] text-ink-faint -mt-1">
+          {role === "admin" && "管理者: 全サイト・全機能（メンバー/サイト設定含む）"}
+          {role === "editor" && "編集: 対象サイトのダッシュボード＋キーワード管理（サイト設定の制限内）"}
+          {role === "viewer_kw" && "閲覧＋キーワード一覧: 対象サイトのダッシュボードとキーワード一覧の読み取りのみ"}
+          {role === "viewer" && "閲覧のみ: 対象サイトのダッシュボードだけ"}
+        </p>
+
         <button
           type="submit"
-          disabled={busy || (role === "viewer" && domains.length === 0)}
+          disabled={busy || (role !== "admin" && domains.length === 0)}
           className="px-6 py-3 bg-ink text-paper text-sm font-semibold hover:bg-bronze-deep transition-colors disabled:opacity-60"
         >
           招待リンクを発行
@@ -256,9 +266,9 @@ export default function MemberManager({
                           : "border-line text-ink-soft bg-white"
                       }`}
                     >
-                      {m.role === "admin" ? "管理者" : "閲覧のみ"}
+                      {ROLE_LABELS[m.role] ?? m.role}
                     </span>
-                    {m.role === "viewer" &&
+                    {m.role !== "admin" &&
                       m.allowed_domains.map((d) => (
                         <span
                           key={d}

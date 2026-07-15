@@ -5,7 +5,14 @@
 // それを検証して外部からの無断実行を弾く。
 import { NextResponse } from "next/server";
 import { searchJina } from "@/lib/rank-tracker/jina";
-import { insertResults, listTrackedKeywords, markMeasured } from "@/lib/rank-tracker/bigquery";
+import {
+  insertResults,
+  listTrackedKeywords,
+  markMeasured,
+  listSiteSettings,
+  fetchMonthlyConsumption,
+} from "@/lib/rank-tracker/bigquery";
+import { DEFAULT_SITE_SETTINGS, type SiteSettings } from "@/lib/rank-tracker/limits";
 import { invalidateRankTrackerCache } from "@/lib/rank-tracker/cached";
 
 export const runtime = "nodejs";
@@ -36,10 +43,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: "JINA未設定" }, { status: 500 });
   }
 
-  // 期限切れの追跡キーワードを取得。取得自体が失敗したら計測せず500。
-  let due;
+  // 期限切れの追跡キーワード・サイト設定・当月消費を取得。失敗したら計測せず500。
+  let due, settingsList, consumption;
   try {
-    due = await listTrackedKeywords({ dueOnly: true });
+    [due, settingsList, consumption] = await Promise.all([
+      listTrackedKeywords({ dueOnly: true }),
+      listSiteSettings(),
+      fetchMonthlyConsumption(),
+    ]);
   } catch (err) {
     console.error("[rank-tracker] 追跡キーワードの取得に失敗しました（cron）:", err);
     return NextResponse.json(
@@ -48,11 +59,27 @@ export async function GET(request: Request) {
     );
   }
 
+  const settingsBy = new Map<string, SiteSettings>(settingsList.map((s) => [s.domain, s]));
+  const usedBy = new Map(consumption.map((c) => [c.domain, c.tokens]));
+  const settingsOf = (domain: string): SiteSettings =>
+    settingsBy.get(domain) ?? { domain, ...DEFAULT_SITE_SETTINGS };
+  // 月間クレジット予算に達したサイトは、そのサイトだけが必要とするキーワードを計測しない
+  // （翌月に予算が戻れば期限切れ扱いで再開する）
+  const isOverBudget = (domain: string): boolean => {
+    const s = settingsOf(domain);
+    return s.monthly_budget != null && (usedBy.get(domain) ?? 0) >= s.monthly_budget;
+  };
+  const eligible = due.filter((t) => !isOverBudget(t.target_domain));
+  const skippedByBudget = due.length - eligible.length;
+
   // 同じキーワードは複数サイトで登録されていても JINA は1回だけ叩く（SERPはKW依存・サイト非依存）。
-  // domain は is_target 計算用の代表値でよい（読み取り時は @target で再判定するため）。
-  const byKeyword = new Map<string, string>();
-  for (const t of due) {
-    if (!byKeyword.has(t.keyword)) byKeyword.set(t.keyword, t.target_domain);
+  // domain は is_target 計算用の代表値。深度は対象サイトの設定の最大値を使う。
+  const byKeyword = new Map<string, { domain: string; depth: number }>();
+  for (const t of eligible) {
+    const depth = settingsOf(t.target_domain).max_depth;
+    const cur = byKeyword.get(t.keyword);
+    if (!cur) byKeyword.set(t.keyword, { domain: t.target_domain, depth });
+    else cur.depth = Math.max(cur.depth, depth);
   }
   const queue = [...byKeyword].slice(0, MAX_KEYWORDS_PER_RUN);
 
@@ -62,7 +89,7 @@ export async function GET(request: Request) {
   const measured: string[] = [];
   let timedOut = false;
 
-  for (const [keyword, domain] of queue) {
+  for (const [keyword, { domain, depth }] of queue) {
     // 実行時間の残りが少なければ新しい計測を始めない（途中殺しを防ぐ）。
     // 未計測分は next_run_at が動かないため翌日の実行で最優先になる。
     if (Date.now() - startedAt > TIME_BUDGET_MS) {
@@ -70,7 +97,7 @@ export async function GET(request: Request) {
       break;
     }
     try {
-      const results = await searchJina(keyword, apiKey, { num: 100 });
+      const results = await searchJina(keyword, apiKey, { num: depth });
       const inserted =
         results.length > 0 ? await insertResults(results, keyword, domain, checkedAt) : 0;
       // スケジュール送りは1件ずつ即時に行う。ループ後にまとめると、Vercel の
@@ -109,6 +136,7 @@ export async function GET(request: Request) {
       measured: measured.length,
       failed,
       deferred: byKeyword.size - summary.length,
+      skippedByBudget,
       timedOut,
       summary,
     },
