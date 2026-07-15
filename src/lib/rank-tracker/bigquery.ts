@@ -27,6 +27,9 @@ const BQ_LOCATION = process.env.BQ_LOCATION ?? "asia-northeast1";
 const TABLE_FQN = `\`${GCP_PROJECT}.${BQ_DATASET}.${BQ_TABLE}\``;
 const KW_TABLE_FQN = `\`${GCP_PROJECT}.${BQ_DATASET}.${BQ_KEYWORDS_TABLE}\``;
 
+// 競合候補としてプリロード/提示する上位ドメイン数（キーワードごと）
+const CANDIDATE_LIMIT = 20;
+
 // cadence 値は CADENCES 由来のコード定数のみ（SQLへ直接埋め込んで安全）
 const CADENCE_DAYS_CASE = CADENCES.filter((c) => c.days != null)
   .map((c) => `WHEN '${c.value}' THEN ${c.days}`)
@@ -288,7 +291,7 @@ export async function listCompetitorCandidates(
     GROUP BY domain
     HAVING AVG(rank) <= 30
     ORDER BY appearances DESC, avg_rank ASC
-    LIMIT 8
+    LIMIT ${CANDIDATE_LIMIT}
   `;
   const { rows } = await runQuery<CompetitorCandidate>({
     query: sql,
@@ -339,7 +342,7 @@ export async function fetchSiteSeriesRows(
       WHERE domain != @target
       GROUP BY keyword, domain
       HAVING AVG(rank) <= 30
-      QUALIFY ROW_NUMBER() OVER (PARTITION BY keyword ORDER BY COUNT(*) DESC, AVG(rank) ASC, domain) <= 8
+      QUALIFY ROW_NUMBER() OVER (PARTITION BY keyword ORDER BY COUNT(*) DESC, AVG(rank) ASC, domain) <= ${CANDIDATE_LIMIT}
     ),
     filtered AS (
       SELECT s.keyword, s.checked_at, s.domain, s.rank
@@ -393,7 +396,7 @@ export async function fetchSiteCandidates(
     WHERE s.domain != @target
     GROUP BY s.keyword, s.domain
     HAVING AVG(s.rank) <= 30
-    QUALIFY ROW_NUMBER() OVER (PARTITION BY s.keyword ORDER BY COUNT(*) DESC, AVG(s.rank) ASC, s.domain) <= 8
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY s.keyword ORDER BY COUNT(*) DESC, AVG(s.rank) ASC, s.domain) <= ${CANDIDATE_LIMIT}
     ORDER BY s.keyword, appearances DESC, avg_rank ASC
   `;
   const { rows } = await runQuery<SiteCandidateRow>({
