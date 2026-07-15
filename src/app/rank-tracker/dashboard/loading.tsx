@@ -1,0 +1,25 @@
+// サイト一覧のスケルトン（BigQuery待ちの間に骨格を即時表示）
+export default function DashboardLoading() {
+  return (
+    <>
+      <section className="border-b border-line">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
+          <p className="text-xs tracking-[0.3em] uppercase text-bronze mb-4">Dashboard</p>
+          <h1 className="font-serif text-3xl md:text-4xl font-semibold">サイト別ダッシュボード</h1>
+        </div>
+      </section>
+      <section className="py-10 md:py-14">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="border border-line bg-white p-6">
+                <div className="h-5 w-2/3 bg-line/50 animate-pulse motion-reduce:animate-none" />
+                <div className="mt-4 h-4 w-1/2 bg-line/40 animate-pulse motion-reduce:animate-none" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}

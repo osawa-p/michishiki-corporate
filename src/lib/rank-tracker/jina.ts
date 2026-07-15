@@ -35,8 +35,8 @@ export function normalizeDomain(url: string): string {
 }
 
 // JINA検索APIでSERPをページングして取得し、URL重複を除いた通し順位を振る。
-// JINA側が返さなくなった（空ページ / 非200）時点で打ち切るため、
-// 実返却件数は num を下回ることがある。
+// 1ページ目の失敗（APIキー失効・レート制限等）は throw する — 「静かに0件成功」に
+// させないため。2ページ目以降の失敗はそこまでの結果で打ち切る（num を下回ることがある）。
 export async function searchJina(
   keyword: string,
   apiKey: string,
@@ -64,14 +64,22 @@ export async function searchJina(
           Accept: "application/json",
           // 本文（ページ全文）は不要なので取得を抑止してレスポンスを軽くする
           "X-Respond-With": "no-content",
+          // キャッシュを使わず毎回素の検索結果を取る（シークレットモード相当）
+          "X-No-Cache": "true",
         },
         signal: controller.signal,
       });
-      if (!resp.ok) break;
+      if (!resp.ok) {
+        if (page === 1) throw new Error(`JINA検索が失敗しました (HTTP ${resp.status})`);
+        break;
+      }
       const json = (await resp.json()) as { data?: JinaItem[] };
       data = json.data ?? [];
-    } catch {
-      // タイムアウト/ネットワークエラーはそこまでの結果で打ち切る
+    } catch (err) {
+      // 1ページ目の失敗は上に伝える。2ページ目以降はそこまでの結果で打ち切る
+      if (page === 1) {
+        throw err instanceof Error ? err : new Error("JINA検索に失敗しました");
+      }
       break;
     } finally {
       clearTimeout(timer);

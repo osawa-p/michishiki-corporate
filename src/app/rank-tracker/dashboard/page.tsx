@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { listTrackedDomains, type TrackedDomain } from "@/lib/rank-tracker/bigquery";
+import type { TrackedDomain } from "@/lib/rank-tracker/bigquery";
+import { getTrackedDomainsCached } from "@/lib/rank-tracker/cached";
 
-// 常に最新のサイト一覧をBigQueryから取得する
+// SSRごとに実行するが、データ読み取りはタグ付きキャッシュ（更新時に即無効化）
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
@@ -13,7 +14,7 @@ export default async function DashboardIndexPage() {
   let domains: TrackedDomain[] = [];
   let loadError = false;
   try {
-    domains = await listTrackedDomains();
+    domains = await getTrackedDomainsCached();
   } catch (e) {
     console.error("[rank-tracker] サイト一覧の取得に失敗:", e);
     loadError = true;
@@ -22,11 +23,11 @@ export default async function DashboardIndexPage() {
   return (
     <>
       <section className="border-b border-line">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
           <p className="text-xs tracking-[0.3em] uppercase text-bronze mb-4">Dashboard</p>
           <h1 className="font-serif text-3xl md:text-4xl font-semibold">サイト別ダッシュボード</h1>
           <p className="mt-4 text-sm text-ink-soft max-w-2xl leading-relaxed">
-            追跡サイトを選ぶと、登録キーワードの最新順位と推移を確認できます。
+            追跡サイトを選ぶと、登録キーワードの最新順位・推移・競合比較を確認できます。
           </p>
         </div>
       </section>
@@ -40,7 +41,10 @@ export default async function DashboardIndexPage() {
           ) : domains.length === 0 ? (
             <p className="text-sm text-ink-faint">
               まだ追跡サイトがありません。
-              <Link href="/rank-tracker/keywords" className="text-bronze-deep underline underline-offset-2 ml-1">
+              <Link
+                href="/rank-tracker/keywords"
+                className="text-bronze-deep underline underline-offset-2 ml-1"
+              >
                 キーワード管理
               </Link>
               からキーワードを登録してください。
@@ -61,7 +65,7 @@ export default async function DashboardIndexPage() {
                       登録 <span className="font-semibold text-ink">{d.total}</span> 件
                     </span>
                     <span>
-                      定期取得ON <span className="font-semibold text-bronze-deep">{d.enabled}</span> 件
+                      定期取得中 <span className="font-semibold text-bronze-deep">{d.active}</span> 件
                     </span>
                   </div>
                 </Link>
