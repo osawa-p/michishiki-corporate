@@ -37,7 +37,7 @@ export async function GET(request: Request) {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean)
-    .slice(0, 3);
+    .slice(0, 5);
   const withCandidates = searchParams.get("withCandidates") === "1";
 
   try {
