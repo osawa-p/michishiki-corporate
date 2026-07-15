@@ -11,6 +11,7 @@ import {
   deleteTrackedKeyword,
 } from "@/lib/rank-tracker/bigquery";
 import { invalidateRankTrackerCache } from "@/lib/rank-tracker/cached";
+import { requireAdminApi } from "@/lib/rank-tracker/auth";
 import { targetKey, isValidTargetDomain } from "@/lib/rank-tracker/domain";
 import { isCadence, DEFAULT_CADENCE, type Cadence } from "@/lib/rank-tracker/cadence";
 import { DEFAULT_TARGET_DOMAIN } from "@/lib/rank-tracker/keywords";
@@ -38,6 +39,8 @@ function sanitizeTags(v: unknown): string[] | undefined {
 }
 
 export async function GET(request: Request) {
+  const { error } = await requireAdminApi();
+  if (error) return error;
   const { searchParams } = new URL(request.url);
   const domain = searchParams.get("domain")?.trim() || undefined;
   try {
@@ -59,6 +62,8 @@ type PostBody = {
 };
 
 export async function POST(request: Request) {
+  const { error } = await requireAdminApi();
+  if (error) return error;
   let body: PostBody;
   try {
     body = await request.json();
@@ -137,6 +142,8 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const { error } = await requireAdminApi();
+  if (error) return error;
   let body: { keyword?: unknown; domain?: unknown; cadence?: unknown; tags?: unknown };
   try {
     body = await request.json();
@@ -170,6 +177,8 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const { error } = await requireAdminApi();
+  if (error) return error;
   let body: { keyword?: unknown; domain?: unknown };
   try {
     body = await request.json();

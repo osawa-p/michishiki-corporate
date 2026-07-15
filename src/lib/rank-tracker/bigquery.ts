@@ -61,8 +61,8 @@ type QueryJobOptions = {
   types?: Record<string, unknown>;
 };
 
-// クエリジョブを実行し、行と DML 影響行数を返す共通ヘルパー
-async function runQuery<T>(opts: QueryJobOptions): Promise<{ rows: T[]; affected: number }> {
+// クエリジョブを実行し、行と DML 影響行数を返す共通ヘルパー（members.ts からも利用）
+export async function runQuery<T>(opts: QueryJobOptions): Promise<{ rows: T[]; affected: number }> {
   const q: Query = { query: opts.query, location: BQ_LOCATION, params: opts.params };
   // types はパラメータ型の明示（NULL/空配列を含むstruct・配列で必要）
   if (opts.types) q.types = opts.types as Query["types"];

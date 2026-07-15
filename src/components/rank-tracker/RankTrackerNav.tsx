@@ -1,18 +1,38 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 // 社内ツール共通のタブナビ。rank-tracker 配下の各ページで共有する（layout に配置）。
-// 利用頻度（確認 > 設定 > 単発計測）の順に並べる。
-const TABS = [
+// 権限でタブを出し分ける: 閲覧のみ=ダッシュボードだけ / 管理者=全タブ+メンバー管理。
+const TABS: { href: string; label: string; adminOnly?: boolean }[] = [
   { href: "/rank-tracker/dashboard", label: "ダッシュボード" },
-  { href: "/rank-tracker/keywords", label: "キーワード管理" },
-  { href: "/rank-tracker/measure", label: "クイック計測" },
+  { href: "/rank-tracker/keywords", label: "キーワード管理", adminOnly: true },
+  { href: "/rank-tracker/measure", label: "クイック計測", adminOnly: true },
+  { href: "/rank-tracker/members", label: "メンバー", adminOnly: true },
 ];
 
-export default function RankTrackerNav() {
+export default function RankTrackerNav({
+  role,
+  email,
+}: {
+  role: "admin" | "viewer" | null;
+  email: string | null;
+}) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function logout() {
+    try {
+      await fetch("/api/rank-tracker/auth/logout", { method: "POST" });
+    } finally {
+      router.push("/rank-tracker/login");
+      router.refresh();
+    }
+  }
+
+  const tabs = role ? TABS.filter((t) => role === "admin" || !t.adminOnly) : [];
+
   return (
     <div className="sticky top-0 z-30 border-b border-line bg-paper/95 backdrop-blur">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -23,7 +43,7 @@ export default function RankTrackerNav() {
               internal
             </span>
           </span>
-          {TABS.map((t) => {
+          {tabs.map((t) => {
             const active = pathname.startsWith(t.href);
             return (
               <Link
@@ -40,6 +60,20 @@ export default function RankTrackerNav() {
               </Link>
             );
           })}
+          {role && (
+            <span className="ml-auto flex items-baseline gap-3 pl-4 py-3 whitespace-nowrap">
+              {email && email !== "(basic-auth)" && (
+                <span className="hidden md:inline text-[11px] text-ink-faint">{email}</span>
+              )}
+              <button
+                type="button"
+                onClick={logout}
+                className="text-xs text-ink-faint hover:text-bronze-deep transition-colors"
+              >
+                ログアウト
+              </button>
+            </span>
+          )}
         </nav>
       </div>
     </div>

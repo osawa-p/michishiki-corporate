@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import type { TrackedKeyword, TrackedDomain } from "@/lib/rank-tracker/bigquery";
 import { getTrackedKeywordsCached, getTrackedDomainsCached } from "@/lib/rank-tracker/cached";
+import { getAccess } from "@/lib/rank-tracker/auth";
 import { DEFAULT_TARGET_DOMAIN } from "@/lib/rank-tracker/keywords";
 import KeywordManager from "@/components/rank-tracker/KeywordManager";
 
@@ -12,6 +14,11 @@ export const metadata: Metadata = {
 };
 
 export default async function KeywordsPage() {
+  // キーワード管理は管理者のみ（閲覧のみメンバーはダッシュボードへ）
+  const access = await getAccess();
+  if (!access) redirect("/rank-tracker/login");
+  if (access.role !== "admin") redirect("/rank-tracker/dashboard");
+
   let initial: TrackedKeyword[] = [];
   let domains: TrackedDomain[] = [];
   let loadError = false;

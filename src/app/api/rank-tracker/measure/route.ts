@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { searchJina } from "@/lib/rank-tracker/jina";
 import { insertResults, targetKey } from "@/lib/rank-tracker/bigquery";
 import { invalidateRankTrackerCache } from "@/lib/rank-tracker/cached";
+import { requireAdminApi } from "@/lib/rank-tracker/auth";
 import { DEFAULT_TARGET_DOMAIN } from "@/lib/rank-tracker/keywords";
 
 // @google-cloud/bigquery は Node API 必須のため Edge 不可
@@ -19,6 +20,9 @@ type MeasureBody = {
 };
 
 export async function POST(request: Request) {
+  // 計測はJINAトークンを消費するため管理者のみ
+  const { error } = await requireAdminApi();
+  if (error) return error;
   let body: MeasureBody;
   try {
     body = await request.json();

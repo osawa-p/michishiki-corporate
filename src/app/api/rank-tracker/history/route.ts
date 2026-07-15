@@ -10,13 +10,23 @@ import {
   listCompetitorCandidates,
 } from "@/lib/rank-tracker/bigquery";
 import { DEFAULT_TARGET_DOMAIN } from "@/lib/rank-tracker/keywords";
+import { requireAccessApi, canViewDomain } from "@/lib/rank-tracker/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  const { access, error } = await requireAccessApi();
+  if (error) return error;
   const { searchParams } = new URL(request.url);
   const domain = searchParams.get("domain")?.trim() || DEFAULT_TARGET_DOMAIN;
+  // 閲覧のみメンバーは許可されたサイトのデータしか読めない
+  if (!canViewDomain(access!, domain)) {
+    return NextResponse.json(
+      { ok: false, error: "このサイトの閲覧権限がありません。" },
+      { status: 403 }
+    );
+  }
   const keyword = searchParams.get("keyword")?.trim();
   // onlyTracked=1 で tracked_keywords に登録済みのキーワードのみに絞る（サイト別ダッシュボード用）
   const onlyTracked = searchParams.get("onlyTracked") === "1";
