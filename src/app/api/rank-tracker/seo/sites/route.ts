@@ -42,7 +42,7 @@ export async function PATCH(request: Request) {
 
   const site = typeof body.site === "string" ? targetKey(body.site) : "";
   const gscSiteUrl = optionalString(body.gsc_site_url, 300);
-  const ga4PropertyId = optionalString(body.ga4_property_id, 30);
+  const ga4PropertyId = optionalString(body.ga4_property_id, 200);
   const sitemapUrl = optionalString(body.sitemap_url, 500);
   const limitRaw = body.inspection_daily_limit;
   const inspectionLimit =
@@ -86,9 +86,10 @@ export async function PATCH(request: Request) {
       { status: 400 }
     );
   }
-  if (ga4Enabled && !/^\d{4,}$/.test(ga4PropertyId ?? "")) {
+  // 複数プロパティはカンマ区切り（例: "391113939,507410349"）
+  if (ga4Enabled && !/^\d{4,}(\s*,\s*\d{4,})*$/.test(ga4PropertyId ?? "")) {
     return NextResponse.json(
-      { ok: false, error: "GA4取得を有効にするには数値のプロパティIDが必要です。" },
+      { ok: false, error: "GA4取得を有効にするには数値のプロパティID（複数はカンマ区切り）が必要です。" },
       { status: 400 }
     );
   }

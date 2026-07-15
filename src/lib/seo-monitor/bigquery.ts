@@ -387,10 +387,13 @@ export async function fetchLatestCoverage(site: string): Promise<CoverageSnapsho
 // GA4（チャネル日次・ページ日次）
 // ───────────────────────────────────────────────────────────
 
-export async function hasGa4Daily(site: string, date: string): Promise<boolean> {
+// 冪等ガード（プロパティ単位）。複数プロパティ対応前のNULL行は移行時に
+// property_id を埋めてある前提（scripts/backfill-seo.mjs 冒頭の移行処理）。
+export async function hasGa4Daily(site: string, date: string, propertyId: string): Promise<boolean> {
   const { rows } = await runQuery<{ n: number }>({
-    query: `SELECT COUNT(*) AS n FROM ${T_GA4_CH} WHERE site = @site AND date = @date`,
-    params: { site, date },
+    query: `SELECT COUNT(*) AS n FROM ${T_GA4_CH}
+      WHERE site = @site AND date = @date AND property_id = @pid`,
+    params: { site, date, pid: propertyId },
   });
   return Number(rows[0]?.n ?? 0) > 0;
 }

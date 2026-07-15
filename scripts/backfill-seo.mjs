@@ -103,6 +103,25 @@ if (sites.length === 0) {
 
 const fetchedAt = new Date().toISOString();
 
+// ── データ移行: 複数プロパティ対応前に取り込んだ property_id が NULL の行へ、
+//    そのサイトの先頭プロパティIDを埋める（冪等ガードをプロパティ単位で効かせるため） ──
+for (const table of ["ga4_channel_daily", "ga4_page_daily"]) {
+  for (const s of siteRows) {
+    const first = String(s.ga4_property_id ?? "").split(",")[0]?.trim();
+    if (!first) continue;
+    try {
+      await bq.query({
+        query: `UPDATE ${fqn(table)} SET property_id = @pid WHERE site = @site AND property_id IS NULL`,
+        params: { pid: first, site: s.site },
+        location: BQ_LOCATION,
+      });
+    } catch (err) {
+      // ストリーミングバッファ内の行はUPDATE不可（挿入から最大90分）。次回実行で埋まる
+      console.warn(`[移行] ${table}/${s.site} のproperty_id補完を一部スキップ:`, err?.message ?? err);
+    }
+  }
+}
+
 for (const s of sites) {
   console.log(`\n===== ${s.site} =====`);
 
@@ -162,9 +181,12 @@ for (const s of sites) {
     console.log("[GSC] 無効のためスキップ");
   }
 
-  // ── GA4（2日前まで・月単位チャンクで date ディメンション付き一括取得） ──
-  if (s.ga4_enabled && s.ga4_property_id) {
-    const doneCh = await existingDates("ga4_channel_daily", s.site);
+  // ── GA4（2日前まで・月単位チャンク・カンマ区切りの複数プロパティをそれぞれ取得） ──
+  const propertyIds = String(s.ga4_property_id ?? "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter((v) => /^\d{4,}$/.test(v));
+  if (s.ga4_enabled && propertyIds.length > 0) {
     const metrics = [
       "sessions",
       "activeUsers",
@@ -173,93 +195,110 @@ for (const s of sites) {
       "userEngagementDuration",
       "bounceRate",
     ].map((name) => ({ name }));
-    const runReport = async (dimensions, startDate, endDate, offset) =>
-      api(
-        `https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(s.ga4_property_id)}:runReport`,
-        {
-          dateRanges: [{ startDate, endDate }],
-          dimensions: dimensions.map((name) => ({ name })),
-          metrics,
-          limit: 100000,
-          offset,
-        }
-      );
     // 全期間を30日ごとのチャンクに分割
     const chunks = [];
     for (let from = DAYS; from > 2; from -= 30) {
       chunks.push([jstDateAgo(from), jstDateAgo(Math.max(3, from - 29))]);
     }
-    let chInserted = 0;
-    let pgInserted = 0;
-    for (const [startDate, endDate] of chunks) {
-      try {
-        // チャネル×ソース/メディア
-        for (let offset = 0; ; offset += 100000) {
-          const data = await runReport(
-            ["date", "sessionDefaultChannelGroup", "sessionSource", "sessionMedium"],
-            startDate,
-            endDate,
-            offset
+    for (const pid of propertyIds) {
+      // プロパティ単位の取り込み済み日付（冪等ガード）。
+      // property_id が NULL の旧行は「先頭プロパティの取り込み済み」として扱う
+      // （移行UPDATEがストリーミングバッファ制約で遅延しても二重取り込みしないため）。
+      const isFirst = pid === propertyIds[0];
+      const [doneRows] = await bq.query({
+        query: `SELECT DISTINCT CAST(date AS STRING) AS d FROM ${fqn("ga4_channel_daily")}
+          WHERE site = @site AND (property_id = @pid OR (@isFirst AND property_id IS NULL))`,
+        params: { site: s.site, pid, isFirst },
+        location: BQ_LOCATION,
+      });
+      const doneCh = new Set(doneRows.map((r) => r.d));
+      const runReport = async (dimensions, startDate, endDate, offset) =>
+        api(
+          `https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(pid)}:runReport`,
+          {
+            dateRanges: [{ startDate, endDate }],
+            dimensions: dimensions.map((name) => ({ name })),
+            metrics,
+            limit: 100000,
+            offset,
+          }
+        );
+      let chInserted = 0;
+      let pgInserted = 0;
+      for (const [startDate, endDate] of chunks) {
+        try {
+          // チャネル×ソース/メディア
+          for (let offset = 0; ; offset += 100000) {
+            const data = await runReport(
+              ["date", "sessionDefaultChannelGroup", "sessionSource", "sessionMedium"],
+              startDate,
+              endDate,
+              offset
+            );
+            const rows = (data.rows ?? [])
+              .map((r) => {
+                const d = r.dimensionValues.map((v) => v.value ?? "");
+                const m = r.metricValues.map((v) => Number(v.value ?? 0));
+                const date = `${d[0].slice(0, 4)}-${d[0].slice(4, 6)}-${d[0].slice(6, 8)}`;
+                return {
+                  site: s.site,
+                  property_id: pid,
+                  date,
+                  channel: d[1],
+                  source: d[2],
+                  medium: d[3],
+                  sessions: m[0],
+                  active_users: m[1],
+                  views: m[2],
+                  key_events: m[3],
+                  engagement_secs: m[4],
+                  bounce_rate: m[5],
+                  fetched_at: fetchedAt,
+                };
+              })
+              .filter((r) => !doneCh.has(r.date));
+            if (rows.length > 0) await insert("ga4_channel_daily", rows);
+            chInserted += rows.length;
+            if ((data.rows ?? []).length < 100000) break;
+          }
+          // ランディングページ
+          for (let offset = 0; ; offset += 100000) {
+            const data = await runReport(["date", "landingPagePlusQueryString"], startDate, endDate, offset);
+            const rows = (data.rows ?? [])
+              .map((r) => {
+                const d = r.dimensionValues.map((v) => v.value ?? "");
+                const m = r.metricValues.map((v) => Number(v.value ?? 0));
+                const date = `${d[0].slice(0, 4)}-${d[0].slice(4, 6)}-${d[0].slice(6, 8)}`;
+                return {
+                  site: s.site,
+                  property_id: pid,
+                  date,
+                  page: d[1],
+                  sessions: m[0],
+                  active_users: m[1],
+                  views: m[2],
+                  key_events: m[3],
+                  engagement_secs: m[4],
+                  bounce_rate: m[5],
+                  fetched_at: fetchedAt,
+                };
+              })
+              .filter((r) => !doneCh.has(r.date)); // チャネル側の取り込み済み日付を共通ガードに使う
+            if (rows.length > 0) await insert("ga4_page_daily", rows);
+            pgInserted += rows.length;
+            if ((data.rows ?? []).length < 100000) break;
+          }
+          console.log(
+            `[GA4 ${pid}] ${startDate}〜${endDate} 取り込み（チャネル累計 ${chInserted}・ページ累計 ${pgInserted}）`
           );
-          const rows = (data.rows ?? [])
-            .map((r) => {
-              const d = r.dimensionValues.map((v) => v.value ?? "");
-              const m = r.metricValues.map((v) => Number(v.value ?? 0));
-              const date = `${d[0].slice(0, 4)}-${d[0].slice(4, 6)}-${d[0].slice(6, 8)}`;
-              return {
-                site: s.site,
-                date,
-                channel: d[1],
-                source: d[2],
-                medium: d[3],
-                sessions: m[0],
-                active_users: m[1],
-                views: m[2],
-                key_events: m[3],
-                engagement_secs: m[4],
-                bounce_rate: m[5],
-                fetched_at: fetchedAt,
-              };
-            })
-            .filter((r) => !doneCh.has(r.date));
-          if (rows.length > 0) await insert("ga4_channel_daily", rows);
-          chInserted += rows.length;
-          if ((data.rows ?? []).length < 100000) break;
+          await sleep(300);
+        } catch (err) {
+          console.error(`[GA4 ${pid}] ${startDate}〜${endDate} の取得に失敗:`, err?.message ?? err);
+          await sleep(2000);
         }
-        // ランディングページ
-        for (let offset = 0; ; offset += 100000) {
-          const data = await runReport(["date", "landingPagePlusQueryString"], startDate, endDate, offset);
-          const rows = (data.rows ?? [])
-            .map((r) => {
-              const d = r.dimensionValues.map((v) => v.value ?? "");
-              const m = r.metricValues.map((v) => Number(v.value ?? 0));
-              const date = `${d[0].slice(0, 4)}-${d[0].slice(4, 6)}-${d[0].slice(6, 8)}`;
-              return {
-                site: s.site,
-                date,
-                page: d[1],
-                sessions: m[0],
-                active_users: m[1],
-                views: m[2],
-                key_events: m[3],
-                engagement_secs: m[4],
-                bounce_rate: m[5],
-                fetched_at: fetchedAt,
-              };
-            })
-            .filter((r) => !doneCh.has(r.date)); // チャネル側の取り込み済み日付を共通ガードに使う
-          if (rows.length > 0) await insert("ga4_page_daily", rows);
-          pgInserted += rows.length;
-          if ((data.rows ?? []).length < 100000) break;
-        }
-        console.log(`[GA4] ${startDate}〜${endDate} 取り込み（チャネル累計 ${chInserted}・ページ累計 ${pgInserted}）`);
-        await sleep(300);
-      } catch (err) {
-        console.error(`[GA4] ${startDate}〜${endDate} の取得に失敗:`, err?.message ?? err);
-        await sleep(2000);
       }
+      console.log(`[GA4 ${pid}] 完了: チャネル ${chInserted} 行・ページ ${pgInserted} 行`);
     }
-    console.log(`[GA4] 完了: チャネル ${chInserted} 行・ページ ${pgInserted} 行`);
   } else {
     console.log("[GA4] 無効のためスキップ");
   }

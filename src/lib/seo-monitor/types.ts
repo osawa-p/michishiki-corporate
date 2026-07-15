@@ -8,6 +8,8 @@ export type SeoSite = {
   // Search Console のプロパティ識別子（"sc-domain:example.com" または "https://example.com/"）
   gsc_site_url: string | null;
   ga4_enabled: boolean;
+  // GA4プロパティID。カンマ区切りで複数指定可（例: "391113939,507410349"）。
+  // 複数の場合はプロパティ別に取得して表示時に合算する（shift-ai＝本体＋serviceサブドメイン等）。
   ga4_property_id: string | null;
   // 省略時は https://{site}/sitemap.xml
   sitemap_url: string | null;
@@ -83,9 +85,18 @@ export type CoverageSnapshotRow = {
   fetched_at: string;
 };
 
+// SeoSite の ga4_property_id（カンマ区切り）を配列へ展開する
+export function ga4PropertyIds(s: Pick<SeoSite, "ga4_property_id">): string[] {
+  return (s.ga4_property_id ?? "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter((v) => /^\d{4,}$/.test(v));
+}
+
 // GA4 チャネル×ソース/メディア 日次（ga4_channel_daily）
 export type Ga4ChannelRow = {
   site: string;
+  property_id: string;
   date: string;
   channel: string;
   source: string;
@@ -102,6 +113,7 @@ export type Ga4ChannelRow = {
 // GA4 ランディングページ 日次（ga4_page_daily）
 export type Ga4PageRow = {
   site: string;
+  property_id: string;
   date: string;
   page: string;
   sessions: number;

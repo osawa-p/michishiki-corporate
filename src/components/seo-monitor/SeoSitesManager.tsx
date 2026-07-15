@@ -265,7 +265,7 @@ export default function SeoSitesManager({
             </label>
           </div>
           <label className="text-xs text-ink-soft">
-            GA4プロパティID（数値。例: 123456789）
+            GA4プロパティID（数値。複数はカンマ区切り: 例 391113939,507410349 → 合算表示）
             <input
               type="text"
               value={form.ga4_property_id}

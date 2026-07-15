@@ -28,6 +28,7 @@ import {
 } from "@/lib/seo-monitor/google";
 import { fetchSitemapUrls, defaultSitemapUrl } from "@/lib/seo-monitor/sitemap";
 import { invalidateSeoCache } from "@/lib/seo-monitor/cached";
+import { ga4PropertyIds } from "@/lib/seo-monitor/types";
 import type { Ga4ChannelRow, Ga4PageRow, GscInspectionRow } from "@/lib/seo-monitor/types";
 
 export const runtime = "nodejs";
@@ -179,16 +180,18 @@ export async function GET(request: Request) {
       }
     }
 
-    // ── GA4 系 ──
-    if (s.ga4_enabled && s.ga4_property_id && timeLeft() > 0) {
-      try {
-        if (await hasGa4Daily(s.site, ga4Date)) {
-          sum.ga4Skipped = true;
-        } else {
+    // ── GA4 系（カンマ区切りの複数プロパティをそれぞれ取得し、表示時に合算する） ──
+    if (s.ga4_enabled && timeLeft() > 0) {
+      for (const pid of ga4PropertyIds(s)) {
+        try {
+          if (await hasGa4Daily(s.site, ga4Date, pid)) {
+            sum.ga4Skipped = true;
+            continue;
+          }
           const metrics = GA4_METRICS.map((name) => ({ name }));
           const dateRanges = [{ startDate: ga4Date, endDate: ga4Date }];
           const [channelRows, pageRows] = await Promise.all([
-            runGa4Report(s.ga4_property_id, {
+            runGa4Report(pid, {
               dateRanges,
               dimensions: [
                 { name: "sessionDefaultChannelGroup" },
@@ -197,7 +200,7 @@ export async function GET(request: Request) {
               ],
               metrics,
             }),
-            runGa4Report(s.ga4_property_id, {
+            runGa4Report(pid, {
               dateRanges,
               dimensions: [{ name: "landingPagePlusQueryString" }],
               metrics,
@@ -205,6 +208,7 @@ export async function GET(request: Request) {
           ]);
           const ch: Ga4ChannelRow[] = channelRows.map((r) => ({
             site: s.site,
+            property_id: pid,
             date: ga4Date,
             channel: r.dims[0] ?? "",
             source: r.dims[1] ?? "",
@@ -219,6 +223,7 @@ export async function GET(request: Request) {
           }));
           const pg: Ga4PageRow[] = pageRows.map((r) => ({
             site: s.site,
+            property_id: pid,
             date: ga4Date,
             page: r.dims[0] ?? "",
             sessions: r.metrics[0] ?? 0,
@@ -230,11 +235,11 @@ export async function GET(request: Request) {
             fetched_at: fetchedAt,
           }));
           const inserted = (await insertGa4Channel(ch)) + (await insertGa4Pages(pg));
-          sum.ga4Rows = inserted;
+          sum.ga4Rows = (sum.ga4Rows ?? 0) + inserted;
+        } catch (err) {
+          console.error(`[seo-monitor] GA4取得に失敗 (${s.site} property ${pid}):`, err);
+          sum.errors.push(`ga4:${pid}`);
         }
-      } catch (err) {
-        console.error(`[seo-monitor] GA4取得に失敗 (${s.site}):`, err);
-        sum.errors.push("ga4");
       }
     }
   }
