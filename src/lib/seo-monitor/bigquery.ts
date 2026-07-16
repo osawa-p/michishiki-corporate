@@ -614,21 +614,6 @@ export async function listProposals(site?: string): Promise<SeoProposal[]> {
   }));
 }
 
-// 週次生成の冪等ガード（同一サイト・同一週の二重生成を防ぐ）
-export async function hasProposalsForWeek(site: string, week: string): Promise<boolean> {
-  const { rows } = await runQuery<{ n: number }>({
-    query: `SELECT COUNT(*) AS n FROM ${T_PROPOSALS} WHERE site = @site AND week = @week`,
-    params: { site, week },
-  });
-  return Number(rows[0]?.n ?? 0) > 0;
-}
-
-export async function insertProposals(rows: SeoProposal[]): Promise<number> {
-  if (rows.length === 0) return 0;
-  await getBigQuery().dataset(BQ_DATASET).table("seo_proposals").insert(rows);
-  return rows.length;
-}
-
 export async function updateProposal(
   id: string,
   status: ProposalStatus,
