@@ -1,0 +1,127 @@
+// SEO観測ツールの読み取りキャッシュ層。rank-tracker/cached.ts と同じ方針で、
+// BigQuery への往復を減らす。更新系（cron・設定・提案の更新）は invalidateSeoCache() で
+// 即時無効化する。
+import { unstable_cache, revalidateTag } from "next/cache";
+import {
+  listSeoSites,
+  fetchRotationProgress,
+  fetchLatestInspections,
+  fetchLatestCoverage,
+  fetchQuerySummary,
+  fetchQueryPages,
+  fetchGa4Summary,
+  fetchTrafficSeries,
+  fetchGa4Channels,
+  fetchGa4SourceMedium,
+  fetchGa4PageStats,
+  listProposals,
+  type RotationProgress,
+  type LatestInspection,
+  type QuerySummary,
+  type QueryPageRow,
+  type Ga4Summary,
+  type TrafficPoint,
+  type ChannelStat,
+  type SourceMediumStat,
+  type PageStat,
+} from "./bigquery";
+import type { CoverageSnapshotRow, SeoProposal, SeoSite } from "./types";
+
+export const SEO_CACHE_TAG = "seo-monitor";
+
+export function invalidateSeoCache(): void {
+  revalidateTag(SEO_CACHE_TAG, "max");
+}
+
+const opts = { revalidate: 300, tags: [SEO_CACHE_TAG] };
+
+export function getSeoSitesCached(): Promise<SeoSite[]> {
+  return unstable_cache(() => listSeoSites(), ["seo-sites"], { revalidate: 60, tags: [SEO_CACHE_TAG] })();
+}
+
+export function getRotationProgressCached(site: string): Promise<RotationProgress> {
+  return unstable_cache(() => fetchRotationProgress(site), ["seo-rotation", site], opts)();
+}
+
+export function getLatestInspectionsCached(site: string): Promise<LatestInspection[]> {
+  return unstable_cache(
+    () => fetchLatestInspections(site, { limit: 100 }),
+    ["seo-inspections", site],
+    opts
+  )();
+}
+
+export function getStaleUrlsCached(site: string, staleDays: number): Promise<LatestInspection[]> {
+  return unstable_cache(
+    () => fetchLatestInspections(site, { limit: 200, staleDaysOnly: staleDays }),
+    ["seo-stale", site, String(staleDays)],
+    opts
+  )();
+}
+
+export function getCoverageCached(site: string): Promise<CoverageSnapshotRow[]> {
+  return unstable_cache(() => fetchLatestCoverage(site), ["seo-coverage", site], opts)();
+}
+
+export function getQuerySummaryCached(site: string, days: number): Promise<QuerySummary[]> {
+  return unstable_cache(
+    () => fetchQuerySummary(site, days),
+    ["seo-queries", site, String(days)],
+    opts
+  )();
+}
+
+export function getQueryPagesCached(site: string, days: number): Promise<QueryPageRow[]> {
+  return unstable_cache(
+    () => fetchQueryPages(site, days),
+    ["seo-query-pages", site, String(days)],
+    opts
+  )();
+}
+
+export function getGa4SummaryCached(site: string, days: number): Promise<Ga4Summary> {
+  return unstable_cache(
+    () => fetchGa4Summary(site, days),
+    ["seo-ga4-summary", site, String(days)],
+    opts
+  )();
+}
+
+export function getTrafficSeriesCached(site: string, days: number): Promise<TrafficPoint[]> {
+  return unstable_cache(
+    () => fetchTrafficSeries(site, days),
+    ["seo-ga4-series", site, String(days)],
+    opts
+  )();
+}
+
+export function getGa4ChannelsCached(site: string, days: number): Promise<ChannelStat[]> {
+  return unstable_cache(
+    () => fetchGa4Channels(site, days),
+    ["seo-ga4-channels", site, String(days)],
+    opts
+  )();
+}
+
+export function getGa4SourceMediumCached(site: string, days: number): Promise<SourceMediumStat[]> {
+  return unstable_cache(
+    () => fetchGa4SourceMedium(site, days),
+    ["seo-ga4-sm", site, String(days)],
+    opts
+  )();
+}
+
+export function getGa4PageStatsCached(site: string, days: number): Promise<PageStat[]> {
+  return unstable_cache(
+    () => fetchGa4PageStats(site, days),
+    ["seo-ga4-pages", site, String(days)],
+    opts
+  )();
+}
+
+export function getProposalsCached(site?: string): Promise<SeoProposal[]> {
+  return unstable_cache(() => listProposals(site), ["seo-proposals", site ?? "__all__"], {
+    revalidate: 60,
+    tags: [SEO_CACHE_TAG],
+  })();
+}

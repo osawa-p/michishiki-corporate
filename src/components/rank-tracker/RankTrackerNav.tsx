@@ -9,8 +9,13 @@ const TABS: { href: string; label: string; roles: string[] }[] = [
   { href: "/rank-tracker/dashboard", label: "ダッシュボード", roles: ["admin", "editor", "viewer_kw", "viewer"] },
   { href: "/rank-tracker/keywords", label: "キーワード管理", roles: ["admin", "editor", "viewer_kw"] },
   { href: "/rank-tracker/measure", label: "クイック計測", roles: ["admin"] },
+  // SEO観測ツール（Phase 1 は運用者専用）
+  { href: "/rank-tracker/seo/gsc", label: "サーチコンソール", roles: ["admin"] },
+  { href: "/rank-tracker/seo/ga4", label: "GA4", roles: ["admin"] },
+  { href: "/rank-tracker/seo/proposals", label: "AI提案", roles: ["admin"] },
   { href: "/rank-tracker/members", label: "メンバー", roles: ["admin"] },
   { href: "/rank-tracker/settings", label: "サイト設定", roles: ["admin"] },
+  { href: "/rank-tracker/seo/settings", label: "SEO設定", roles: ["admin"] },
 ];
 
 export default function RankTrackerNav({

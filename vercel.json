@@ -3,6 +3,10 @@
     {
       "path": "/api/rank-tracker/cron",
       "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/rank-tracker/seo/cron",
+      "schedule": "30 20 * * *"
     }
   ]
 }
