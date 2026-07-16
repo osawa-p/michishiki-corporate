@@ -158,9 +158,11 @@ export async function GET(request: Request) {
               ],
               metrics,
             }),
+            // landingPage（クエリパラメータなし）を使う。landingPagePlusQueryString だと
+            // パラメータ付きURLで行数が爆発する（rasikで1日4万行超の実績）
             runGa4Report(pid, {
               dateRanges,
-              dimensions: [{ name: "landingPagePlusQueryString" }],
+              dimensions: [{ name: "landingPage" }],
               metrics,
             }),
           ]);

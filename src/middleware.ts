@@ -16,6 +16,7 @@ const PUBLIC_PREFIXES = [
   "/api/rank-tracker/auth/", // login / logout / invite受諾
   "/api/rank-tracker/cron", // Vercel Cron（CRON_SECRET で別途保護）
   "/api/rank-tracker/seo/cron", // SEO観測の日次取り込み（CRON_SECRET で別途保護）
+  "/api/rank-tracker/seo/proposals-cron", // 週次AI提案の生成（CRON_SECRET で別途保護）
 ];
 
 function checkBasicAuth(header: string | null): boolean {

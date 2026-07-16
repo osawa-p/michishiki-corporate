@@ -12,6 +12,7 @@ import {
 } from "@/lib/seo-monitor/cached";
 import Ga4Workspace, { type Ga4Data } from "@/components/seo-monitor/Ga4Workspace";
 import SeoSitePicker from "@/components/seo-monitor/SeoSitePicker";
+import SeoPeriodPicker from "@/components/seo-monitor/SeoPeriodPicker";
 
 export const dynamic = "force-dynamic";
 
@@ -19,18 +20,18 @@ export const metadata: Metadata = {
   title: "GA4",
 };
 
-const DAYS = 30;
-
 export default async function Ga4Page({
   searchParams,
 }: {
-  searchParams: Promise<{ site?: string }>;
+  searchParams: Promise<{ site?: string; days?: string }>;
 }) {
   const access = await getAccess();
   if (!access) redirect("/rank-tracker/login");
   if (access.role !== "admin") redirect("/rank-tracker/dashboard");
 
-  const { site: siteParam } = await searchParams;
+  const { site: siteParam, days: daysParam } = await searchParams;
+  const daysNum = Number(daysParam);
+  const DAYS = [7, 30, 90].includes(daysNum) ? daysNum : 30;
 
   let sites: Awaited<ReturnType<typeof getSeoSitesCached>> = [];
   let loadError = false;
@@ -75,7 +76,10 @@ export default async function Ga4Page({
               </p>
             </div>
             {selected && (
-              <SeoSitePicker sites={ga4Sites.map((s) => s.site)} selected={selected.site} />
+              <div className="flex flex-wrap items-center gap-4">
+                <SeoPeriodPicker selected={DAYS} />
+                <SeoSitePicker sites={ga4Sites.map((s) => s.site)} selected={selected.site} />
+              </div>
             )}
           </div>
         </div>

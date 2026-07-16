@@ -62,10 +62,12 @@ ${lines}
 export default function GscWorkspace({
   site,
   staleDays,
+  days,
   data,
 }: {
   site: string;
   staleDays: number;
+  days: number;
   data: GscData;
 }) {
   const [tab, setTab] = useState<TabKey>("summary");
@@ -224,7 +226,7 @@ export default function GscWorkspace({
         <div className="space-y-8">
           <div>
             <div className="flex flex-wrap items-center gap-3 mb-3">
-              <h2 className="text-sm font-semibold">クエリ別（直近28日）</h2>
+              <h2 className="text-sm font-semibold">クエリ別（直近{days}日）</h2>
               <input
                 type="text"
                 value={kw}
@@ -238,7 +240,7 @@ export default function GscWorkspace({
             </div>
             {queries.length === 0 ? (
               <p className="text-sm text-ink-soft">
-                まだクエリデータがありません（GSCデータは約3日遅れのため、取得開始から数日かかります）。
+                この期間のクエリデータがありません（GSCデータは約3日遅れのため、取得開始から数日かかります）。
               </p>
             ) : (
               <div className="overflow-x-auto border border-line bg-white">
