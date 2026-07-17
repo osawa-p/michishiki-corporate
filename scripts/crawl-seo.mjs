@@ -94,15 +94,18 @@ for (const { site } of sites) {
   mkdirSync(outDir, { recursive: true });
 
   console.log("クロール開始（サイト規模により数分〜数十分）…");
+  // stdoutは破棄する（SFは進捗ログを大量に出すため、pipeだとmaxBuffer超過で
+  // 子プロセスが途中終了する）。結果はエクスポートCSVだけ見れば足りる。
   const res = spawnSync(
     SF,
     ["--crawl", `https://${site}/`, "--headless", "--overwrite",
      "--output-folder", outDir, "--export-tabs", "Internal:All"],
-    { stdio: ["ignore", "pipe", "pipe"], timeout: 60 * 60 * 1000, encoding: "utf8" }
+    { stdio: "ignore", timeout: 2 * 60 * 60 * 1000 }
   );
   const csvPath = join(outDir, "internal_all.csv");
   if (!existsSync(csvPath)) {
-    console.error(`クロール失敗（internal_all.csv が無い）: ${res.stderr?.slice(0, 500) ?? res.status}`);
+    console.error("クロール失敗（internal_all.csv が無い）");
+    console.error("exit:", res.status, "signal:", res.signal, "error:", res.error?.message ?? "-");
     continue;
   }
 
