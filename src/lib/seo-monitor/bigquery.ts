@@ -663,7 +663,8 @@ export async function aggregateUserSessions(
     query: `
       INSERT INTO ${T_USER_SESSIONS}
         (site, property_id, date, user_key, user_id, is_identified, session_id, started_at,
-         source, medium, channel, landing_page, pages, page_count, key_events, engagement_secs, fetched_at)
+         source, medium, channel, landing_page, pages, page_count, key_events, key_event_detail,
+         engagement_secs, fetched_at)
       WITH ev AS (
         SELECT
           user_pseudo_id,
@@ -712,6 +713,14 @@ export async function aggregateUserSessions(
           ' → ' ORDER BY event_timestamp LIMIT 20) AS pages,
         COUNTIF(event_name = 'page_view') AS page_count,
         COUNTIF(event_name IN UNNEST(@keyEvents)) AS key_events,
+        -- CVの発生タイミング: 「イベント名（ページ・時刻）」を発生順に連結
+        STRING_AGG(
+          IF(event_name IN UNNEST(@keyEvents),
+            CONCAT(event_name, '（',
+              IFNULL(SPLIT(REGEXP_REPLACE(page_location, r'^https?://[^/]+', ''), '?')[SAFE_OFFSET(0)], '-'),
+              '・', FORMAT_TIMESTAMP('%H:%M', TIMESTAMP_MICROS(event_timestamp), 'Asia/Tokyo'), '）'),
+            NULL),
+          ' / ' ORDER BY event_timestamp) AS key_event_detail,
         IFNULL(SUM(engagement_ms), 0) / 1000 AS engagement_secs,
         CURRENT_TIMESTAMP() AS fetched_at
       FROM ev
@@ -767,6 +776,7 @@ export async function fetchTopUsers(site: string, days: number, limit = 50): Pro
 
 export type JourneySession = {
   date: string;
+  start_time: string; // セッション開始時刻（JST HH:MM）
   channel: string;
   source: string | null;
   medium: string | null;
@@ -774,14 +784,17 @@ export type JourneySession = {
   pages: string | null;
   page_count: number;
   key_events: number;
+  key_event_detail: string | null; // 例: "file_download（/seminar/・18:23）"
   engagement_secs: number;
 };
 
 export async function fetchUserJourney(site: string, userKey: string): Promise<JourneySession[]> {
   const { rows } = await runQuery<Record<string, unknown>>({
     query: `
-      SELECT CAST(date AS STRING) AS date, channel, source, medium, landing_page, pages,
-        page_count, key_events, engagement_secs
+      SELECT CAST(date AS STRING) AS date,
+        FORMAT_TIMESTAMP('%H:%M', started_at, 'Asia/Tokyo') AS start_time,
+        channel, source, medium, landing_page, pages,
+        page_count, key_events, key_event_detail, engagement_secs
       FROM ${T_USER_SESSIONS}
       WHERE site = @site AND user_key = @userKey
       ORDER BY started_at
@@ -790,6 +803,7 @@ export async function fetchUserJourney(site: string, userKey: string): Promise<J
   });
   return rows.map((r) => ({
     date: String(r.date),
+    start_time: String(r.start_time ?? ""),
     channel: String(r.channel ?? "—"),
     source: (r.source as string) ?? null,
     medium: (r.medium as string) ?? null,
@@ -797,6 +811,7 @@ export async function fetchUserJourney(site: string, userKey: string): Promise<J
     pages: (r.pages as string) ?? null,
     page_count: Number(r.page_count ?? 0),
     key_events: Number(r.key_events ?? 0),
+    key_event_detail: (r.key_event_detail as string) ?? null,
     engagement_secs: Number(r.engagement_secs ?? 0),
   }));
 }

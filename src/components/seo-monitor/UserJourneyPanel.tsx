@@ -180,18 +180,22 @@ export default function UserJourneyPanel({
                               >
                                 <div className="flex flex-wrap items-baseline gap-3 text-xs">
                                   <span className="font-bold text-bronze-deep">セッション {i + 1}</span>
-                                  <span className="font-semibold tabular-nums">{s.date}</span>
+                                  <span className="font-semibold tabular-nums">
+                                    {s.date} {s.start_time}
+                                  </span>
                                   <span className="inline-block px-2 py-0.5 text-[11px] border border-dashed border-line text-ink-soft">
                                     {s.channel}
                                     {s.source ? `（${s.source}）` : ""}
                                   </span>
                                   <span className="text-ink-faint tabular-nums">
                                     滞在 {mmss(s.engagement_secs)} ／ {nf(s.page_count)}ページ
-                                    {s.key_events > 0 && (
-                                      <b className="ml-2 text-emerald-700">CV発生 ✓</b>
-                                    )}
                                   </span>
                                 </div>
+                                {s.key_events > 0 && (
+                                  <p className="mt-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 inline-block px-2 py-0.5">
+                                    CV発生 ✓ {s.key_event_detail ?? ""}
+                                  </p>
+                                )}
                                 {s.pages && (
                                   <p className="mt-1.5 text-[11px] font-mono text-ink-soft break-all">
                                     {s.pages}
