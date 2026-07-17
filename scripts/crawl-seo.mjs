@@ -98,9 +98,9 @@ for (const { site } of sites) {
   // 子プロセスが途中終了する）。結果はエクスポートCSVだけ見れば足りる。
   const res = spawnSync(
     SF,
-    ["--crawl", `https://${site}/`, "--headless", "--overwrite",
+    ["--crawl-sitemap", `https://${site}/sitemap.xml`, "--headless", "--overwrite",
      "--output-folder", outDir, "--export-tabs", "Internal:All"],
-    { stdio: "ignore", timeout: 2 * 60 * 60 * 1000 }
+    { stdio: "ignore", timeout: 45 * 60 * 1000 }
   );
   const csvPath = join(outDir, "internal_all.csv");
   if (!existsSync(csvPath)) {
@@ -109,7 +109,7 @@ for (const { site } of sites) {
     continue;
   }
 
-  const rows = parseCsv(readFileSync(csvPath, "utf8"));
+  const rows = parseCsv(readFileSync(csvPath, "utf8").replace(/^﻿/, ""));
   const header = rows[0];
   const col = (name) => header.findIndex((h) => h === name);
   const iAddr = col("Address");
