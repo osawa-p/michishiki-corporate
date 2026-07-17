@@ -13,6 +13,7 @@ import {
 } from "@/lib/seo-monitor/cached";
 import GscWorkspace, { type GscData } from "@/components/seo-monitor/GscWorkspace";
 import SeoSitePicker from "@/components/seo-monitor/SeoSitePicker";
+import SeoPeriodPicker from "@/components/seo-monitor/SeoPeriodPicker";
 
 export const dynamic = "force-dynamic";
 
@@ -20,19 +21,19 @@ export const metadata: Metadata = {
   title: "サーチコンソール",
 };
 
-const QUERY_DAYS = 28;
-
 export default async function GscPage({
   searchParams,
 }: {
-  searchParams: Promise<{ site?: string }>;
+  searchParams: Promise<{ site?: string; days?: string }>;
 }) {
   // SEO観測はPhase 1では運用者（管理者）専用
   const access = await getAccess();
   if (!access) redirect("/rank-tracker/login");
   if (access.role !== "admin") redirect("/rank-tracker/dashboard");
 
-  const { site: siteParam } = await searchParams;
+  const { site: siteParam, days: daysParam } = await searchParams;
+  const daysNum = Number(daysParam);
+  const days = [7, 30, 90].includes(daysNum) ? daysNum : 30;
 
   let sites: Awaited<ReturnType<typeof getSeoSitesCached>> = [];
   let loadError = false;
@@ -54,8 +55,8 @@ export default async function GscPage({
         getRotationProgressCached(selected.site),
         getLatestInspectionsCached(selected.site),
         getStaleUrlsCached(selected.site, selected.stale_days),
-        getQuerySummaryCached(selected.site, QUERY_DAYS),
-        getQueryPagesCached(selected.site, QUERY_DAYS),
+        getQuerySummaryCached(selected.site, days),
+        getQueryPagesCached(selected.site, days),
       ]);
       data = { coverage, rotation, inspections, stale, queries, queryPages };
     } catch (e) {
@@ -74,11 +75,14 @@ export default async function GscPage({
               <h1 className="font-serif text-3xl md:text-4xl font-semibold">サーチコンソール</h1>
               <p className="mt-4 text-sm text-ink-soft max-w-2xl leading-relaxed">
                 カバレッジ・URL検査ローテーション・クエリ分析。データは毎朝の自動取得で更新されます
-                （クエリは約3日遅れの確定値・直近{QUERY_DAYS}日集計）。
+                （クエリは約3日遅れの確定値・直近{days}日集計）。
               </p>
             </div>
             {selected && (
-              <SeoSitePicker sites={gscSites.map((s) => s.site)} selected={selected.site} />
+              <div className="flex flex-wrap items-center gap-4">
+                <SeoPeriodPicker selected={days} />
+                <SeoSitePicker sites={gscSites.map((s) => s.site)} selected={selected.site} />
+              </div>
             )}
           </div>
         </div>
@@ -102,7 +106,7 @@ export default async function GscPage({
               </p>
             </div>
           ) : (
-            <GscWorkspace site={selected.site} staleDays={selected.stale_days} data={data!} />
+            <GscWorkspace site={selected.site} staleDays={selected.stale_days} days={days} data={data!} />
           )}
         </div>
       </section>

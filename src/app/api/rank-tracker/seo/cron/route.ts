@@ -18,6 +18,8 @@ import {
   hasGa4Daily,
   insertGa4Channel,
   insertGa4Pages,
+  hasUserSessions,
+  aggregateUserSessions,
 } from "@/lib/seo-monitor/bigquery";
 import {
   fetchSearchAnalytics,
@@ -54,6 +56,7 @@ type SiteSummary = {
   excluded?: number;
   ga4Rows?: number;
   ga4Skipped?: boolean;
+  userSessions?: number;
   errors: string[];
 };
 
@@ -141,6 +144,20 @@ export async function GET(request: Request) {
     // GA4（カンマ区切りの複数プロパティをそれぞれ取得し、表示時に合算する）
     if (s.ga4_enabled && timeLeft() > 0) {
       for (const pid of ga4PropertyIds(s)) {
+        // ユーザー単位セッション集約（BQエクスポートが有効なプロパティのみ）。
+        // events_YYYYMMDD 未着（エクスポート未設定/遅延）は notFound になるので静かにスキップ。
+        try {
+          if (!(await hasUserSessions(s.site, pid, ga4Date))) {
+            const n = await aggregateUserSessions(s.site, pid, ga4Date);
+            if (n > 0) sum.userSessions = (sum.userSessions ?? 0) + n;
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          if (!/Not found/i.test(msg)) {
+            console.error(`[seo-monitor] ユーザーセッション集約に失敗 (${s.site} ${pid}):`, err);
+            sum.errors.push(`user-sessions:${pid}`);
+          }
+        }
         try {
           if (await hasGa4Daily(s.site, ga4Date, pid)) {
             sum.ga4Skipped = true;
@@ -158,9 +175,11 @@ export async function GET(request: Request) {
               ],
               metrics,
             }),
+            // landingPage（クエリパラメータなし）を使う。landingPagePlusQueryString だと
+            // パラメータ付きURLで行数が爆発する（rasikで1日4万行超の実績）
             runGa4Report(pid, {
               dateRanges,
-              dimensions: [{ name: "landingPagePlusQueryString" }],
+              dimensions: [{ name: "landingPage" }],
               metrics,
             }),
           ]);

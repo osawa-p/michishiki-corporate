@@ -7,7 +7,11 @@ import type {
   ChannelStat,
   SourceMediumStat,
   PageStat,
+  UserSummary,
+  CvPath,
+  CvStats,
 } from "@/lib/seo-monitor/bigquery";
+import UserJourneyPanel from "./UserJourneyPanel";
 
 export type Ga4Data = {
   summary: Ga4Summary;
@@ -15,12 +19,16 @@ export type Ga4Data = {
   channels: ChannelStat[];
   sourceMedium: SourceMediumStat[];
   pages: PageStat[];
+  users: UserSummary[];
+  cvPaths: CvPath[];
+  cvStats: CvStats;
 };
 
 const TABS = [
   { key: "summary", label: "サマリー" },
   { key: "channels", label: "チャネル詳細" },
   { key: "pages", label: "URL別" },
+  { key: "users", label: "ユーザー単位" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -37,9 +45,17 @@ function delta(cur: number, prev: number): { text: string; up: boolean } | null 
   return { text: `${d >= 0 ? "+" : ""}${(d * 100).toFixed(1)}%`, up: d >= 0 };
 }
 
-export default function Ga4Workspace({ data, days }: { data: Ga4Data; days: number }) {
+export default function Ga4Workspace({
+  site,
+  data,
+  days,
+}: {
+  site: string;
+  data: Ga4Data;
+  days: number;
+}) {
   const [tab, setTab] = useState<TabKey>("summary");
-  const { summary, series, channels, sourceMedium, pages } = data;
+  const { summary, series, channels, sourceMedium, pages, users, cvPaths, cvStats } = data;
 
   const hasData = summary.sessions > 0 || series.length > 0;
   const dSessions = delta(summary.sessions, summary.prev_sessions);
@@ -213,6 +229,10 @@ export default function Ga4Workspace({ data, days }: { data: Ga4Data; days: numb
             </table>
           </div>
         </div>
+      )}
+
+      {tab === "users" && (
+        <UserJourneyPanel site={site} users={users} cvPaths={cvPaths} cvStats={cvStats} />
       )}
     </div>
   );

@@ -264,9 +264,9 @@ for (const s of sites) {
             chInserted += rows.length;
             if ((data.rows ?? []).length < 100000) break;
           }
-          // ランディングページ
+          // ランディングページ（クエリパラメータなしの landingPage — 行数爆発対策）
           for (let offset = 0; ; offset += 100000) {
-            const data = await runReport(["date", "landingPagePlusQueryString"], startDate, endDate, offset);
+            const data = await runReport(["date", "landingPage"], startDate, endDate, offset);
             const rows = (data.rows ?? [])
               .map((r) => {
                 const d = r.dimensionValues.map((v) => v.value ?? "");

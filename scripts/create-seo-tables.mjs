@@ -126,6 +126,31 @@ const TABLES = [
     timePartitioning: { type: "DAY", field: "date" },
   },
   {
+    // GA4 BigQueryエクスポート（analytics_{property}）から日次で集約するセッション台帳。
+    // ユーザー単位レポート（誰が何回来て、どういう経路を辿ったか）の元データ
+    name: "ga4_user_sessions",
+    schema: [
+      { name: "site", type: "STRING", mode: "REQUIRED" },
+      { name: "property_id", type: "STRING", mode: "REQUIRED" },
+      { name: "date", type: "DATE", mode: "REQUIRED" },
+      { name: "user_key", type: "STRING", mode: "REQUIRED" },
+      { name: "user_id", type: "STRING" },
+      { name: "is_identified", type: "BOOL" },
+      { name: "session_id", type: "STRING" },
+      { name: "started_at", type: "TIMESTAMP" },
+      { name: "source", type: "STRING" },
+      { name: "medium", type: "STRING" },
+      { name: "channel", type: "STRING" },
+      { name: "landing_page", type: "STRING" },
+      { name: "pages", type: "STRING" },
+      { name: "page_count", type: "INT64" },
+      { name: "key_events", type: "INT64" },
+      { name: "engagement_secs", type: "FLOAT64" },
+      { name: "fetched_at", type: "TIMESTAMP" },
+    ],
+    timePartitioning: { type: "DAY", field: "date" },
+  },
+  {
     name: "seo_proposals",
     schema: [
       { name: "id", type: "STRING", mode: "REQUIRED" },

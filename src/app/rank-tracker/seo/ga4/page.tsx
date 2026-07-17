@@ -9,9 +9,12 @@ import {
   getGa4ChannelsCached,
   getGa4SourceMediumCached,
   getGa4PageStatsCached,
+  getTopUsersCached,
+  getCvPathsCached,
 } from "@/lib/seo-monitor/cached";
 import Ga4Workspace, { type Ga4Data } from "@/components/seo-monitor/Ga4Workspace";
 import SeoSitePicker from "@/components/seo-monitor/SeoSitePicker";
+import SeoPeriodPicker from "@/components/seo-monitor/SeoPeriodPicker";
 
 export const dynamic = "force-dynamic";
 
@@ -19,18 +22,18 @@ export const metadata: Metadata = {
   title: "GA4",
 };
 
-const DAYS = 30;
-
 export default async function Ga4Page({
   searchParams,
 }: {
-  searchParams: Promise<{ site?: string }>;
+  searchParams: Promise<{ site?: string; days?: string }>;
 }) {
   const access = await getAccess();
   if (!access) redirect("/rank-tracker/login");
   if (access.role !== "admin") redirect("/rank-tracker/dashboard");
 
-  const { site: siteParam } = await searchParams;
+  const { site: siteParam, days: daysParam } = await searchParams;
+  const daysNum = Number(daysParam);
+  const DAYS = [7, 30, 90].includes(daysNum) ? daysNum : 30;
 
   let sites: Awaited<ReturnType<typeof getSeoSitesCached>> = [];
   let loadError = false;
@@ -47,14 +50,16 @@ export default async function Ga4Page({
   let data: Ga4Data | null = null;
   if (selected) {
     try {
-      const [summary, series, channels, sourceMedium, pages] = await Promise.all([
+      const [summary, series, channels, sourceMedium, pages, users, cv] = await Promise.all([
         getGa4SummaryCached(selected.site, DAYS),
         getTrafficSeriesCached(selected.site, DAYS),
         getGa4ChannelsCached(selected.site, DAYS),
         getGa4SourceMediumCached(selected.site, DAYS),
         getGa4PageStatsCached(selected.site, DAYS),
+        getTopUsersCached(selected.site, DAYS),
+        getCvPathsCached(selected.site, DAYS),
       ]);
-      data = { summary, series, channels, sourceMedium, pages };
+      data = { summary, series, channels, sourceMedium, pages, users, cvPaths: cv.paths, cvStats: cv.stats };
     } catch (e) {
       console.error("[seo-monitor] GA4データの取得に失敗:", e);
       loadError = true;
@@ -75,7 +80,10 @@ export default async function Ga4Page({
               </p>
             </div>
             {selected && (
-              <SeoSitePicker sites={ga4Sites.map((s) => s.site)} selected={selected.site} />
+              <div className="flex flex-wrap items-center gap-4">
+                <SeoPeriodPicker selected={DAYS} />
+                <SeoSitePicker sites={ga4Sites.map((s) => s.site)} selected={selected.site} />
+              </div>
             )}
           </div>
         </div>
@@ -99,7 +107,7 @@ export default async function Ga4Page({
               </p>
             </div>
           ) : (
-            <Ga4Workspace data={data!} days={DAYS} />
+            <Ga4Workspace site={selected.site} data={data!} days={DAYS} />
           )}
         </div>
       </section>
