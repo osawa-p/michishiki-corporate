@@ -125,3 +125,30 @@ export function getProposalsCached(site?: string): Promise<SeoProposal[]> {
     tags: [SEO_CACHE_TAG],
   })();
 }
+
+// ── ユーザー単位レポート（GA4 BQエクスポート由来） ──
+import {
+  fetchTopUsers,
+  fetchCvPaths,
+  type UserSummary,
+  type CvPath,
+  type CvStats,
+} from "./bigquery";
+
+export function getTopUsersCached(site: string, days: number): Promise<UserSummary[]> {
+  return unstable_cache(
+    () => fetchTopUsers(site, days),
+    ["seo-top-users", site, String(days)],
+    { revalidate: 300, tags: [SEO_CACHE_TAG] }
+  )();
+}
+
+export function getCvPathsCached(
+  site: string,
+  days: number
+): Promise<{ paths: CvPath[]; stats: CvStats }> {
+  return unstable_cache(() => fetchCvPaths(site, days), ["seo-cv-paths", site, String(days)], {
+    revalidate: 300,
+    tags: [SEO_CACHE_TAG],
+  })();
+}

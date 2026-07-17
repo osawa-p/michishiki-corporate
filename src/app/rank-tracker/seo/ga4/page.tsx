@@ -9,6 +9,8 @@ import {
   getGa4ChannelsCached,
   getGa4SourceMediumCached,
   getGa4PageStatsCached,
+  getTopUsersCached,
+  getCvPathsCached,
 } from "@/lib/seo-monitor/cached";
 import Ga4Workspace, { type Ga4Data } from "@/components/seo-monitor/Ga4Workspace";
 import SeoSitePicker from "@/components/seo-monitor/SeoSitePicker";
@@ -48,14 +50,16 @@ export default async function Ga4Page({
   let data: Ga4Data | null = null;
   if (selected) {
     try {
-      const [summary, series, channels, sourceMedium, pages] = await Promise.all([
+      const [summary, series, channels, sourceMedium, pages, users, cv] = await Promise.all([
         getGa4SummaryCached(selected.site, DAYS),
         getTrafficSeriesCached(selected.site, DAYS),
         getGa4ChannelsCached(selected.site, DAYS),
         getGa4SourceMediumCached(selected.site, DAYS),
         getGa4PageStatsCached(selected.site, DAYS),
+        getTopUsersCached(selected.site, DAYS),
+        getCvPathsCached(selected.site, DAYS),
       ]);
-      data = { summary, series, channels, sourceMedium, pages };
+      data = { summary, series, channels, sourceMedium, pages, users, cvPaths: cv.paths, cvStats: cv.stats };
     } catch (e) {
       console.error("[seo-monitor] GA4データの取得に失敗:", e);
       loadError = true;
@@ -103,7 +107,7 @@ export default async function Ga4Page({
               </p>
             </div>
           ) : (
-            <Ga4Workspace data={data!} days={DAYS} />
+            <Ga4Workspace site={selected.site} data={data!} days={DAYS} />
           )}
         </div>
       </section>

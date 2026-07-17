@@ -629,3 +629,225 @@ export async function updateProposal(
   });
   return affected > 0;
 }
+
+// ───────────────────────────────────────────────────────────
+// ga4_user_sessions（GA4 BigQueryエクスポートからのユーザー単位集約）
+// エクスポート（analytics_{property}.events_YYYYMMDD）が有効なプロパティのみ対象。
+// ───────────────────────────────────────────────────────────
+
+const T_USER_SESSIONS = `\`${GCP_PROJECT}.${BQ_DATASET}.ga4_user_sessions\``;
+
+// キーイベントとして数えるイベント名（サイト別設定は将来の拡張）
+const KEY_EVENT_NAMES = ["generate_lead", "file_download", "form_submit", "click_tel", "purchase"];
+
+export async function hasUserSessions(site: string, propertyId: string, date: string): Promise<boolean> {
+  const { rows } = await runQuery<{ n: number }>({
+    query: `SELECT COUNT(*) AS n FROM ${T_USER_SESSIONS}
+      WHERE site = @site AND property_id = @pid AND date = @date`,
+    params: { site, pid: propertyId, date },
+  });
+  return Number(rows[0]?.n ?? 0) > 0;
+}
+
+// events_YYYYMMDD をセッション単位に集約して取り込む。テーブル未着（エクスポート遅延）は
+// 呼び出し側で notFound を握りつぶして翌日に回す。
+export async function aggregateUserSessions(
+  site: string,
+  propertyId: string,
+  date: string // YYYY-MM-DD
+): Promise<number> {
+  if (!/^\d{4,}$/.test(propertyId) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return 0;
+  const suffix = date.replaceAll("-", "");
+  const eventsTable = `\`${GCP_PROJECT}.analytics_${propertyId}.events_${suffix}\``;
+  const { affected } = await runQuery({
+    query: `
+      INSERT INTO ${T_USER_SESSIONS}
+        (site, property_id, date, user_key, user_id, is_identified, session_id, started_at,
+         source, medium, channel, landing_page, pages, page_count, key_events, engagement_secs, fetched_at)
+      WITH ev AS (
+        SELECT
+          user_pseudo_id,
+          user_id,
+          (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS sid,
+          event_name,
+          event_timestamp,
+          (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'page_location') AS page_location,
+          (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'engagement_time_msec') AS engagement_ms,
+          collected_traffic_source.manual_source AS src,
+          collected_traffic_source.manual_medium AS med
+        FROM ${eventsTable}
+      )
+      SELECT
+        @site,
+        @pid,
+        DATE(@date),
+        COALESCE(ANY_VALUE(user_id), user_pseudo_id) AS user_key,
+        ANY_VALUE(user_id) AS user_id,
+        ANY_VALUE(user_id) IS NOT NULL AS is_identified,
+        CAST(sid AS STRING) AS session_id,
+        TIMESTAMP_MICROS(MIN(event_timestamp)) AS started_at,
+        ARRAY_AGG(src IGNORE NULLS ORDER BY event_timestamp LIMIT 1)[SAFE_OFFSET(0)] AS source,
+        ARRAY_AGG(med IGNORE NULLS ORDER BY event_timestamp LIMIT 1)[SAFE_OFFSET(0)] AS medium,
+        CASE
+          WHEN ARRAY_AGG(med IGNORE NULLS ORDER BY event_timestamp LIMIT 1)[SAFE_OFFSET(0)] = 'organic'
+            THEN 'Organic Search'
+          WHEN ARRAY_AGG(med IGNORE NULLS ORDER BY event_timestamp LIMIT 1)[SAFE_OFFSET(0)] IN ('cpc', 'ppc', 'paid')
+            THEN 'Paid Search'
+          WHEN ARRAY_AGG(med IGNORE NULLS ORDER BY event_timestamp LIMIT 1)[SAFE_OFFSET(0)] = 'referral'
+            THEN 'Referral'
+          WHEN ARRAY_AGG(med IGNORE NULLS ORDER BY event_timestamp LIMIT 1)[SAFE_OFFSET(0)] = 'email'
+            THEN 'Email'
+          WHEN ARRAY_AGG(src IGNORE NULLS ORDER BY event_timestamp LIMIT 1)[SAFE_OFFSET(0)] IS NULL
+            THEN 'Direct'
+          ELSE 'その他'
+        END AS channel,
+        SPLIT(REGEXP_REPLACE(
+          ARRAY_AGG(IF(event_name = 'page_view', page_location, NULL) IGNORE NULLS
+            ORDER BY event_timestamp LIMIT 1)[SAFE_OFFSET(0)],
+          r'^https?://[^/]+', ''), '?')[SAFE_OFFSET(0)] AS landing_page,
+        STRING_AGG(
+          IF(event_name = 'page_view',
+            SPLIT(REGEXP_REPLACE(page_location, r'^https?://[^/]+', ''), '?')[SAFE_OFFSET(0)],
+            NULL),
+          ' → ' ORDER BY event_timestamp LIMIT 20) AS pages,
+        COUNTIF(event_name = 'page_view') AS page_count,
+        COUNTIF(event_name IN UNNEST(@keyEvents)) AS key_events,
+        IFNULL(SUM(engagement_ms), 0) / 1000 AS engagement_secs,
+        CURRENT_TIMESTAMP() AS fetched_at
+      FROM ev
+      WHERE sid IS NOT NULL
+      GROUP BY user_pseudo_id, sid`,
+    params: { site, pid: propertyId, date, keyEvents: KEY_EVENT_NAMES },
+    types: { keyEvents: ["STRING"] },
+  });
+  return affected;
+}
+
+export type UserSummary = {
+  user_key: string;
+  is_identified: boolean;
+  first_channel: string;
+  sessions: number;
+  pages: number;
+  key_events: number;
+  avg_engagement_secs: number;
+  last_date: string;
+};
+
+export async function fetchTopUsers(site: string, days: number, limit = 50): Promise<UserSummary[]> {
+  const { rows } = await runQuery<Record<string, unknown>>({
+    query: `
+      SELECT
+        user_key,
+        LOGICAL_OR(is_identified) AS is_identified,
+        ARRAY_AGG(channel ORDER BY started_at LIMIT 1)[SAFE_OFFSET(0)] AS first_channel,
+        COUNT(*) AS sessions,
+        IFNULL(SUM(page_count), 0) AS pages,
+        IFNULL(SUM(key_events), 0) AS key_events,
+        SAFE_DIVIDE(SUM(engagement_secs), COUNT(*)) AS avg_engagement_secs,
+        CAST(MAX(date) AS STRING) AS last_date
+      FROM ${T_USER_SESSIONS}
+      WHERE site = @site AND date >= DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL @days DAY)
+      GROUP BY user_key
+      ORDER BY key_events DESC, sessions DESC, pages DESC
+      LIMIT @lim`,
+    params: { site, days, lim: limit },
+  });
+  return rows.map((r) => ({
+    user_key: String(r.user_key),
+    is_identified: Boolean(r.is_identified),
+    first_channel: String(r.first_channel ?? "—"),
+    sessions: Number(r.sessions ?? 0),
+    pages: Number(r.pages ?? 0),
+    key_events: Number(r.key_events ?? 0),
+    avg_engagement_secs: Number(r.avg_engagement_secs ?? 0),
+    last_date: String(r.last_date ?? ""),
+  }));
+}
+
+export type JourneySession = {
+  date: string;
+  channel: string;
+  source: string | null;
+  medium: string | null;
+  landing_page: string | null;
+  pages: string | null;
+  page_count: number;
+  key_events: number;
+  engagement_secs: number;
+};
+
+export async function fetchUserJourney(site: string, userKey: string): Promise<JourneySession[]> {
+  const { rows } = await runQuery<Record<string, unknown>>({
+    query: `
+      SELECT CAST(date AS STRING) AS date, channel, source, medium, landing_page, pages,
+        page_count, key_events, engagement_secs
+      FROM ${T_USER_SESSIONS}
+      WHERE site = @site AND user_key = @userKey
+      ORDER BY started_at
+      LIMIT 30`,
+    params: { site, userKey },
+  });
+  return rows.map((r) => ({
+    date: String(r.date),
+    channel: String(r.channel ?? "—"),
+    source: (r.source as string) ?? null,
+    medium: (r.medium as string) ?? null,
+    landing_page: (r.landing_page as string) ?? null,
+    pages: (r.pages as string) ?? null,
+    page_count: Number(r.page_count ?? 0),
+    key_events: Number(r.key_events ?? 0),
+    engagement_secs: Number(r.engagement_secs ?? 0),
+  }));
+}
+
+export type CvPath = { pattern: string; users: number; avg_sessions: number };
+export type CvStats = { cv_users: number; avg_sessions: number; avg_days_to_cv: number };
+
+// CVしたユーザーの「チャネル遷移パターン」を集計する（王道経路）。
+// セッションごとのチャネルを → で連結し、CVが発生したセッションに ✓ を付ける。
+export async function fetchCvPaths(
+  site: string,
+  days: number
+): Promise<{ paths: CvPath[]; stats: CvStats }> {
+  const { rows } = await runQuery<Record<string, unknown>>({
+    query: `
+      WITH sess AS (
+        SELECT * FROM ${T_USER_SESSIONS}
+        WHERE site = @site AND date >= DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL @days DAY)
+      ), per_user AS (
+        SELECT
+          user_key,
+          COUNT(*) AS sessions,
+          MIN(started_at) AS first_seen,
+          MIN(IF(key_events > 0, started_at, NULL)) AS first_cv,
+          STRING_AGG(CONCAT(channel, IF(key_events > 0, '✓', '')), '→' ORDER BY started_at LIMIT 8)
+            AS pattern
+        FROM sess GROUP BY user_key
+      )
+      SELECT pattern, COUNT(*) AS users, AVG(sessions) AS avg_sessions,
+        (SELECT COUNT(*) FROM per_user WHERE first_cv IS NOT NULL) AS cv_users,
+        (SELECT AVG(sessions) FROM per_user WHERE first_cv IS NOT NULL) AS cv_avg_sessions,
+        (SELECT AVG(TIMESTAMP_DIFF(first_cv, first_seen, HOUR) / 24)
+          FROM per_user WHERE first_cv IS NOT NULL) AS avg_days_to_cv
+      FROM per_user
+      WHERE first_cv IS NOT NULL
+      GROUP BY pattern
+      ORDER BY users DESC
+      LIMIT 10`,
+    params: { site, days },
+  });
+  const first = rows[0] ?? {};
+  return {
+    paths: rows.map((r) => ({
+      pattern: String(r.pattern ?? ""),
+      users: Number(r.users ?? 0),
+      avg_sessions: Number(r.avg_sessions ?? 0),
+    })),
+    stats: {
+      cv_users: Number(first.cv_users ?? 0),
+      avg_sessions: Number(first.cv_avg_sessions ?? 0),
+      avg_days_to_cv: Number(first.avg_days_to_cv ?? 0),
+    },
+  };
+}
