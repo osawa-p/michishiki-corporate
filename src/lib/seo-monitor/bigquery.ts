@@ -28,6 +28,21 @@ const T_GA4_CH = `\`${GCP_PROJECT}.${BQ_DATASET}.ga4_channel_daily\``;
 const T_GA4_PAGE = `\`${GCP_PROJECT}.${BQ_DATASET}.ga4_page_daily\``;
 const T_PROPOSALS = `\`${GCP_PROJECT}.${BQ_DATASET}.seo_proposals\``;
 
+// ストリーミングinsertは1リクエスト10MB上限があるため、大きな配列は分割して送る。
+// 大規模サイト（rasik/shift-ai）は1日のクエリ行が4〜7万行になり、一括insertだと
+// 「Request Entity Too Large」で失敗する。
+const INSERT_CHUNK_ROWS = 2000;
+
+async function insertChunked(table: string, rows: object[]): Promise<number> {
+  for (let i = 0; i < rows.length; i += INSERT_CHUNK_ROWS) {
+    await getBigQuery()
+      .dataset(BQ_DATASET)
+      .table(table)
+      .insert(rows.slice(i, i + INSERT_CHUNK_ROWS));
+  }
+  return rows.length;
+}
+
 // BQ の DATE/TIMESTAMP は {value: string} で返ることがあるため文字列へ正規化する
 function bqString(v: unknown): string | null {
   if (v == null) return null;
@@ -217,9 +232,7 @@ export async function hasQueryStats(site: string, date: string): Promise<boolean
 }
 
 export async function insertQueryStats(rows: GscQueryStatRow[]): Promise<number> {
-  if (rows.length === 0) return 0;
-  await getBigQuery().dataset(BQ_DATASET).table("gsc_query_stats").insert(rows);
-  return rows.length;
+  return insertChunked("gsc_query_stats", rows);
 }
 
 export type QuerySummary = {
@@ -302,9 +315,7 @@ export async function fetchQueryPages(site: string, days: number): Promise<Query
 // ───────────────────────────────────────────────────────────
 
 export async function insertInspections(rows: GscInspectionRow[]): Promise<number> {
-  if (rows.length === 0) return 0;
-  await getBigQuery().dataset(BQ_DATASET).table("gsc_url_inspections").insert(rows);
-  return rows.length;
+  return insertChunked("gsc_url_inspections", rows);
 }
 
 export type LatestInspection = {
@@ -399,15 +410,11 @@ export async function hasGa4Daily(site: string, date: string, propertyId: string
 }
 
 export async function insertGa4Channel(rows: Ga4ChannelRow[]): Promise<number> {
-  if (rows.length === 0) return 0;
-  await getBigQuery().dataset(BQ_DATASET).table("ga4_channel_daily").insert(rows);
-  return rows.length;
+  return insertChunked("ga4_channel_daily", rows);
 }
 
 export async function insertGa4Pages(rows: Ga4PageRow[]): Promise<number> {
-  if (rows.length === 0) return 0;
-  await getBigQuery().dataset(BQ_DATASET).table("ga4_page_daily").insert(rows);
-  return rows.length;
+  return insertChunked("ga4_page_daily", rows);
 }
 
 export type Ga4Summary = {

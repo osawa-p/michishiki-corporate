@@ -1,9 +1,9 @@
 // SEO観測ツールの日次取り込みAPI（Vercel Cronが毎朝叩く）。
-// seo_sites の有効サイトごとに以下を実行する:
-//   1. sitemap 更新 → seo_urls 台帳へ新URLを追加
-//   2. GSC 検索アナリティクス（3日前・確定分）→ gsc_query_stats（冪等）
-//   3. URL検査ローテーション（1日あたり inspection_daily_limit 件、古い順に巡回）
-//   4. GA4 日次（2日前）→ ga4_channel_daily / ga4_page_daily（冪等）
+// 実行は2フェーズ構成:
+//   フェーズA（全サイト・必ず実行）: URL台帳更新 → GSC検索アナリティクス（3日前・冪等）
+//     → GA4日次（2日前・プロパティ単位で冪等）
+//   フェーズB（残り時間で実行）: URL検査ローテーション。日替わりでサイトの処理順を回し、
+//     並列4リクエストで検査する（時間切れでも翌日は別のサイトから始まるため飢餓しない）
 // middleware は本パスを認証対象外にしており、CRON_SECRET の Bearer 照合が唯一のゲート。
 import { NextResponse } from "next/server";
 import {
@@ -29,13 +29,15 @@ import {
 import { fetchSitemapUrls, defaultSitemapUrl } from "@/lib/seo-monitor/sitemap";
 import { invalidateSeoCache } from "@/lib/seo-monitor/cached";
 import { ga4PropertyIds } from "@/lib/seo-monitor/types";
-import type { Ga4ChannelRow, Ga4PageRow, GscInspectionRow } from "@/lib/seo-monitor/types";
+import type { Ga4ChannelRow, Ga4PageRow, GscInspectionRow, SeoSite } from "@/lib/seo-monitor/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
 // 新しい処理を始めない残り時間のしきい値（maxDuration に対する余白）
 const TIME_BUDGET_MS = 240_000;
+// URL検査の並列数（クォータは600件/分なので余裕を残して並列4）
+const INSPECT_CONCURRENCY = 4;
 
 // JSTでn日前の日付（YYYY-MM-DD）
 function jstDateAgo(days: number): string {
@@ -62,7 +64,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  let sites;
+  let sites: SeoSite[];
   try {
     sites = await listSeoSites();
   } catch (err) {
@@ -74,20 +76,23 @@ export async function GET(request: Request) {
   const fetchedAt = new Date().toISOString();
   const gscDate = jstDateAgo(3); // GSCは約3日遅れで確定
   const ga4Date = jstDateAgo(2); // GA4は約1〜2日遅れ
-  const summaries: SiteSummary[] = [];
   let timedOut = false;
 
   const timeLeft = () => TIME_BUDGET_MS - (Date.now() - startedAt);
+  const summaryBy = new Map<string, SiteSummary>(
+    sites.map((s) => [s.site, { site: s.site, errors: [] }])
+  );
 
+  // ───────────────────────────────────────────────────────────
+  // フェーズA: 全サイトの日次データ（軽い処理を先に確実に終わらせる）
+  // ───────────────────────────────────────────────────────────
   for (const s of sites) {
     if (timeLeft() <= 0) {
       timedOut = true;
       break;
     }
-    const sum: SiteSummary = { site: s.site, errors: [] };
-    summaries.push(sum);
+    const sum = summaryBy.get(s.site)!;
 
-    // ── GSC 系（gsc_enabled のサイトのみ） ──
     if (s.gsc_enabled && s.gsc_site_url) {
       // 1) URL台帳の更新。sitemap取得はサイト本体へのアクセスなので crawl_enabled のサイトのみ。
       //    クロール不可サイト（例: RASIK）はGSC検索結果に出たURLから台帳を構築する。
@@ -131,56 +136,9 @@ export async function GET(request: Request) {
         console.error(`[seo-monitor] 検索アナリティクス取得に失敗 (${s.site}):`, err);
         sum.errors.push("search-analytics");
       }
-
-      // 3) URL検査ローテーション（時間予算内で1件ずつ。失敗は打ち切って翌日に回す）
-      try {
-        const targets = await listInspectionTargets(s.site, s.inspection_daily_limit);
-        const inspRows: GscInspectionRow[] = [];
-        const marks: Array<{ url: string; indexTarget: boolean; excludeReason: string | null }> = [];
-        for (const url of targets) {
-          if (timeLeft() <= 30_000) {
-            timedOut = true;
-            break;
-          }
-          try {
-            const r = await inspectUrl(s.gsc_site_url, url);
-            const cls = classifyIndexTarget(url, r);
-            inspRows.push({
-              site: s.site,
-              url,
-              inspected_at: fetchedAt,
-              verdict: r.verdict,
-              coverage_state: r.coverageState,
-              indexing_state: r.indexingState,
-              page_fetch_state: r.pageFetchState,
-              robots_txt_state: r.robotsTxtState,
-              google_canonical: r.googleCanonical,
-              user_canonical: r.userCanonical,
-              canonical_match:
-                r.googleCanonical == null
-                  ? null
-                  : cls.excludeReason !== "正規URLが別（canonical不一致）",
-              last_crawl_time: r.lastCrawlTime,
-            });
-            marks.push({ url, indexTarget: cls.indexTarget, excludeReason: cls.excludeReason });
-          } catch (err) {
-            // クォータ超過などはサイト単位で打ち切り（残りは翌日のローテーションで先頭になる）
-            console.error(`[seo-monitor] URL検査に失敗 (${s.site} ${url}):`, err);
-            sum.errors.push("inspection");
-            break;
-          }
-        }
-        await insertInspections(inspRows);
-        await markUrlsInspected(s.site, marks);
-        sum.inspected = inspRows.length;
-        sum.excluded = marks.filter((m) => !m.indexTarget).length;
-      } catch (err) {
-        console.error(`[seo-monitor] URL検査ローテーションに失敗 (${s.site}):`, err);
-        sum.errors.push("inspection-rotation");
-      }
     }
 
-    // ── GA4 系（カンマ区切りの複数プロパティをそれぞれ取得し、表示時に合算する） ──
+    // GA4（カンマ区切りの複数プロパティをそれぞれ取得し、表示時に合算する）
     if (s.ga4_enabled && timeLeft() > 0) {
       for (const pid of ga4PropertyIds(s)) {
         try {
@@ -244,8 +202,81 @@ export async function GET(request: Request) {
     }
   }
 
+  // ───────────────────────────────────────────────────────────
+  // フェーズB: URL検査ローテーション（残り時間で実行）
+  // 処理順を日替わりで回すことで、時間切れでも特定サイトが飢餓しないようにする。
+  // ───────────────────────────────────────────────────────────
+  const gscSites = sites.filter((s) => s.gsc_enabled && s.gsc_site_url);
+  const offset = gscSites.length > 0 ? new Date().getUTCDate() % gscSites.length : 0;
+  const rotated = [...gscSites.slice(offset), ...gscSites.slice(0, offset)];
+
+  for (const s of rotated) {
+    if (timeLeft() <= 30_000) {
+      timedOut = true;
+      break;
+    }
+    const sum = summaryBy.get(s.site)!;
+    try {
+      const targets = await listInspectionTargets(s.site, s.inspection_daily_limit);
+      const inspRows: GscInspectionRow[] = [];
+      const marks: Array<{ url: string; indexTarget: boolean; excludeReason: string | null }> = [];
+      let aborted = false;
+
+      for (let i = 0; i < targets.length && !aborted; i += INSPECT_CONCURRENCY) {
+        if (timeLeft() <= 30_000) {
+          timedOut = true;
+          break;
+        }
+        const batch = targets.slice(i, i + INSPECT_CONCURRENCY);
+        const results = await Promise.allSettled(
+          batch.map((url) => inspectUrl(s.gsc_site_url!, url))
+        );
+        for (let j = 0; j < results.length; j++) {
+          const res = results[j];
+          const url = batch[j];
+          if (res.status === "rejected") {
+            // クォータ超過などはサイト単位で打ち切り（残りは翌日のローテーションで先頭になる）
+            console.error(`[seo-monitor] URL検査に失敗 (${s.site} ${url}):`, res.reason);
+            sum.errors.push("inspection");
+            aborted = true;
+            break;
+          }
+          const r = res.value;
+          const cls = classifyIndexTarget(url, r);
+          inspRows.push({
+            site: s.site,
+            url,
+            inspected_at: fetchedAt,
+            verdict: r.verdict,
+            coverage_state: r.coverageState,
+            indexing_state: r.indexingState,
+            page_fetch_state: r.pageFetchState,
+            robots_txt_state: r.robotsTxtState,
+            google_canonical: r.googleCanonical,
+            user_canonical: r.userCanonical,
+            canonical_match:
+              r.googleCanonical == null
+                ? null
+                : cls.excludeReason !== "正規URLが別（canonical不一致）",
+            last_crawl_time: r.lastCrawlTime,
+          });
+          marks.push({ url, indexTarget: cls.indexTarget, excludeReason: cls.excludeReason });
+        }
+      }
+
+      await insertInspections(inspRows);
+      await markUrlsInspected(s.site, marks);
+      sum.inspected = inspRows.length;
+      sum.excluded = marks.filter((m) => !m.indexTarget).length;
+    } catch (err) {
+      console.error(`[seo-monitor] URL検査ローテーションに失敗 (${s.site}):`, err);
+      sum.errors.push("inspection-rotation");
+    }
+  }
+
   invalidateSeoCache();
 
+  const summaries = [...summaryBy.values()];
   const failed = summaries.filter((s) => s.errors.length > 0).length;
   // 全サイト失敗（かつ処理対象があった）ときのみ500（部分失敗は200で summary に残す）
   const ok = summaries.length === 0 || failed < summaries.length;
