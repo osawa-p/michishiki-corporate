@@ -145,6 +145,7 @@ const TABLES = [
       { name: "pages", type: "STRING" },
       { name: "page_count", type: "INT64" },
       { name: "key_events", type: "INT64" },
+      { name: "key_event_detail", type: "STRING" },
       { name: "engagement_secs", type: "FLOAT64" },
       { name: "fetched_at", type: "TIMESTAMP" },
     ],
