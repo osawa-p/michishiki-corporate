@@ -637,8 +637,17 @@ export async function updateProposal(
 
 const T_USER_SESSIONS = `\`${GCP_PROJECT}.${BQ_DATASET}.ga4_user_sessions\``;
 
-// キーイベントとして数えるイベント名（サイト別設定は将来の拡張）
-const KEY_EVENT_NAMES = ["generate_lead", "file_download", "form_submit", "click_tel", "purchase"];
+// キーイベントとして数えるイベント名（サイト別設定は将来の拡張）。
+// ServiceSite_click は SHIFT AI のサービスサイト遷移クリック（クロスドメインの受け渡し地点）。
+// 他サイトはこのイベントを送出しないため、全サイト共通リストに含めても影響はない。
+const KEY_EVENT_NAMES = [
+  "generate_lead",
+  "file_download",
+  "form_submit",
+  "click_tel",
+  "purchase",
+  "ServiceSite_click",
+];
 
 export async function hasUserSessions(site: string, propertyId: string, date: string): Promise<boolean> {
   const { rows } = await runQuery<{ n: number }>({
