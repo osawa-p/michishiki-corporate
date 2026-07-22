@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getAccess } from "@/lib/rank-tracker/auth";
+import { getAccess, canViewDomain } from "@/lib/rank-tracker/auth";
 import {
   getSeoSitesCached,
   getGa4SummaryCached,
@@ -27,9 +27,9 @@ export default async function Ga4Page({
 }: {
   searchParams: Promise<{ site?: string; days?: string }>;
 }) {
+  // 許可サイト（allowed_domains）のみ閲覧可。admin は全サイト
   const access = await getAccess();
   if (!access) redirect("/rank-tracker/login");
-  if (access.role !== "admin") redirect("/rank-tracker/dashboard");
 
   const { site: siteParam, days: daysParam } = await searchParams;
   const daysNum = Number(daysParam);
@@ -44,7 +44,7 @@ export default async function Ga4Page({
     loadError = true;
   }
 
-  const ga4Sites = sites.filter((s) => s.ga4_enabled);
+  const ga4Sites = sites.filter((s) => s.ga4_enabled && canViewDomain(access, s.site));
   const selected = ga4Sites.find((s) => s.site === siteParam) ?? ga4Sites[0] ?? null;
 
   let data: Ga4Data | null = null;
@@ -97,14 +97,20 @@ export default async function Ga4Page({
             </p>
           ) : !selected ? (
             <div className="border border-line bg-white p-8 text-sm text-ink-soft leading-relaxed">
-              <p>GA4取得が有効なサイトがまだありません。</p>
-              <p className="mt-2">
-                <Link href="/rank-tracker/seo/settings" className="text-bronze-deep underline">
-                  SEO設定
-                </Link>
-                でサイトを登録し、GA4プロパティIDを設定してください（サービスアカウントを GA4
-                プロパティの閲覧者に追加しておく必要があります）。
-              </p>
+              {access.role === "admin" ? (
+                <>
+                  <p>GA4取得が有効なサイトがまだありません。</p>
+                  <p className="mt-2">
+                    <Link href="/rank-tracker/seo/settings" className="text-bronze-deep underline">
+                      SEO設定
+                    </Link>
+                    でサイトを登録し、GA4プロパティIDを設定してください（サービスアカウントを GA4
+                    プロパティの閲覧者に追加しておく必要があります）。
+                  </p>
+                </>
+              ) : (
+                <p>閲覧できるサイトがありません。対象サイトの追加は管理者にご相談ください。</p>
+              )}
             </div>
           ) : (
             <Ga4Workspace site={selected.site} data={data!} days={DAYS} />

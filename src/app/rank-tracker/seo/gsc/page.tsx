@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getAccess } from "@/lib/rank-tracker/auth";
+import { getAccess, canViewDomain } from "@/lib/rank-tracker/auth";
 import {
   getSeoSitesCached,
   getCoverageCached,
@@ -26,10 +26,9 @@ export default async function GscPage({
 }: {
   searchParams: Promise<{ site?: string; days?: string }>;
 }) {
-  // SEO観測はPhase 1では運用者（管理者）専用
+  // 許可サイト（allowed_domains）のみ閲覧可。admin は全サイト
   const access = await getAccess();
   if (!access) redirect("/rank-tracker/login");
-  if (access.role !== "admin") redirect("/rank-tracker/dashboard");
 
   const { site: siteParam, days: daysParam } = await searchParams;
   const daysNum = Number(daysParam);
@@ -44,7 +43,7 @@ export default async function GscPage({
     loadError = true;
   }
 
-  const gscSites = sites.filter((s) => s.gsc_enabled);
+  const gscSites = sites.filter((s) => s.gsc_enabled && canViewDomain(access, s.site));
   const selected = gscSites.find((s) => s.site === siteParam) ?? gscSites[0] ?? null;
 
   let data: GscData | null = null;
@@ -96,14 +95,20 @@ export default async function GscPage({
             </p>
           ) : !selected ? (
             <div className="border border-line bg-white p-8 text-sm text-ink-soft leading-relaxed">
-              <p>GSC取得が有効なサイトがまだありません。</p>
-              <p className="mt-2">
-                <Link href="/rank-tracker/seo/settings" className="text-bronze-deep underline">
-                  SEO設定
-                </Link>
-                でサイトを登録し、GSC取得を有効にしてください（サービスアカウントを Search Console
-                プロパティに追加しておく必要があります）。
-              </p>
+              {access.role === "admin" ? (
+                <>
+                  <p>GSC取得が有効なサイトがまだありません。</p>
+                  <p className="mt-2">
+                    <Link href="/rank-tracker/seo/settings" className="text-bronze-deep underline">
+                      SEO設定
+                    </Link>
+                    でサイトを登録し、GSC取得を有効にしてください（サービスアカウントを Search Console
+                    プロパティに追加しておく必要があります）。
+                  </p>
+                </>
+              ) : (
+                <p>閲覧できるサイトがありません。対象サイトの追加は管理者にご相談ください。</p>
+              )}
             </div>
           ) : (
             <GscWorkspace site={selected.site} staleDays={selected.stale_days} days={days} data={data!} />
