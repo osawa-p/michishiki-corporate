@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getAccess } from "@/lib/rank-tracker/auth";
 import { listMembers, type Member } from "@/lib/rank-tracker/members";
 import { getTrackedDomainsCached } from "@/lib/rank-tracker/cached";
+import { getSeoSitesCached } from "@/lib/seo-monitor/cached";
 import MemberManager from "@/components/rank-tracker/MemberManager";
 
 export const dynamic = "force-dynamic";
@@ -21,9 +22,14 @@ export default async function MembersPage() {
   let domains: string[] = [];
   let loadError = false;
   try {
-    const [members, tracked] = await Promise.all([listMembers(), getTrackedDomainsCached()]);
+    // 付与候補 = 順位計測の追跡サイト ∪ SEO観測サイト（GSC/GA4のみのサイトも付与できるように）
+    const [members, tracked, seoSites] = await Promise.all([
+      listMembers(),
+      getTrackedDomainsCached(),
+      getSeoSitesCached(),
+    ]);
     initial = members;
-    domains = tracked.map((d) => d.domain);
+    domains = [...new Set([...tracked.map((d) => d.domain), ...seoSites.map((s) => s.site)])].sort();
   } catch (e) {
     console.error("[rank-tracker] メンバー一覧の取得に失敗:", e);
     loadError = true;

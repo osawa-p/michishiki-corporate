@@ -1,7 +1,7 @@
-// ユーザー単位レポートの経路ビュー用API（管理者専用）。
+// ユーザー単位レポートの経路ビュー用API（許可サイトのみ。admin は全サイト）。
 //   GET ?site=example.com&user=<user_key> → そのユーザーのセッション履歴（時系列）
 import { NextResponse } from "next/server";
-import { requireAdminApi } from "@/lib/rank-tracker/auth";
+import { requireAccessApi, canViewDomain } from "@/lib/rank-tracker/auth";
 import { targetKey, isValidTargetDomain } from "@/lib/rank-tracker/domain";
 import { fetchUserJourney } from "@/lib/seo-monitor/bigquery";
 
@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const { error } = await requireAdminApi();
+  const { access, error } = await requireAccessApi();
   if (error) return error;
 
   const params = new URL(request.url).searchParams;
@@ -17,6 +17,9 @@ export async function GET(request: Request) {
   const user = params.get("user") ?? "";
   if (!isValidTargetDomain(site) || !user || user.length > 200) {
     return NextResponse.json({ ok: false, error: "site / user が不正です。" }, { status: 400 });
+  }
+  if (!canViewDomain(access!, site)) {
+    return NextResponse.json({ ok: false, error: "このサイトの閲覧権限がありません。" }, { status: 403 });
   }
 
   try {
