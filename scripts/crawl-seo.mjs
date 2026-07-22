@@ -93,14 +93,16 @@ for (const { site } of sites) {
   rmSync(outDir, { recursive: true, force: true });
   mkdirSync(outDir, { recursive: true });
 
-  console.log("クロール開始（サイト規模により数分〜数十分）…");
+  console.log("クロール開始（サイト規模により数分〜数時間）…");
   // stdoutは破棄する（SFは進捗ログを大量に出すため、pipeだとmaxBuffer超過で
   // 子プロセスが途中終了する）。結果はエクスポートCSVだけ見れば足りる。
+  // タイムアウトは180分: trimming.michi-biki.jp（約7,800URL）が旧45分では
+  // 毎回時間切れになり、カバレッジが1件も取れていなかった。
   const res = spawnSync(
     SF,
     ["--crawl-sitemap", `https://${site}/sitemap.xml`, "--headless", "--overwrite",
      "--output-folder", outDir, "--export-tabs", "Internal:All"],
-    { stdio: "ignore", timeout: 45 * 60 * 1000 }
+    { stdio: "ignore", timeout: 180 * 60 * 1000 }
   );
   const csvPath = join(outDir, "internal_all.csv");
   if (!existsSync(csvPath)) {
