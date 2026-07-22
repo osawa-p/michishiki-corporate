@@ -318,6 +318,19 @@ export async function insertInspections(rows: GscInspectionRow[]): Promise<numbe
   return insertChunked("gsc_url_inspections", rows);
 }
 
+// JST当日に実施済みの検査数。チェーン実行（cron/inspect の複数ラウンド）が
+// サイトの日次上限（inspection_daily_limit）をまたいで消費しないための会計。
+// 失敗した検査は gsc_url_inspections に入らないため、成功数だけを数える。
+export async function countInspectionsToday(site: string): Promise<number> {
+  const { rows } = await runQuery<{ n: number }>({
+    query: `
+      SELECT COUNT(*) AS n FROM ${T_INSPECT}
+      WHERE site = @site AND DATE(inspected_at, 'Asia/Tokyo') = CURRENT_DATE('Asia/Tokyo')`,
+    params: { site },
+  });
+  return Number(rows[0]?.n ?? 0);
+}
+
 export type LatestInspection = {
   url: string;
   inspected_at: string;
