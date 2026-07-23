@@ -9,6 +9,10 @@ import {
   fetchLatestCoverage,
   fetchQuerySummary,
   fetchQueryPages,
+  fetchOpportunityQueries,
+  fetchCtrGapQueries,
+  fetchMovingQueries,
+  fetchCvQueries,
   fetchGa4Summary,
   fetchTrafficSeries,
   fetchGa4Channels,
@@ -19,6 +23,10 @@ import {
   type LatestInspection,
   type QuerySummary,
   type QueryPageRow,
+  type OpportunityQuery,
+  type CtrGapQuery,
+  type MovingQuery,
+  type CvQueryRow,
   type Ga4Summary,
   type TrafficPoint,
   type ChannelStat,
@@ -75,6 +83,34 @@ export function getQueryPagesCached(site: string, days: number): Promise<QueryPa
   return unstable_cache(
     () => fetchQueryPages(site, days),
     ["seo-query-pages", site, String(days)],
+    opts
+  )();
+}
+
+export function getOpportunityQueriesCached(site: string, days: number): Promise<OpportunityQuery[]> {
+  return unstable_cache(
+    () => fetchOpportunityQueries(site, days),
+    ["seo-opportunity", site, String(days)],
+    opts
+  )();
+}
+
+export function getCtrGapQueriesCached(site: string, days: number): Promise<CtrGapQuery[]> {
+  return unstable_cache(
+    () => fetchCtrGapQueries(site, days),
+    ["seo-ctr-gap", site, String(days)],
+    opts
+  )();
+}
+
+export function getMovingQueriesCached(site: string): Promise<MovingQuery[]> {
+  return unstable_cache(() => fetchMovingQueries(site), ["seo-moving", site], opts)();
+}
+
+export function getCvQueriesCached(site: string, days: number): Promise<CvQueryRow[]> {
+  return unstable_cache(
+    () => fetchCvQueries(site, days),
+    ["seo-cv-queries", site, String(days)],
     opts
   )();
 }

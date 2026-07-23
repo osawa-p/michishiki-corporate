@@ -900,3 +900,207 @@ export async function fetchCvPaths(
     },
   };
 }
+
+// ───────────────────────────────────────────────────────────
+// 改善分析（GSC/GA4のUIでは見られないクロス集計）
+// ───────────────────────────────────────────────────────────
+
+// 「あと少しで上位」クエリ: 4〜20位でインプレッションが多い順。
+// 順位を数個上げるだけでクリックが大きく伸びる候補
+export type OpportunityQuery = {
+  query: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  position: number;
+  top_page: string;
+};
+
+export async function fetchOpportunityQueries(
+  site: string,
+  days: number
+): Promise<OpportunityQuery[]> {
+  const { rows } = await runQuery<OpportunityQuery>({
+    query: `
+      SELECT
+        query,
+        SUM(impressions) AS impressions,
+        SUM(clicks) AS clicks,
+        SAFE_DIVIDE(SUM(clicks), SUM(impressions)) AS ctr,
+        SAFE_DIVIDE(SUM(position * impressions), SUM(impressions)) AS position,
+        ARRAY_AGG(page ORDER BY impressions DESC LIMIT 1)[OFFSET(0)] AS top_page
+      FROM ${T_QUERY}
+      WHERE site = @site AND date >= DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL @days DAY)
+      GROUP BY query
+      HAVING position BETWEEN 4 AND 20 AND impressions >= 50
+      ORDER BY impressions DESC
+      LIMIT 50`,
+    params: { site, days },
+  });
+  return rows.map((r) => ({
+    query: r.query,
+    impressions: Number(r.impressions),
+    clicks: Number(r.clicks),
+    ctr: Number(r.ctr ?? 0),
+    position: Number(r.position ?? 0),
+    top_page: String(r.top_page ?? ""),
+  }));
+}
+
+// CTR改善候補: 同順位帯（四捨五入した順位）のサイト内中央値CTRと比べて
+// 大きく劣るクエリ。タイトル/ディスクリプション改善の優先度付けに使う。
+// lost_clicks = (中央値CTR − 実CTR) × 表示回数 ＝ 取り逃しているクリック数の推定
+export type CtrGapQuery = {
+  query: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  median_ctr: number;
+  position: number;
+  lost_clicks: number;
+};
+
+export async function fetchCtrGapQueries(site: string, days: number): Promise<CtrGapQuery[]> {
+  const { rows } = await runQuery<CtrGapQuery>({
+    query: `
+      WITH q AS (
+        SELECT
+          query,
+          SUM(impressions) AS impressions,
+          SUM(clicks) AS clicks,
+          SAFE_DIVIDE(SUM(clicks), SUM(impressions)) AS ctr,
+          SAFE_DIVIDE(SUM(position * impressions), SUM(impressions)) AS position
+        FROM ${T_QUERY}
+        WHERE site = @site AND date >= DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL @days DAY)
+        GROUP BY query
+        HAVING impressions >= 100 AND position <= 10.5
+      ),
+      band AS (
+        SELECT CAST(ROUND(position) AS INT64) AS b,
+               APPROX_QUANTILES(ctr, 2)[OFFSET(1)] AS med
+        FROM q GROUP BY b
+      )
+      SELECT
+        q.query, q.impressions, q.clicks, q.ctr,
+        band.med AS median_ctr, q.position,
+        CAST((band.med - q.ctr) * q.impressions AS INT64) AS lost_clicks
+      FROM q JOIN band ON CAST(ROUND(q.position) AS INT64) = band.b
+      WHERE q.ctr < band.med * 0.5
+      ORDER BY lost_clicks DESC
+      LIMIT 50`,
+    params: { site, days },
+  });
+  return rows.map((r) => ({
+    query: r.query,
+    impressions: Number(r.impressions),
+    clicks: Number(r.clicks),
+    ctr: Number(r.ctr ?? 0),
+    median_ctr: Number(r.median_ctr ?? 0),
+    position: Number(r.position ?? 0),
+    lost_clicks: Number(r.lost_clicks ?? 0),
+  }));
+}
+
+// 順位変動クエリ: 直近7日と前7日の加重平均順位を比較。delta > 0 が上昇。
+// GSCのUIは期間比較の並べ替えが弱く、変動幅ランキングはAPI集計ならでは
+export type MovingQuery = {
+  query: string;
+  impressions: number;
+  pos_prev: number;
+  pos_cur: number;
+  delta: number;
+};
+
+export async function fetchMovingQueries(site: string): Promise<MovingQuery[]> {
+  const { rows } = await runQuery<MovingQuery>({
+    query: `
+      WITH cur AS (
+        SELECT query, SUM(impressions) AS imp,
+               SAFE_DIVIDE(SUM(position * impressions), SUM(impressions)) AS pos
+        FROM ${T_QUERY}
+        WHERE site = @site AND date >= DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 7 DAY)
+        GROUP BY query HAVING imp >= 50
+      ),
+      prev AS (
+        SELECT query, SUM(impressions) AS imp,
+               SAFE_DIVIDE(SUM(position * impressions), SUM(impressions)) AS pos
+        FROM ${T_QUERY}
+        WHERE site = @site
+          AND date >= DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 14 DAY)
+          AND date < DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 7 DAY)
+        GROUP BY query HAVING imp >= 50
+      )
+      SELECT cur.query, cur.imp AS impressions,
+             prev.pos AS pos_prev, cur.pos AS pos_cur,
+             prev.pos - cur.pos AS delta
+      FROM cur JOIN prev USING (query)
+      WHERE ABS(prev.pos - cur.pos) >= 2
+      ORDER BY delta DESC
+      LIMIT 60`,
+    params: { site },
+  });
+  return rows.map((r) => ({
+    query: r.query,
+    impressions: Number(r.impressions),
+    pos_prev: Number(r.pos_prev ?? 0),
+    pos_cur: Number(r.pos_cur ?? 0),
+    delta: Number(r.delta ?? 0),
+  }));
+}
+
+// CV貢献クエリ: GA4でCV（キーイベント）が発生しているランディングページに、
+// どの検索クエリから流入しているかの突き合わせ（GSC×GA4のクロスはUIでは不可能）。
+// GSCのクリックとGA4のセッションは計測方式が違うため、あくまで推定の対応付け
+export type CvQueryRow = {
+  page: string;
+  cv: number;
+  sessions: number;
+  query: string;
+  clicks: number;
+  impressions: number;
+  position: number;
+};
+
+export async function fetchCvQueries(site: string, days: number): Promise<CvQueryRow[]> {
+  const { rows } = await runQuery<CvQueryRow>({
+    query: `
+      WITH cvp AS (
+        SELECT IF(RTRIM(page, '/') = '', '/', RTRIM(page, '/')) AS path,
+               SUM(key_events) AS cv, SUM(sessions) AS sessions
+        FROM ${T_GA4_PAGE}
+        WHERE site = @site AND date >= DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL @days DAY)
+        GROUP BY path
+        HAVING cv > 0
+      ),
+      gq AS (
+        SELECT
+          IF(RTRIM(IFNULL(REGEXP_EXTRACT(page, r'^https?://[^/]+(/[^?#]*)'), '/'), '/') = '',
+             '/',
+             RTRIM(IFNULL(REGEXP_EXTRACT(page, r'^https?://[^/]+(/[^?#]*)'), '/'), '/')) AS path,
+          query,
+          SUM(impressions) AS impressions,
+          SUM(clicks) AS clicks,
+          SAFE_DIVIDE(SUM(position * impressions), SUM(impressions)) AS position
+        FROM ${T_QUERY}
+        WHERE site = @site AND date >= DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL @days DAY)
+        GROUP BY path, query
+        HAVING clicks > 0
+      )
+      SELECT c.path AS page, c.cv, c.sessions,
+             g.query, g.clicks, g.impressions, g.position
+      FROM cvp c JOIN gq g ON c.path = g.path
+      QUALIFY ROW_NUMBER() OVER (PARTITION BY c.path ORDER BY g.clicks DESC) <= 5
+      ORDER BY c.cv DESC, c.path, g.clicks DESC
+      LIMIT 60`,
+    params: { site, days },
+  });
+  return rows.map((r) => ({
+    page: String(r.page),
+    cv: Number(r.cv),
+    sessions: Number(r.sessions),
+    query: r.query,
+    clicks: Number(r.clicks),
+    impressions: Number(r.impressions),
+    position: Number(r.position ?? 0),
+  }));
+}
