@@ -71,6 +71,9 @@ export default function GscWorkspace({
   data: GscData;
 }) {
   const [tab, setTab] = useState<TabKey>("summary");
+  // クエリ絞り込みは「入力値」と「適用値」を分ける。クエリ数が多いサイトでは
+  // 1キーごとの全件フィルタ＋再描画が重いため、ボタン/Enterで明示的に適用する
+  const [kwInput, setKwInput] = useState("");
   const [kw, setKw] = useState("");
   const [copiedQuery, setCopiedQuery] = useState<string | null>(null);
 
@@ -229,11 +232,34 @@ export default function GscWorkspace({
               <h2 className="text-sm font-semibold">クエリ別（直近{days}日）</h2>
               <input
                 type="text"
-                value={kw}
-                onChange={(e) => setKw(e.target.value)}
+                value={kwInput}
+                onChange={(e) => setKwInput(e.target.value)}
+                onKeyDown={(e) => {
+                  // IMEの変換確定Enterでは適用しない
+                  if (e.key === "Enter" && !e.nativeEvent.isComposing) setKw(kwInput.trim());
+                }}
                 placeholder="キーワードで絞り込み"
                 className="border border-line bg-white px-2 py-1 text-xs w-48 focus-visible:outline-2 focus-visible:outline-bronze-deep"
               />
+              <button
+                type="button"
+                onClick={() => setKw(kwInput.trim())}
+                className="px-3 py-1 text-xs font-semibold bg-bronze-deep text-white hover:opacity-90 transition-opacity"
+              >
+                絞り込み
+              </button>
+              {kw && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setKwInput("");
+                    setKw("");
+                  }}
+                  className="text-xs text-bronze-deep underline hover:no-underline"
+                >
+                  クリア
+                </button>
+              )}
               <span className="text-[11px] text-ink-faint">
                 {nf(filteredQueries.length)} / {nf(queries.length)} 件
               </span>
