@@ -11,6 +11,10 @@ import {
   getStaleUrlsCached,
   getQuerySummaryCached,
   getQueryPagesCached,
+  getOpportunityQueriesCached,
+  getCtrGapQueriesCached,
+  getMovingQueriesCached,
+  getCvQueriesCached,
 } from "@/lib/seo-monitor/cached";
 import GscWorkspace, { type GscData } from "@/components/seo-monitor/GscWorkspace";
 import SeoSitePicker from "@/components/seo-monitor/SeoSitePicker";
@@ -57,15 +61,20 @@ export default async function GscPage({
   let data: GscData | null = null;
   if (selected) {
     try {
-      const [coverage, rotation, inspections, stale, queries, queryPages] = await Promise.all([
-        getCoverageCached(selected.site),
-        getRotationProgressCached(selected.site),
-        getLatestInspectionsCached(selected.site),
-        getStaleUrlsCached(selected.site, selected.stale_days),
-        getQuerySummaryCached(selected.site, days),
-        getQueryPagesCached(selected.site, days),
-      ]);
-      data = { coverage, rotation, inspections, stale, queries, queryPages };
+      const [coverage, rotation, inspections, stale, queries, queryPages, opportunity, ctrGap, moving, cvQueries] =
+        await Promise.all([
+          getCoverageCached(selected.site),
+          getRotationProgressCached(selected.site),
+          getLatestInspectionsCached(selected.site),
+          getStaleUrlsCached(selected.site, selected.stale_days),
+          getQuerySummaryCached(selected.site, days),
+          getQueryPagesCached(selected.site, days),
+          getOpportunityQueriesCached(selected.site, days),
+          getCtrGapQueriesCached(selected.site, days),
+          getMovingQueriesCached(selected.site),
+          getCvQueriesCached(selected.site, days),
+        ]);
+      data = { coverage, rotation, inspections, stale, queries, queryPages, opportunity, ctrGap, moving, cvQueries };
     } catch (e) {
       console.error("[seo-monitor] GSCデータの取得に失敗:", e);
       loadError = true;

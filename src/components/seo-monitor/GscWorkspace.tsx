@@ -6,6 +6,10 @@ import type {
   LatestInspection,
   QuerySummary,
   QueryPageRow,
+  OpportunityQuery,
+  CtrGapQuery,
+  MovingQuery,
+  CvQueryRow,
 } from "@/lib/seo-monitor/bigquery";
 import type { CoverageSnapshotRow } from "@/lib/seo-monitor/types";
 
@@ -16,6 +20,10 @@ export type GscData = {
   stale: LatestInspection[];
   queries: QuerySummary[];
   queryPages: QueryPageRow[];
+  opportunity: OpportunityQuery[];
+  ctrGap: CtrGapQuery[];
+  moving: MovingQuery[];
+  cvQueries: CvQueryRow[];
 };
 
 const TABS = [
@@ -23,6 +31,7 @@ const TABS = [
   { key: "coverage", label: "カバレッジ" },
   { key: "inspection", label: "URL検査" },
   { key: "queries", label: "クエリ分析" },
+  { key: "insights", label: "改善分析" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -77,7 +86,22 @@ export default function GscWorkspace({
   const [kw, setKw] = useState("");
   const [copiedQuery, setCopiedQuery] = useState<string | null>(null);
 
-  const { coverage, rotation, inspections, stale, queries, queryPages } = data;
+  const { coverage, rotation, inspections, stale, queries, queryPages, opportunity, ctrGap, moving, cvQueries } = data;
+
+  // 順位変動: delta > 0 が上昇（順位の数値が小さくなった）
+  const risers = moving.filter((m) => m.delta > 0);
+  const fallers = moving.filter((m) => m.delta < 0).reverse();
+
+  // CV貢献クエリはページ単位でグルーピングして表示（取得時点でCV降順に整列済み）
+  const cvPages = useMemo(() => {
+    const map = new Map<string, CvQueryRow[]>();
+    for (const r of cvQueries) {
+      const arr = map.get(r.page) ?? [];
+      arr.push(r);
+      map.set(r.page, arr);
+    }
+    return [...map.entries()];
+  }, [cvQueries]);
 
   const cannibalQueries = useMemo(() => {
     const map = new Map<string, QueryPageRow[]>();
@@ -356,6 +380,183 @@ export default function GscWorkspace({
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {tab === "insights" && (
+        <div className="space-y-10">
+          <div>
+            <h2 className="text-sm font-semibold mb-1">改善チャンス（4〜20位 × 表示回数上位）</h2>
+            <p className="text-[11px] text-ink-faint mb-3">
+              表示回数が多いのに1ページ目上位に届いていないクエリ。順位を数個上げるだけでクリックが大きく伸びる候補です（直近{days}日）。
+            </p>
+            {opportunity.length === 0 ? (
+              <p className="text-sm text-ink-soft">該当するクエリがまだありません。</p>
+            ) : (
+              <div className="overflow-x-auto border border-line bg-white">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-paper text-ink-soft">
+                      <th className="px-3 py-2 text-left">クエリ</th>
+                      <th className="px-3 py-2 text-right">表示回数</th>
+                      <th className="px-3 py-2 text-right">クリック</th>
+                      <th className="px-3 py-2 text-right">CTR</th>
+                      <th className="px-3 py-2 text-right">順位</th>
+                      <th className="px-3 py-2 text-left">主な掲載ページ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {opportunity.map((q) => (
+                      <tr key={q.query} className="border-t border-line hover:bg-paper/50">
+                        <td className="px-3 py-2">{q.query}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{nf(q.impressions)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{nf(q.clicks)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{pct(q.ctr)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{q.position.toFixed(1)}</td>
+                        <td className="px-3 py-2 break-all text-ink-soft">{q.top_page}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h2 className="text-sm font-semibold mb-1">CTR改善候補（同順位帯より低CTR）</h2>
+            <p className="text-[11px] text-ink-faint mb-3">
+              同じ順位帯のサイト内中央値CTRと比べてクリック率が半分以下のクエリ。タイトル・ディスクリプション改善の優先度付けに。
+              「取り逃し」は中央値CTRとの差 × 表示回数によるクリック数の推定です。
+            </p>
+            {ctrGap.length === 0 ? (
+              <p className="text-sm text-ink-soft">該当するクエリがまだありません。</p>
+            ) : (
+              <div className="overflow-x-auto border border-line bg-white">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-paper text-ink-soft">
+                      <th className="px-3 py-2 text-left">クエリ</th>
+                      <th className="px-3 py-2 text-right">順位</th>
+                      <th className="px-3 py-2 text-right">CTR</th>
+                      <th className="px-3 py-2 text-right">同順位帯の中央値</th>
+                      <th className="px-3 py-2 text-right">取り逃し（推定）</th>
+                      <th className="px-3 py-2 text-right">表示回数</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ctrGap.map((q) => (
+                      <tr key={q.query} className="border-t border-line hover:bg-paper/50">
+                        <td className="px-3 py-2">{q.query}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{q.position.toFixed(1)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{pct(q.ctr)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{pct(q.median_ctr)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums font-semibold text-bronze-deep">
+                          {nf(q.lost_clicks)}クリック
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">{nf(q.impressions)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h2 className="text-sm font-semibold mb-1">順位変動（直近7日 vs 前7日）</h2>
+            <p className="text-[11px] text-ink-faint mb-3">
+              加重平均順位が2以上動いたクエリ。伸びている芽と、対処すべき下落を早期に掴むための一覧です。
+            </p>
+            {moving.length === 0 ? (
+              <p className="text-sm text-ink-soft">大きく変動したクエリはありません。</p>
+            ) : (
+              <div className="grid md:grid-cols-2 gap-4">
+                {[
+                  { label: "上昇", rows: risers, sign: "↑", color: "text-emerald-700" },
+                  { label: "下降", rows: fallers, sign: "↓", color: "text-red-700" },
+                ].map((g) => (
+                  <div key={g.label} className="overflow-x-auto border border-line bg-white">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-paper text-ink-soft">
+                          <th className="px-3 py-2 text-left">{g.label}クエリ</th>
+                          <th className="px-3 py-2 text-right">前7日</th>
+                          <th className="px-3 py-2 text-right">直近7日</th>
+                          <th className="px-3 py-2 text-right">変動</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {g.rows.length === 0 ? (
+                          <tr className="border-t border-line">
+                            <td className="px-3 py-2 text-ink-faint" colSpan={4}>該当なし</td>
+                          </tr>
+                        ) : (
+                          g.rows.slice(0, 20).map((m) => (
+                            <tr key={m.query} className="border-t border-line hover:bg-paper/50">
+                              <td className="px-3 py-2">{m.query}</td>
+                              <td className="px-3 py-2 text-right tabular-nums">{m.pos_prev.toFixed(1)}</td>
+                              <td className="px-3 py-2 text-right tabular-nums">{m.pos_cur.toFixed(1)}</td>
+                              <td className={`px-3 py-2 text-right tabular-nums font-semibold ${g.color}`}>
+                                {g.sign}{Math.abs(m.delta).toFixed(1)}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h2 className="text-sm font-semibold mb-1">CV貢献クエリ（GA4 × サーチコンソール）</h2>
+            <p className="text-[11px] text-ink-faint mb-3">
+              GA4でCV（キーイベント）が発生しているランディングページに、どの検索クエリから流入しているかの突き合わせ（直近{days}日）。
+              GSCとGA4は計測方式が異なるため対応付けは推定です。GSC/GA4の通常画面では見られないクロス集計です。
+            </p>
+            {cvPages.length === 0 ? (
+              <p className="text-sm text-ink-soft">CVが発生したページへの検索流入がまだありません。</p>
+            ) : (
+              <div className="overflow-x-auto border border-line bg-white">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-paper text-ink-soft">
+                      <th className="px-3 py-2 text-left">ページ</th>
+                      <th className="px-3 py-2 text-right">CV</th>
+                      <th className="px-3 py-2 text-right">セッション</th>
+                      <th className="px-3 py-2 text-left">流入クエリ</th>
+                      <th className="px-3 py-2 text-right">クリック</th>
+                      <th className="px-3 py-2 text-right">順位</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cvPages.map(([page, rows]) =>
+                      rows.map((r, i) => (
+                        <tr key={`${page}-${r.query}`} className="border-t border-line">
+                          {i === 0 && (
+                            <>
+                              <td className="px-3 py-2 break-all align-top" rowSpan={rows.length}>{page}</td>
+                              <td className="px-3 py-2 text-right tabular-nums font-semibold align-top" rowSpan={rows.length}>
+                                {nf(r.cv)}
+                              </td>
+                              <td className="px-3 py-2 text-right tabular-nums align-top" rowSpan={rows.length}>
+                                {nf(r.sessions)}
+                              </td>
+                            </>
+                          )}
+                          <td className="px-3 py-2">{r.query}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{nf(r.clicks)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{r.position.toFixed(1)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
