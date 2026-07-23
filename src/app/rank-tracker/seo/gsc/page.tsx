@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getAccess, canViewDomain } from "@/lib/rank-tracker/auth";
 import {
@@ -44,7 +45,14 @@ export default async function GscPage({
   }
 
   const gscSites = sites.filter((s) => s.gsc_enabled && canViewDomain(access, s.site));
-  const selected = gscSites.find((s) => s.site === siteParam) ?? gscSites[0] ?? null;
+  // ?site= が無ければ最後に選んだサイト（Cookie・SeoSitePickerが書く）を既定にする。
+  // タブ移動でクエリが消えても選択サイトが維持される
+  const cookieSite = (await cookies()).get("seo-site")?.value;
+  const selected =
+    gscSites.find((s) => s.site === siteParam) ??
+    gscSites.find((s) => s.site === cookieSite) ??
+    gscSites[0] ??
+    null;
 
   let data: GscData | null = null;
   if (selected) {
