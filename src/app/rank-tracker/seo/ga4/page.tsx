@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getAccess, canViewDomain } from "@/lib/rank-tracker/auth";
 import {
@@ -45,7 +46,14 @@ export default async function Ga4Page({
   }
 
   const ga4Sites = sites.filter((s) => s.ga4_enabled && canViewDomain(access, s.site));
-  const selected = ga4Sites.find((s) => s.site === siteParam) ?? ga4Sites[0] ?? null;
+  // ?site= が無ければ最後に選んだサイト（Cookie・SeoSitePickerが書く）を既定にする。
+  // タブ移動でクエリが消えても選択サイトが維持される
+  const cookieSite = (await cookies()).get("seo-site")?.value;
+  const selected =
+    ga4Sites.find((s) => s.site === siteParam) ??
+    ga4Sites.find((s) => s.site === cookieSite) ??
+    ga4Sites[0] ??
+    null;
 
   let data: Ga4Data | null = null;
   if (selected) {

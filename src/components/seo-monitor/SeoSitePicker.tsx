@@ -10,6 +10,9 @@ function Picker({ sites, selected }: { sites: string[]; selected: string }) {
   const params = useSearchParams();
 
   function onChange(site: string) {
+    // 選択をCookieにも記憶する。タブ移動などで ?site= が付かずに開いたページは
+    // このCookieを既定値に使うため、ページをまたいでも選択サイトが維持される
+    document.cookie = `seo-site=${encodeURIComponent(site)}; path=/rank-tracker; max-age=31536000; samesite=lax`;
     const next = new URLSearchParams(params.toString());
     next.set("site", site);
     router.push(`${pathname}?${next.toString()}`);
