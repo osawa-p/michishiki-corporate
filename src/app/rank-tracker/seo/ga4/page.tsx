@@ -12,6 +12,10 @@ import {
   getGa4PageStatsCached,
   getTopUsersCached,
   getCvPathsCached,
+  getFirstTouchCvrCached,
+  getCvChannelCombosCached,
+  getSessionCountCvrCached,
+  getCvPageLiftCached,
 } from "@/lib/seo-monitor/cached";
 import Ga4Workspace, { type Ga4Data } from "@/components/seo-monitor/Ga4Workspace";
 import SeoSitePicker from "@/components/seo-monitor/SeoSitePicker";
@@ -58,16 +62,25 @@ export default async function Ga4Page({
   let data: Ga4Data | null = null;
   if (selected) {
     try {
-      const [summary, series, channels, sourceMedium, pages, users, cv] = await Promise.all([
-        getGa4SummaryCached(selected.site, DAYS),
-        getTrafficSeriesCached(selected.site, DAYS),
-        getGa4ChannelsCached(selected.site, DAYS),
-        getGa4SourceMediumCached(selected.site, DAYS),
-        getGa4PageStatsCached(selected.site, DAYS),
-        getTopUsersCached(selected.site, DAYS),
-        getCvPathsCached(selected.site, DAYS),
-      ]);
-      data = { summary, series, channels, sourceMedium, pages, users, cvPaths: cv.paths, cvStats: cv.stats };
+      const [summary, series, channels, sourceMedium, pages, users, cv, firstTouch, cvCombos, sessionCvr, cvLift] =
+        await Promise.all([
+          getGa4SummaryCached(selected.site, DAYS),
+          getTrafficSeriesCached(selected.site, DAYS),
+          getGa4ChannelsCached(selected.site, DAYS),
+          getGa4SourceMediumCached(selected.site, DAYS),
+          getGa4PageStatsCached(selected.site, DAYS),
+          getTopUsersCached(selected.site, DAYS),
+          getCvPathsCached(selected.site, DAYS),
+          getFirstTouchCvrCached(selected.site, DAYS),
+          getCvChannelCombosCached(selected.site, DAYS),
+          getSessionCountCvrCached(selected.site, DAYS),
+          getCvPageLiftCached(selected.site, DAYS),
+        ]);
+      data = {
+        summary, series, channels, sourceMedium, pages, users,
+        cvPaths: cv.paths, cvStats: cv.stats,
+        firstTouch, cvCombos, sessionCvr, cvLift,
+      };
     } catch (e) {
       console.error("[seo-monitor] GA4データの取得に失敗:", e);
       loadError = true;

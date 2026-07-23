@@ -13,6 +13,10 @@ import {
   fetchCtrGapQueries,
   fetchMovingQueries,
   fetchCvQueries,
+  fetchFirstTouchCvr,
+  fetchCvChannelCombos,
+  fetchSessionCountCvr,
+  fetchCvPageLift,
   fetchGa4Summary,
   fetchTrafficSeries,
   fetchGa4Channels,
@@ -27,6 +31,10 @@ import {
   type CtrGapQuery,
   type MovingQuery,
   type CvQueryRow,
+  type FirstTouchCvr,
+  type CvChannelCombo,
+  type SessionCountCvr,
+  type CvPageLift,
   type Ga4Summary,
   type TrafficPoint,
   type ChannelStat,
@@ -111,6 +119,38 @@ export function getCvQueriesCached(site: string, days: number): Promise<CvQueryR
   return unstable_cache(
     () => fetchCvQueries(site, days),
     ["seo-cv-queries", site, String(days)],
+    opts
+  )();
+}
+
+export function getFirstTouchCvrCached(site: string, days: number): Promise<FirstTouchCvr[]> {
+  return unstable_cache(
+    () => fetchFirstTouchCvr(site, days),
+    ["seo-first-touch", site, String(days)],
+    opts
+  )();
+}
+
+export function getCvChannelCombosCached(site: string, days: number): Promise<CvChannelCombo[]> {
+  return unstable_cache(
+    () => fetchCvChannelCombos(site, days),
+    ["seo-cv-combos", site, String(days)],
+    opts
+  )();
+}
+
+export function getSessionCountCvrCached(site: string, days: number): Promise<SessionCountCvr[]> {
+  return unstable_cache(
+    () => fetchSessionCountCvr(site, days),
+    ["seo-session-cvr", site, String(days)],
+    opts
+  )();
+}
+
+export function getCvPageLiftCached(site: string, days: number): Promise<CvPageLift[]> {
+  return unstable_cache(
+    () => fetchCvPageLift(site, days),
+    ["seo-cv-lift", site, String(days)],
     opts
   )();
 }
