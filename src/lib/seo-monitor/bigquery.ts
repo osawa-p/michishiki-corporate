@@ -1104,3 +1104,171 @@ export async function fetchCvQueries(site: string, days: number): Promise<CvQuer
     position: Number(r.position ?? 0),
   }));
 }
+
+// ───────────────────────────────────────────────────────────
+// CV相関分析（GA4 BQエクスポートのユーザー単位データならでは。
+// GA4のUIではユーザー横断の初回接触遡り・通過ページのリフト算出はできない）
+// ───────────────────────────────────────────────────────────
+
+// 初回接触チャネル別のその後CV率（ファーストタッチ・アトリビューション）
+export type FirstTouchCvr = {
+  channel: string;
+  users: number;
+  cv_users: number;
+  cvr: number;
+  avg_days_to_cv: number | null;
+};
+
+export async function fetchFirstTouchCvr(site: string, days: number): Promise<FirstTouchCvr[]> {
+  const { rows } = await runQuery<FirstTouchCvr>({
+    query: `
+      WITH per_user AS (
+        SELECT user_key,
+          ARRAY_AGG(IFNULL(channel, '(不明)') ORDER BY started_at LIMIT 1)[OFFSET(0)] AS first_channel,
+          COUNTIF(key_events > 0) > 0 AS cv,
+          MIN(started_at) AS first_seen,
+          MIN(IF(key_events > 0, started_at, NULL)) AS first_cv
+        FROM ${T_USER_SESSIONS}
+        WHERE site = @site AND date >= DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL @days DAY)
+        GROUP BY user_key
+      )
+      SELECT first_channel AS channel, COUNT(*) AS users, COUNTIF(cv) AS cv_users,
+        SAFE_DIVIDE(COUNTIF(cv), COUNT(*)) AS cvr,
+        AVG(IF(cv, TIMESTAMP_DIFF(first_cv, first_seen, HOUR) / 24.0, NULL)) AS avg_days_to_cv
+      FROM per_user
+      GROUP BY channel
+      HAVING users >= 10
+      ORDER BY cv_users DESC, users DESC
+      LIMIT 12`,
+    params: { site, days },
+  });
+  return rows.map((r) => ({
+    channel: String(r.channel),
+    users: Number(r.users),
+    cv_users: Number(r.cv_users),
+    cvr: Number(r.cvr ?? 0),
+    avg_days_to_cv: r.avg_days_to_cv == null ? null : Number(r.avg_days_to_cv),
+  }));
+}
+
+// 初回接触チャネル → CV発生チャネルの組み合わせ（アシスト構造）
+export type CvChannelCombo = {
+  first_channel: string;
+  cv_channel: string;
+  users: number;
+};
+
+export async function fetchCvChannelCombos(site: string, days: number): Promise<CvChannelCombo[]> {
+  const { rows } = await runQuery<CvChannelCombo>({
+    query: `
+      WITH per_user AS (
+        SELECT user_key,
+          ARRAY_AGG(IFNULL(channel, '(不明)') ORDER BY started_at LIMIT 1)[OFFSET(0)] AS first_channel,
+          ARRAY_AGG(IF(key_events > 0, IFNULL(channel, '(不明)'), NULL) IGNORE NULLS
+                    ORDER BY started_at LIMIT 1)[SAFE_OFFSET(0)] AS cv_channel
+        FROM ${T_USER_SESSIONS}
+        WHERE site = @site AND date >= DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL @days DAY)
+        GROUP BY user_key
+      )
+      SELECT first_channel, cv_channel, COUNT(*) AS users
+      FROM per_user
+      WHERE cv_channel IS NOT NULL
+      GROUP BY first_channel, cv_channel
+      ORDER BY users DESC
+      LIMIT 15`,
+    params: { site, days },
+  });
+  return rows.map((r) => ({
+    first_channel: String(r.first_channel),
+    cv_channel: String(r.cv_channel),
+    users: Number(r.users),
+  }));
+}
+
+// 接触回数（訪問セッション数）別のユーザー数とCV率
+export type SessionCountCvr = {
+  bucket: string;
+  users: number;
+  cv_users: number;
+  cvr: number;
+};
+
+export async function fetchSessionCountCvr(site: string, days: number): Promise<SessionCountCvr[]> {
+  const { rows } = await runQuery<SessionCountCvr>({
+    query: `
+      WITH per_user AS (
+        SELECT user_key, COUNT(*) AS sessions, COUNTIF(key_events > 0) > 0 AS cv
+        FROM ${T_USER_SESSIONS}
+        WHERE site = @site AND date >= DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL @days DAY)
+        GROUP BY user_key
+      )
+      SELECT
+        CASE WHEN sessions = 1 THEN '1回'
+             WHEN sessions = 2 THEN '2回'
+             WHEN sessions = 3 THEN '3回'
+             WHEN sessions <= 5 THEN '4〜5回'
+             ELSE '6回以上' END AS bucket,
+        COUNT(*) AS users, COUNTIF(cv) AS cv_users,
+        SAFE_DIVIDE(COUNTIF(cv), COUNT(*)) AS cvr
+      FROM per_user
+      GROUP BY bucket
+      ORDER BY MIN(sessions)`,
+    params: { site, days },
+  });
+  return rows.map((r) => ({
+    bucket: String(r.bucket),
+    users: Number(r.users),
+    cv_users: Number(r.cv_users),
+    cvr: Number(r.cvr ?? 0),
+  }));
+}
+
+// CV相関ページ（リフト）: CVユーザーの通過率が全ユーザーの通過率の何倍かで
+// 「CVに効いているページ」を出す。リフト = P(通過|CVユーザー) ÷ P(通過|全ユーザー)
+export type CvPageLift = {
+  path: string;
+  visitors: number;
+  cv_visitors: number;
+  pct_of_cv_users: number;
+  pct_of_all_users: number;
+  lift: number;
+};
+
+export async function fetchCvPageLift(site: string, days: number): Promise<CvPageLift[]> {
+  const { rows } = await runQuery<CvPageLift>({
+    query: `
+      WITH sess AS (
+        SELECT * FROM ${T_USER_SESSIONS}
+        WHERE site = @site AND date >= DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL @days DAY)
+      ),
+      users AS (
+        SELECT user_key, COUNTIF(key_events > 0) > 0 AS cv FROM sess GROUP BY user_key
+      ),
+      visited AS (
+        SELECT DISTINCT s.user_key, IF(RTRIM(p, '/') = '', '/', RTRIM(p, '/')) AS path
+        FROM sess s, UNNEST(SPLIT(s.pages, ' → ')) AS p
+        WHERE s.pages IS NOT NULL AND p != ''
+      ),
+      tot AS (SELECT COUNT(*) AS all_users, COUNTIF(cv) AS all_cv FROM users)
+      SELECT v.path,
+        COUNT(*) AS visitors,
+        COUNTIF(u.cv) AS cv_visitors,
+        SAFE_DIVIDE(COUNTIF(u.cv), t.all_cv) AS pct_of_cv_users,
+        SAFE_DIVIDE(COUNT(*), t.all_users) AS pct_of_all_users,
+        SAFE_DIVIDE(SAFE_DIVIDE(COUNTIF(u.cv), t.all_cv), SAFE_DIVIDE(COUNT(*), t.all_users)) AS lift
+      FROM visited v JOIN users u USING (user_key) CROSS JOIN tot t
+      GROUP BY v.path, t.all_cv, t.all_users
+      HAVING cv_visitors >= 3 AND visitors >= 20
+      ORDER BY lift DESC
+      LIMIT 30`,
+    params: { site, days },
+  });
+  return rows.map((r) => ({
+    path: String(r.path),
+    visitors: Number(r.visitors),
+    cv_visitors: Number(r.cv_visitors),
+    pct_of_cv_users: Number(r.pct_of_cv_users ?? 0),
+    pct_of_all_users: Number(r.pct_of_all_users ?? 0),
+    lift: Number(r.lift ?? 0),
+  }));
+}

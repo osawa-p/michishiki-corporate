@@ -10,6 +10,10 @@ import type {
   UserSummary,
   CvPath,
   CvStats,
+  FirstTouchCvr,
+  CvChannelCombo,
+  SessionCountCvr,
+  CvPageLift,
 } from "@/lib/seo-monitor/bigquery";
 import UserJourneyPanel from "./UserJourneyPanel";
 
@@ -22,6 +26,10 @@ export type Ga4Data = {
   users: UserSummary[];
   cvPaths: CvPath[];
   cvStats: CvStats;
+  firstTouch: FirstTouchCvr[];
+  cvCombos: CvChannelCombo[];
+  sessionCvr: SessionCountCvr[];
+  cvLift: CvPageLift[];
 };
 
 const TABS = [
@@ -29,6 +37,7 @@ const TABS = [
   { key: "channels", label: "チャネル詳細" },
   { key: "pages", label: "URL別" },
   { key: "users", label: "ユーザー単位" },
+  { key: "cv", label: "CV分析" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -55,7 +64,8 @@ export default function Ga4Workspace({
   days: number;
 }) {
   const [tab, setTab] = useState<TabKey>("summary");
-  const { summary, series, channels, sourceMedium, pages, users, cvPaths, cvStats } = data;
+  const { summary, series, channels, sourceMedium, pages, users, cvPaths, cvStats, firstTouch, cvCombos, sessionCvr, cvLift } = data;
+  const hasCvData = firstTouch.length > 0 || sessionCvr.length > 0;
 
   const hasData = summary.sessions > 0 || series.length > 0;
   const dSessions = delta(summary.sessions, summary.prev_sessions);
@@ -233,6 +243,166 @@ export default function Ga4Workspace({
 
       {tab === "users" && (
         <UserJourneyPanel site={site} users={users} cvPaths={cvPaths} cvStats={cvStats} />
+      )}
+
+      {tab === "cv" && (
+        <div className="space-y-10">
+          {!hasCvData ? (
+            <div className="border border-line bg-white p-8 text-sm text-ink-soft leading-relaxed">
+              <p className="font-semibold text-ink mb-2">CV分析のデータがまだありません</p>
+              <p>
+                この分析はGA4のBigQueryエクスポート（ユーザー単位データ）を使います。
+                エクスポート未設定のプロパティでは利用できません。設定済みの場合は蓄積開始から数日かかります。
+              </p>
+            </div>
+          ) : (
+            <>
+              <div>
+                <h2 className="text-sm font-semibold mb-1">初回接触チャネル別のCV率（ファーストタッチ）</h2>
+                <p className="text-[11px] text-ink-faint mb-3">
+                  ユーザーが最初にどのチャネルで来たかで分類し、その後（期間内）にCVした割合。
+                  GA4のUIでは遡れない「きっかけのチャネル」の評価です（直近{days}日・ユーザー単位）。
+                </p>
+                <div className="overflow-x-auto border border-line bg-white">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-paper text-ink-soft">
+                        <th className="px-3 py-2 text-left">初回チャネル</th>
+                        <th className="px-3 py-2 text-right">ユーザー</th>
+                        <th className="px-3 py-2 text-right">CVユーザー</th>
+                        <th className="px-3 py-2 text-right">CV率</th>
+                        <th className="px-3 py-2 text-right">初回→CV平均日数</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {firstTouch.map((r) => (
+                        <tr key={r.channel} className="border-t border-line hover:bg-paper/50">
+                          <td className="px-3 py-2">{r.channel}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{nf(r.users)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums font-semibold">{nf(r.cv_users)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{(r.cvr * 100).toFixed(2)}%</td>
+                          <td className="px-3 py-2 text-right tabular-nums">
+                            {r.avg_days_to_cv == null ? "—" : `${r.avg_days_to_cv.toFixed(1)}日`}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <h2 className="text-sm font-semibold mb-1">初回チャネル → CVチャネル</h2>
+                  <p className="text-[11px] text-ink-faint mb-3">
+                    CVユーザーの「入口」と「CVした瞬間」のチャネルの組み合わせ。行が分かれるほど再訪を挟んだCVです。
+                  </p>
+                  <div className="overflow-x-auto border border-line bg-white">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-paper text-ink-soft">
+                          <th className="px-3 py-2 text-left">初回</th>
+                          <th className="px-3 py-2 text-left">CV時</th>
+                          <th className="px-3 py-2 text-right">ユーザー</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cvCombos.length === 0 ? (
+                          <tr className="border-t border-line">
+                            <td className="px-3 py-2 text-ink-faint" colSpan={3}>まだCVがありません</td>
+                          </tr>
+                        ) : (
+                          cvCombos.map((r) => (
+                            <tr key={`${r.first_channel}-${r.cv_channel}`} className="border-t border-line hover:bg-paper/50">
+                              <td className="px-3 py-2">{r.first_channel}</td>
+                              <td className="px-3 py-2">
+                                {r.cv_channel}
+                                {r.first_channel !== r.cv_channel && (
+                                  <span className="ml-1 text-[10px] text-bronze-deep">（再訪CV）</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-right tabular-nums">{nf(r.users)}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div>
+                  <h2 className="text-sm font-semibold mb-1">接触回数とCV率</h2>
+                  <p className="text-[11px] text-ink-faint mb-3">
+                    期間内の訪問回数別のユーザー分布とCV率。何回目の接触で決まるかの目安になります。
+                  </p>
+                  <div className="overflow-x-auto border border-line bg-white">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-paper text-ink-soft">
+                          <th className="px-3 py-2 text-left">訪問回数</th>
+                          <th className="px-3 py-2 text-right">ユーザー</th>
+                          <th className="px-3 py-2 text-right">CVユーザー</th>
+                          <th className="px-3 py-2 text-right">CV率</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sessionCvr.map((r) => (
+                          <tr key={r.bucket} className="border-t border-line hover:bg-paper/50">
+                            <td className="px-3 py-2">{r.bucket}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{nf(r.users)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{nf(r.cv_users)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums font-semibold">
+                              {(r.cvr * 100).toFixed(2)}%
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h2 className="text-sm font-semibold mb-1">CV相関ページ（リフト）</h2>
+                <p className="text-[11px] text-ink-faint mb-3">
+                  CVユーザーの通過率が全ユーザーの通過率の何倍かを「リフト」として算出。
+                  リフトが高いページは「CVする人がよく通る勝ちページ」で、導線強化・内部リンクの張り先候補です。
+                  CVフォーム自体が上位に来るのは仕様です（通過＝原因とは限らない点に注意）。
+                </p>
+                {cvLift.length === 0 ? (
+                  <p className="text-sm text-ink-soft">十分なデータがまだありません（CVユーザー3人以上の通過ページが対象）。</p>
+                ) : (
+                  <div className="overflow-x-auto border border-line bg-white">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-paper text-ink-soft">
+                          <th className="px-3 py-2 text-left">ページ</th>
+                          <th className="px-3 py-2 text-right">リフト</th>
+                          <th className="px-3 py-2 text-right">CVユーザーの通過率</th>
+                          <th className="px-3 py-2 text-right">全ユーザーの通過率</th>
+                          <th className="px-3 py-2 text-right">通過CVユーザー</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cvLift.map((r) => (
+                          <tr key={r.path} className="border-t border-line hover:bg-paper/50">
+                            <td className="px-3 py-2 break-all">{r.path}</td>
+                            <td className="px-3 py-2 text-right tabular-nums font-semibold text-bronze-deep">
+                              ×{r.lift.toFixed(1)}
+                            </td>
+                            <td className="px-3 py-2 text-right tabular-nums">{pct(r.pct_of_cv_users)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{pct(r.pct_of_all_users)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{nf(r.cv_visitors)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       )}
     </div>
   );
