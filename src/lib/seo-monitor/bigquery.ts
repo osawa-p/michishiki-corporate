@@ -134,16 +134,20 @@ export async function mergeSeoUrls(site: string, urls: string[], source: string)
 }
 
 // GSC検索結果に出たURLを台帳へ追加する（クロール不可サイトのsitemap代替。
-// Google側のデータのみで構築するため、サイト本体へのアクセスは発生しない）
+// Google側のデータのみで構築するため、サイト本体へのアクセスは発生しない）。
+// GSCの page にはフラグメント付きURL（#toc-1 等）や、sc-domainプロパティでは
+// 別サブドメインのURLが混ざるため、フラグメントを除去し自ホストに限定する
+// （フラグメントは同一ページの重複、別サブドメインはそのサイト側の台帳が担当）
 export async function mergeSeoUrlsFromQueryStats(site: string, days = 28): Promise<number> {
   const { affected } = await runQuery({
     query: `
       MERGE ${T_URLS} t
       USING (
-        SELECT DISTINCT page AS url FROM ${T_QUERY}
+        SELECT DISTINCT SPLIT(page, '#')[OFFSET(0)] AS url FROM ${T_QUERY}
         WHERE site = @site
           AND date >= DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL @days DAY)
           AND STARTS_WITH(page, 'http')
+          AND NET.HOST(page) IN (@site, CONCAT('www.', @site))
       ) s ON t.site = @site AND t.url = s.url
       WHEN NOT MATCHED THEN INSERT
         (site, url, source, index_target, active, exclude_reason, discovered_at, last_inspected_at)
@@ -154,14 +158,22 @@ export async function mergeSeoUrlsFromQueryStats(site: string, days = 28): Promi
 }
 
 // 次に検査すべきURL（未検査 → 検査が古い順）
-export async function listInspectionTargets(site: string, limit: number): Promise<string[]> {
+// minIntervalDays: 一度検査したURLはこの日数が経つまで再検査しない（クォータ節約。
+// プロパティのクォータはクライアント側ツールと共有のことがあるため、使い切らない）
+export async function listInspectionTargets(
+  site: string,
+  limit: number,
+  minIntervalDays = 0
+): Promise<string[]> {
   const { rows } = await runQuery<{ url: string }>({
     query: `
       SELECT url FROM ${T_URLS}
       WHERE site = @site AND active AND index_target
+        AND (last_inspected_at IS NULL
+             OR last_inspected_at < TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL @minDays DAY))
       ORDER BY last_inspected_at IS NOT NULL, last_inspected_at, url
       LIMIT @lim`,
-    params: { site, lim: limit },
+    params: { site, lim: limit, minDays: minIntervalDays },
   });
   return rows.map((r) => r.url);
 }
