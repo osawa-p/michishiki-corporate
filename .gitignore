@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# SEO観測: 午後の検査発火用シークレット（scripts/trigger-inspect.bat が読む）
+.cron-secret
