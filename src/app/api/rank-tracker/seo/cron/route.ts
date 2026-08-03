@@ -34,6 +34,9 @@ export const maxDuration = 300;
 // 新しい処理を始めない残り時間のしきい値（maxDuration に対する余白）
 const TIME_BUDGET_MS = 240_000;
 
+// ユーザー単位セッション集約でさかのぼる最大日数（D-2〜D-6の5日分）
+const USER_SESSION_LOOKBACK = 6;
+
 // JSTでn日前の日付（YYYY-MM-DD）
 function jstDateAgo(days: number): string {
   const d = new Date(Date.now() + 9 * 3600_000 - days * 86_400_000);
@@ -154,17 +157,22 @@ export async function GET(request: Request) {
     if (s.ga4_enabled && timeLeft() > 0) {
       for (const pid of ga4PropertyIds(s)) {
         // ユーザー単位セッション集約（BQエクスポートが有効なプロパティのみ）。
+        // エクスポート着弾は2日を超えて遅れることがあるため、直近数日をさかのぼって
+        // 未集約の日だけ取り込む（従来はD-2の1日のみで、遅延日が恒久欠損していた）。
         // events_YYYYMMDD 未着（エクスポート未設定/遅延）は notFound になるので静かにスキップ。
-        try {
-          if (!(await hasUserSessions(s.site, pid, ga4Date))) {
-            const n = await aggregateUserSessions(s.site, pid, ga4Date);
+        for (let back = 2; back <= USER_SESSION_LOOKBACK; back++) {
+          const d = jstDateAgo(back);
+          try {
+            if (await hasUserSessions(s.site, pid, d)) continue;
+            const n = await aggregateUserSessions(s.site, pid, d);
             if (n > 0) sum.userSessions = (sum.userSessions ?? 0) + n;
-          }
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          if (!/Not found/i.test(msg)) {
-            console.error(`[seo-monitor] ユーザーセッション集約に失敗 (${s.site} ${pid}):`, err);
-            sum.errors.push(`user-sessions:${pid}`);
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            if (!/Not found/i.test(msg)) {
+              console.error(`[seo-monitor] ユーザーセッション集約に失敗 (${s.site} ${pid} ${d}):`, err);
+              sum.errors.push(`user-sessions:${pid}`);
+              break; // 真正エラー時は同プロパティの残り日はやめて次へ（エラー連投を防ぐ）
+            }
           }
         }
         try {

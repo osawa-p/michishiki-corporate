@@ -664,7 +664,8 @@ const T_USER_SESSIONS = `\`${GCP_PROJECT}.${BQ_DATASET}.ga4_user_sessions\``;
 
 // キーイベントとして数えるイベント名（サイト別設定は将来の拡張）。
 // ServiceSite_click は SHIFT AI のサービスサイト遷移クリック（クロスドメインの受け渡し地点）。
-// 他サイトはこのイベントを送出しないため、全サイト共通リストに含めても影響はない。
+// hs_form_success / qualified-lead はリメディ（remedy-tokyo.co.jp）のHubSpotフォームCV。
+// いずれも他サイトはこのイベントを送出しないため、全サイト共通リストに含めても影響はない。
 const KEY_EVENT_NAMES = [
   "generate_lead",
   "file_download",
@@ -672,6 +673,8 @@ const KEY_EVENT_NAMES = [
   "click_tel",
   "purchase",
   "ServiceSite_click",
+  "hs_form_success",
+  "qualified-lead",
 ];
 
 export async function hasUserSessions(site: string, propertyId: string, date: string): Promise<boolean> {
