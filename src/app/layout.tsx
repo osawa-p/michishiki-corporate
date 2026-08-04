@@ -43,6 +43,11 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
   },
+  // AdSenseのサイト所有権確認用（広告はロードしない純粋な確認タグ）。
+  // 広告配信は trimming.michi-biki.jp 側のみ・コーポレートには広告を出さない
+  other: {
+    "google-adsense-account": "ca-pub-8933181934952831",
+  },
   openGraph: {
     type: "website",
     locale: "ja_JP",
