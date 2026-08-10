@@ -12,6 +12,7 @@ export type WbsTask = {
   pri: 1 | 2 | 3;
   st: "todo" | "doing" | "wait" | "done";
   due: string;
+  start?: string; // 任意（YYYY-MM-DD）。ガントの棒の開始日。省略時は今日〜due
 };
 export type WbsData = {
   updated: string;
@@ -37,13 +38,14 @@ const PRI_LABEL: Record<number, string> = { 1: "★ 最優先", 2: "高", 3: "�
 const ST_KEYS = ["doing", "todo", "wait", "done"] as const;
 const BAR_ORDER = ["done", "doing", "wait", "todo"] as const;
 const DAY = 86400000;
-const ID_RE = /([RSMO]-\d{2})/g;
+const ID_RE = /([A-Z]-\d{2})/g;
 
-const isoDue = (t: WbsTask) => /^\d{4}-\d{2}-\d{2}$/.test(t.due);
+const isIso = (s: string | undefined): s is string => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
+const ms = (d: string) => new Date(`${d}T00:00:00`).getTime();
 
 function dueState(t: WbsTask, today: number): "over" | "soon" | "" {
-  if (t.st === "done" || !isoDue(t)) return "";
-  const diff = (new Date(`${t.due}T00:00:00`).getTime() - today) / DAY;
+  if (t.st === "done" || !isIso(t.due)) return "";
+  const diff = (ms(t.due) - today) / DAY;
   if (diff < 0) return "over";
   if (diff <= 3) return "soon";
   return "";
@@ -68,7 +70,7 @@ function DepText({ text, onPick }: { text: string; onPick: (id: string) => void 
   return (
     <>
       {text.split(ID_RE).map((p, i) =>
-        /^[RSMO]-\d{2}$/.test(p) ? (
+        /^[A-Z]-\d{2}$/.test(p) ? (
           <button
             key={i}
             type="button"
@@ -102,8 +104,9 @@ function StackBar({ tasks }: { tasks: WbsTask[] }) {
   );
 }
 
-// 期限タイムライン（ISO期限を持つ未完了タスクのみ。今日ラインより左＝期限超過）
-function Timeline({
+// ガントチャート（フィルタ結果と連動。ISO期限を持つタスクのみ描画）
+// 棒 = start（省略時は今日）〜 due。期限超過は due〜今日 を赤で表示。完了は◆マーカー。
+function Gantt({
   tasks, pjKeys, pjMeta, today, onPick,
 }: {
   tasks: WbsTask[];
@@ -112,75 +115,103 @@ function Timeline({
   today: number;
   onPick: (id: string) => void;
 }) {
-  const dated = tasks.filter((t) => isoDue(t) && t.st !== "done");
-  if (dated.length === 0) return null;
-
-  const times = dated.map((t) => new Date(`${t.due}T00:00:00`).getTime());
-  const min = Math.min(...times, today) - 2 * DAY;
-  const max = Math.max(...times, today) + 3 * DAY;
-  const W = 860, PADL = 84, PADR = 20, ROW = 40, TOP = 26;
-  const rows = pjKeys.filter((k) => dated.some((t) => t.pj === k));
-  const H = TOP + rows.length * ROW + 16;
-  const x = (ms: number) => PADL + ((ms - min) / (max - min)) * (W - PADL - PADR);
-
-  // 週ごとの目盛り（月曜）
-  const ticks: number[] = [];
-  for (let d = min; d <= max; d += DAY) {
-    if (new Date(d).getDay() === 1) ticks.push(d);
+  const dated = tasks.filter((t) => isIso(t.due));
+  if (dated.length === 0) {
+    return (
+      <div className="mb-6 rounded-lg border border-line bg-white/70 p-4 text-xs text-ink-faint">
+        ガント: 現在の絞り込みに日付確定タスクがありません（期限が「近日」「継続」等のタスクは表に表示されます）
+      </div>
+    );
   }
-  const fmt = (ms: number) => {
-    const d = new Date(ms);
-    return `${d.getMonth() + 1}/${d.getDate()}`;
-  };
+
+  const starts = dated.map((t) => (isIso(t.start) ? ms(t.start) : today));
+  const ends = dated.map((t) => ms(t.due));
+  const min = Math.min(...starts, ...ends, today) - 2 * DAY;
+  const max = Math.max(...ends, today) + 3 * DAY;
+
+  const W = 940, LW = 264, PADR = 16, RH = 26, PJH = 22, TOP = 28;
+  const x = (v: number) => LW + ((v - min) / (max - min)) * (W - LW - PADR);
+
+  // 行リスト（PJ見出し行＋タスク行）
+  type Row = { kind: "pj"; label: string } | { kind: "task"; t: WbsTask };
+  const rows: Row[] = [];
+  for (const k of pjKeys) {
+    const g = dated.filter((t) => t.pj === k).sort((a, b) => ms(a.due) - ms(b.due) || a.pri - b.pri);
+    if (g.length) {
+      rows.push({ kind: "pj", label: pjMeta[k]?.label.split("（")[0] ?? k });
+      g.forEach((t) => rows.push({ kind: "task", t }));
+    }
+  }
+  const ys: number[] = [];
+  let acc = TOP;
+  rows.forEach((r) => { ys.push(acc); acc += r.kind === "pj" ? PJH : RH; });
+  const H = acc + 14;
+
+  // 週目盛り（月曜）
+  const ticks: number[] = [];
+  for (let d = min; d <= max; d += DAY) if (new Date(d).getDay() === 1) ticks.push(d);
+  const fmt = (v: number) => { const d = new Date(v); return `${d.getMonth() + 1}/${d.getDate()}`; };
+  const short = (s: string, n = 17) => (s.length > n ? `${s.slice(0, n)}…` : s);
 
   return (
     <div className="mb-6 rounded-lg border border-line bg-white/70 p-4 sm:p-5">
-      <h2 className="font-serif text-lg font-semibold">期限タイムライン</h2>
-      <p className="mb-2 mt-1 text-[11px] text-ink-faint">
-        日付が確定している未完了タスクのみ。●をポイントで内容、クリックで絞り込み。今日ラインより左は期限超過。
-      </p>
-      <div className="overflow-x-auto">
-        <svg viewBox={`0 0 ${W} ${H}`} className="min-w-[640px] w-full" role="img" aria-label="期限タイムライン">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="font-serif text-lg font-semibold">ガントチャート</h2>
+        <p className="text-[11px] text-ink-faint">絞り込みと連動。棒=開始（未設定は今日）〜期限、赤=期限超過、◆=完了。クリックで該当タスクへ</p>
+      </div>
+      <div className="mt-2 overflow-x-auto">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[760px]" role="img" aria-label="ガントチャート">
           {/* 週目盛り */}
           {ticks.map((tk) => (
             <g key={tk}>
-              <line x1={x(tk)} y1={TOP - 8} x2={x(tk)} y2={H - 14} stroke="#e2ded2" strokeWidth="1" />
-              <text x={x(tk)} y={TOP - 12} textAnchor="middle" fontSize="10" fill="#8b877c">{fmt(tk)}</text>
+              <line x1={x(tk)} y1={TOP - 6} x2={x(tk)} y2={H - 12} stroke="#e2ded2" strokeWidth="1" />
+              <text x={x(tk)} y={TOP - 10} textAnchor="middle" fontSize="10" fill="#8b877c">{fmt(tk)}</text>
             </g>
           ))}
           {/* 今日ライン */}
-          <line x1={x(today)} y1={TOP - 8} x2={x(today)} y2={H - 14} stroke="#a17c3f" strokeWidth="1.5" strokeDasharray="4 3" />
-          <text x={x(today)} y={TOP - 12} textAnchor="middle" fontSize="10" fontWeight="700" fill="#86672f">今日 {fmt(today)}</text>
+          <line x1={x(today)} y1={TOP - 6} x2={x(today)} y2={H - 12} stroke="#a17c3f" strokeWidth="1.5" strokeDasharray="4 3" />
+          <text x={x(today)} y={TOP - 10} textAnchor="middle" fontSize="10" fontWeight="700" fill="#86672f">今日 {fmt(today)}</text>
 
-          {rows.map((pjKey, ri) => {
-            const rowY = TOP + ri * ROW + ROW / 2;
-            const rowTasks = dated.filter((t) => t.pj === pjKey);
-            // 同一日付の重なりは縦にずらす
-            const byDate: Record<string, WbsTask[]> = {};
-            for (const t of rowTasks) (byDate[t.due] ??= []).push(t);
-            return (
-              <g key={pjKey}>
-                <text x={PADL - 10} y={rowY + 3} textAnchor="end" fontSize="11" fontWeight="600" fill="#56534a">
-                  {pjMeta[pjKey]?.label.split("（")[0] ?? pjKey}
+          {rows.map((r, i) => {
+            const y = ys[i];
+            if (r.kind === "pj") {
+              return (
+                <text key={`pj-${r.label}`} x={4} y={y + 15} fontSize="11.5" fontWeight="700" fill="#1c1b18" fontStyle="normal">
+                  {r.label}
                 </text>
-                <line x1={PADL} y1={rowY} x2={W - PADR} y2={rowY} stroke="#e2ded2" strokeWidth="1" />
-                {Object.entries(byDate).flatMap(([due, group]) =>
-                  group.map((t, gi) => {
-                    const cx = x(new Date(`${due}T00:00:00`).getTime());
-                    const cy = rowY + (gi - (group.length - 1) / 2) * 13;
-                    const over = dueState(t, today) === "over";
-                    const fill = over ? OVER_COLOR : ST_COLOR[t.st];
-                    return (
-                      <g key={t.id} onClick={() => onPick(t.id)} style={{ cursor: "pointer" }}>
-                        <title>{`${t.id} ${t.task}（期限 ${t.due}${over ? "・超過" : ""}）`}</title>
-                        <circle cx={cx} cy={cy} r="10" fill="transparent" />
-                        <circle cx={cx} cy={cy} r="4.5" fill={fill} stroke="#ffffff" strokeWidth="2" />
-                        <text x={cx + 8} y={cy + 3} fontSize="9" fill={over ? OVER_COLOR : "#56534a"} fontWeight={over ? 700 : 400}>
-                          {t.id}{over ? "⚠" : ""}
-                        </text>
-                      </g>
-                    );
-                  })
+              );
+            }
+            const t = r.t;
+            const cy = y + RH / 2;
+            const e0 = ms(t.due);
+            const s0 = isIso(t.start) ? ms(t.start) : today;
+            const over = e0 < today && t.st !== "done";
+            const barStart = Math.min(s0, e0);
+            const ds = dueState(t, today);
+            const labelFill = over ? OVER_COLOR : "#56534a";
+            return (
+              <g key={t.id} onClick={() => onPick(t.id)} style={{ cursor: "pointer" }}>
+                <title>{`${t.id} ${t.task}｜${ST_META[t.st]}｜期限 ${t.due}${isIso(t.start) ? `（開始 ${t.start}）` : ""}${over ? "・⚠超過" : ds === "soon" ? "・⏰間近" : ""}`}</title>
+                <rect x={0} y={y} width={W} height={RH} fill="transparent" />
+                <line x1={LW} y1={cy} x2={W - PADR} y2={cy} stroke="#e2ded2" strokeWidth="0.6" />
+                <text x={10} y={cy + 3.5} fontSize="10.5" fill={labelFill} fontWeight={t.pri === 1 ? 700 : 400}>
+                  {t.id} {short(t.task)}{over ? " ⚠" : ""}
+                </text>
+                {t.st === "done" ? (
+                  <rect x={x(e0) - 5} y={cy - 5} width={10} height={10} fill={ST_COLOR.done}
+                    transform={`rotate(45 ${x(e0)} ${cy})`} stroke="#ffffff" strokeWidth="1.5" />
+                ) : (
+                  <>
+                    {barStart < e0 && (
+                      <rect x={x(barStart)} y={cy - 6} width={Math.max(x(e0) - x(barStart), 3)} height={12} rx="4"
+                        fill={ST_COLOR[t.st]} stroke="#ffffff" strokeWidth="1" />
+                    )}
+                    {over && (
+                      <rect x={x(e0)} y={cy - 6} width={Math.max(x(today) - x(e0), 3)} height={12} rx="4"
+                        fill={OVER_COLOR} stroke="#ffffff" strokeWidth="1" />
+                    )}
+                    <circle cx={x(e0)} cy={cy} r="3" fill={over ? OVER_COLOR : ST_COLOR[t.st]} stroke="#ffffff" strokeWidth="1.5" />
+                  </>
                 )}
               </g>
             );
@@ -253,7 +284,7 @@ export default function WbsBoard({ data }: { data: WbsData }) {
           </div>
 
           {/* 全体進捗バー＋凡例 */}
-          <div className="mb-6 rounded-lg border border-line bg-white/70 px-4 py-3">
+          <div className="mb-4 rounded-lg border border-line bg-white/70 px-4 py-3">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs font-semibold text-ink-soft">全体進捗（{count("done")}/{all.length} 完了）</p>
               <div className="flex flex-wrap gap-3 text-[11px] text-ink-soft">
@@ -271,11 +302,8 @@ export default function WbsBoard({ data }: { data: WbsData }) {
             <StackBar tasks={all} />
           </div>
 
-          {/* 期限タイムライン */}
-          <Timeline tasks={all} pjKeys={pjKeys} pjMeta={data.pjMeta} today={today} onPick={pickId} />
-
-          {/* フィルタ */}
-          <div className="mb-6 flex flex-wrap items-center gap-1.5">
+          {/* フィルタ（ガント・テーブル両方に効く） */}
+          <div className="mb-4 flex flex-wrap items-center gap-1.5">
             <span className="mr-1 text-xs text-ink-faint">PJ:</span>
             <Chip on={pj === "all"} onClick={() => setPj("all")}>すべて</Chip>
             {pjKeys.map((k) => (
@@ -295,6 +323,9 @@ export default function WbsBoard({ data }: { data: WbsData }) {
               className="ml-auto w-40 rounded border border-line bg-white/70 px-2.5 py-1 text-xs text-ink focus:outline-2 focus:outline-bronze-deep"
             />
           </div>
+
+          {/* ガントチャート（絞り込み連動） */}
+          <Gantt tasks={shown} pjKeys={pjKeys} pjMeta={data.pjMeta} today={today} onPick={pickId} />
 
           {/* プロジェクト別テーブル */}
           {pjKeys.map((key) => {
@@ -359,6 +390,7 @@ export default function WbsBoard({ data }: { data: WbsData }) {
                               }`}
                             >
                               {t.due}
+                              {isIso(t.start) && <span className="block text-[10px] text-ink-faint">開始 {t.start}</span>}
                               {ds === "over" ? " ⚠超過" : ds === "soon" ? " ⏰" : ""}
                             </td>
                           </tr>
