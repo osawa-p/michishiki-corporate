@@ -5,6 +5,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 // WBSデータの型（実体は src/data/wbs-tasks.json。F:\michi\remedi\keisoku\tasks.js が正で、
 // michi側の auto-sync（wbs-publish.mjs）が JSON へ変換して自動同期する）
 export type WbsKpiMetric = { name: string; baseline: string; current: string; target: string; asof: string };
+// 自動計測結果（michi側 wbs-measure.mjs が日次で生成。タスクID→metric名→最新値）。
+// ⚠ 機密対策: このJSONはクライアントでimportせず、認証済みserver component（page.tsx）から
+// propsで受け取る（"use client"でstatic importするとチャンクに埋まり認証なしで取得可能になるため）
+export type KpiAuto = { value: string; asof: string; history?: { date: string; value: string }[] };
+export type WbsKpiResults = { measuredDate?: string; window?: string; results?: Record<string, Record<string, KpiAuto>> };
+
+// 自動計測値の採用判定: 鮮度7日以内かつ手動更新（m.asof）より新しい場合のみ優先。
+// 古い自動値が新しい手動修正を無期限に上書きしないためのガード
+function autoState(auto: KpiAuto | undefined, manualAsof: string): "fresh" | "stale" | null {
+  if (!auto || typeof auto.value !== "string" || !isIso(auto.asof)) return null;
+  if (isIso(manualAsof) && auto.asof < manualAsof) return null;
+  const age = (Date.now() - ms(auto.asof)) / DAY;
+  return age <= 7 ? "fresh" : "stale";
+}
 export type WbsKpi = {
   kgi: string;
   metrics: WbsKpiMetric[];
@@ -281,10 +295,11 @@ function Gantt({
 
 // 詳細パネル（PC=右ドロワー / スマホ=ボトムシート）
 function DetailPanel({
-  task, data, today, backId, onOpen, onBack, onClose, onFilter,
+  task, data, kpiAuto, today, backId, onOpen, onBack, onClose, onFilter,
 }: {
   task: WbsTask;
   data: WbsData;
+  kpiAuto?: WbsKpiResults;
   today: number;
   backId: string | null;
   onOpen: (id: string) => void;
@@ -416,17 +431,35 @@ function DetailPanel({
                 <span className="mr-2 text-xs text-ink-soft">KGI</span>{task.kpi.kgi}
               </p>
               <div className="mt-3 space-y-2.5">
-                {task.kpi.metrics.map((m) => (
-                  <div key={m.name} className="rounded-md border border-line/70 bg-paper/60 px-3 py-2.5">
-                    <p className="text-xs font-semibold text-ink">{m.name}</p>
-                    <div className="mt-1.5 grid grid-cols-3 gap-2 text-xs leading-5">
-                      <div><p className="text-ink-faint">ベースライン</p><p className="text-ink-soft">{m.baseline}</p></div>
-                      <div><p className="text-ink-faint">現在</p><p className="font-semibold text-ink">{m.current}</p></div>
-                      <div><p className="text-ink-faint">目標</p><p className="text-ink-soft">{m.target}</p></div>
+                {task.kpi.metrics.map((m) => {
+                  const auto = kpiAuto?.results?.[task.id]?.[m.name];
+                  const state = autoState(auto, m.asof);
+                  return (
+                    <div key={m.name} className="rounded-md border border-line/70 bg-paper/60 px-3 py-2.5">
+                      <p className="text-xs font-semibold text-ink">
+                        {m.name}
+                        {state === "fresh" && (
+                          <span className="ml-1.5 rounded border border-bronze/30 bg-bronze/[0.07] px-1 py-px text-[11px] font-medium leading-4 text-bronze-deep">
+                            自動計測
+                          </span>
+                        )}
+                      </p>
+                      <div className="mt-1.5 grid grid-cols-3 gap-2 text-xs leading-5">
+                        <div><p className="text-ink-faint">ベースライン</p><p className="text-ink-soft">{m.baseline}</p></div>
+                        <div><p className="text-ink-faint">現在</p><p className="font-semibold text-ink">{state === "fresh" ? auto!.value : m.current}</p></div>
+                        <div><p className="text-ink-faint">目標</p><p className="text-ink-soft">{m.target}</p></div>
+                      </div>
+                      <p className="mt-1 text-xs leading-5 text-ink-faint">
+                        計測時点: {state === "fresh" ? `${auto!.asof}（直近7日ローリング・日次自動更新）` : m.asof}
+                      </p>
+                      {state === "stale" && (
+                        <p className="mt-1 text-xs leading-5 font-medium text-[#8f403a]">
+                          ⚠ 自動計測が停止中（最終計測: {auto!.asof}）。手動値を表示しています
+                        </p>
+                      )}
                     </div>
-                    <p className="mt-1 text-xs leading-5 text-ink-faint">計測時点: {m.asof}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <p className="mt-3 text-xs leading-5 text-ink-soft">
                 データソース: {task.kpi.source}
@@ -475,7 +508,7 @@ function DetailPanel({
   );
 }
 
-export default function WbsBoard({ data }: { data: WbsData }) {
+export default function WbsBoard({ data, kpiAuto }: { data: WbsData; kpiAuto?: WbsKpiResults }) {
   const [pj, setPj] = useState<string>("all");
   const [st, setSt] = useState<string>("all");
   const [q, setQ] = useState("");
@@ -719,6 +752,7 @@ export default function WbsBoard({ data }: { data: WbsData }) {
         <DetailPanel
           task={selected}
           data={data}
+          kpiAuto={kpiAuto}
           today={today}
           backId={panel?.back ?? null}
           onOpen={openTask}
