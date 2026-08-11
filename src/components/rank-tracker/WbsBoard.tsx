@@ -8,7 +8,12 @@ export type WbsKpiMetric = { name: string; baseline: string; current: string; ta
 // 自動計測結果（michi側 wbs-measure.mjs が日次で生成。タスクID→metric名→最新値）。
 // ⚠ 機密対策: このJSONはクライアントでimportせず、認証済みserver component（page.tsx）から
 // propsで受け取る（"use client"でstatic importするとチャンクに埋まり認証なしで取得可能になるため）
-export type KpiAuto = { value: string; asof: string; history?: { date: string; value: string }[] };
+export type KpiAuto = {
+  value: string;
+  asof: string;
+  num?: number | null; // スパークライン用の数値（比率%または件数）
+  history?: { date: string; value: string; num?: number | null }[];
+};
 export type WbsKpiResults = { measuredDate?: string; window?: string; results?: Record<string, Record<string, KpiAuto>> };
 
 // 自動計測値の採用判定: 鮮度7日以内かつ手動更新（m.asof）より新しい場合のみ優先。
@@ -125,6 +130,36 @@ function StackBar({ tasks, h = "h-2.5" }: { tasks: WbsTask[]; h?: string }) {
           <div key={s} title={`${ST_META[s]} ${n}件`} style={{ flexGrow: n, background: ST_COLOR[s] }} />
         ) : null;
       })}
+    </div>
+  );
+}
+
+// KPI推移スパークライン（数値履歴が3点以上のときだけ描画）
+function Sparkline({ history }: { history: NonNullable<KpiAuto["history"]> }) {
+  // JSONは実行時検証なしで渡ってくるため、型崩れ（配列以外・要素の欠損）に耐える
+  if (!Array.isArray(history)) return null;
+  const pts = history.filter(
+    (h): h is { date: string; value: string; num: number } =>
+      !!h && typeof h === "object" && typeof h.date === "string" &&
+      typeof h.num === "number" && Number.isFinite(h.num)
+  );
+  if (pts.length < 3) return null;
+  const W = 120, H = 26, P = 3;
+  const nums = pts.map((p) => p.num as number);
+  const min = Math.min(...nums), max = Math.max(...nums);
+  const x = (i: number) => P + (i / (pts.length - 1)) * (W - 2 * P);
+  const y = (v: number) => (max === min ? H / 2 : P + (1 - (v - min) / (max - min)) * (H - 2 * P));
+  const d = pts.map((p, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(p.num as number).toFixed(1)}`).join(" ");
+  const last = pts[pts.length - 1];
+  return (
+    <div className="mt-1.5 flex items-center gap-2">
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-6 w-28 shrink-0" role="img"
+        aria-label={`推移 ${pts[0].date}〜${last.date}（${pts.length}回計測）`}>
+        <title>{`推移 ${pts[0].date}〜${last.date}（${pts.length}回計測・最小${min}・最大${max}）`}</title>
+        <path d={d} fill="none" stroke="#2a78d6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx={x(pts.length - 1)} cy={y(last.num as number)} r="2.5" fill="#2a78d6" stroke="#f6f4ef" strokeWidth="1" />
+      </svg>
+      <span className="text-xs leading-5 text-ink-faint">推移（{pts.length}回計測）</span>
     </div>
   );
 }
@@ -450,8 +485,10 @@ function DetailPanel({
                         <div><p className="text-ink-faint">目標</p><p className="text-ink-soft">{m.target}</p></div>
                       </div>
                       <p className="mt-1 text-xs leading-5 text-ink-faint">
-                        計測時点: {state === "fresh" ? `${auto!.asof}（直近7日ローリング・日次自動更新）` : m.asof}
+                        計測時点: {state === "fresh" ? `${auto!.asof}（ローリング窓・日次自動更新）` : m.asof}
                       </p>
+                      {/* 推移は自動値を採用しているときだけ表示（不採用の古い系列を手動値の推移と誤認させない） */}
+                      {state === "fresh" && Array.isArray(auto?.history) && <Sparkline history={auto.history} />}
                       {state === "stale" && (
                         <p className="mt-1 text-xs leading-5 font-medium text-[#8f403a]">
                           ⚠ 自動計測が停止中（最終計測: {auto!.asof}）。手動値を表示しています
