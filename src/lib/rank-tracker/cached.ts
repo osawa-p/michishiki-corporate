@@ -5,11 +5,13 @@ import {
   listTrackedKeywords,
   listTrackedDomains,
   fetchLatestRanks,
+  fetchLatestSerp,
   fetchSiteSeriesRows,
   fetchSiteCandidates,
   type TrackedKeyword,
   type TrackedDomain,
   type LatestRank,
+  type LatestSerp,
   type SiteSeriesRow,
   type SiteCandidateRow,
 } from "./bigquery";
@@ -67,4 +69,13 @@ export function getSiteCandidatesCached(domain: string): Promise<SiteCandidateRo
     ["rt-site-candidates", domain],
     { revalidate: READ_TTL, tags: [CACHE_TAG] }
   )();
+}
+
+// 個別分析「SERP詳細」のオンデマンド取得（キーワード単位）。
+// 新しい計測が入ると invalidateRankTrackerCache() で即時無効化される。
+export function getLatestSerpCached(keyword: string): Promise<LatestSerp> {
+  return unstable_cache(() => fetchLatestSerp(keyword), ["rt-serp", keyword], {
+    revalidate: READ_TTL,
+    tags: [CACHE_TAG],
+  })();
 }

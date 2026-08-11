@@ -114,6 +114,7 @@ export type LatestRank = {
   url: string | null;
   prev_rank: number | null; // 前回計測の順位（未検出なら null）
   has_prev: boolean; // 前回計測が存在するか
+  own_urls: { rank: number; url: string }[] | null; // 最新計測で自社がランクインした全URL（未検出なら null）
 };
 
 export async function fetchLatestRanks(
@@ -139,7 +140,8 @@ export async function fetchLatestRanks(
       SELECT s.keyword, r.rn, r.checked_at,
              COUNT(*) AS total,
              MIN(IF(s.domain = @target, s.rank, NULL)) AS rank,
-             ARRAY_AGG(IF(s.domain = @target, s.url, NULL) IGNORE NULLS ORDER BY s.rank LIMIT 1)[SAFE_OFFSET(0)] AS url
+             ARRAY_AGG(IF(s.domain = @target, s.url, NULL) IGNORE NULLS ORDER BY s.rank LIMIT 1)[SAFE_OFFSET(0)] AS url,
+             ARRAY_AGG(IF(s.domain = @target, STRUCT(s.rank AS rank, s.url AS url), NULL) IGNORE NULLS ORDER BY s.rank) AS own_urls
       FROM ${TABLE_FQN} s
       JOIN recent r ON s.keyword = r.keyword AND s.checked_at = r.checked_at
       GROUP BY s.keyword, r.rn, r.checked_at
@@ -148,7 +150,8 @@ export async function fetchLatestRanks(
            FORMAT_TIMESTAMP('%Y-%m-%d %H:%M', cur.checked_at, 'Asia/Tokyo') AS checked_at,
            cur.total, cur.rank, cur.url,
            prev.rank AS prev_rank,
-           (prev.keyword IS NOT NULL) AS has_prev
+           (prev.keyword IS NOT NULL) AS has_prev,
+           cur.own_urls
     FROM agg cur
     LEFT JOIN agg prev ON prev.keyword = cur.keyword AND prev.rn = 2
     WHERE cur.rn = 1
@@ -159,6 +162,45 @@ export async function fetchLatestRanks(
     params: { target, onlyTracked },
   });
   return rows;
+}
+
+// 最新計測1回分のSERP全件（順位×URL×タイトル）。個別分析の「SERP詳細」用。
+// プリロードには乗せず、キーワード選択時にオンデマンドで取得する（cached.ts 経由）。
+// ※ SerpRow（書き込み行の型）は ./types にあるため別名にしている
+export type SerpEntry = {
+  rank: number;
+  url: string;
+  domain: string;
+  title: string | null;
+};
+
+export type LatestSerp = {
+  checked_at: string | null; // 計測が1回も無ければ null
+  total: number;
+  rows: SerpEntry[];
+};
+
+export async function fetchLatestSerp(keyword: string): Promise<LatestSerp> {
+  const sql = `
+    WITH latest AS (
+      SELECT MAX(checked_at) AS checked_at FROM ${TABLE_FQN} WHERE keyword = @keyword
+    )
+    SELECT FORMAT_TIMESTAMP('%Y-%m-%d %H:%M', s.checked_at, 'Asia/Tokyo') AS checked_at,
+           s.rank, s.url, s.domain, s.title
+    FROM ${TABLE_FQN} s
+    JOIN latest l ON s.checked_at = l.checked_at
+    WHERE s.keyword = @keyword
+    ORDER BY s.rank
+  `;
+  const { rows } = await runQuery<SerpEntry & { checked_at: string }>({
+    query: sql,
+    params: { keyword },
+  });
+  return {
+    checked_at: rows[0]?.checked_at ?? null,
+    total: rows.length,
+    rows: rows.map(({ rank, url, domain, title }) => ({ rank, url, domain, title })),
+  };
 }
 
 // 特定キーワードの順位推移（計測日時ごとの自社ドメイン順位）
@@ -262,6 +304,7 @@ export type CompetitorCandidate = {
   avg_rank: number;
   best_rank: number;
   latest_rank: number;
+  latest_url: string | null; // 最新計測でそのドメインの最上位に入っていたURL
 };
 
 export async function listCompetitorCandidates(
@@ -272,26 +315,41 @@ export async function listCompetitorCandidates(
   const target = targetKey(targetDomain);
   const fromDays = Math.max(0, Math.trunc(opts.fromDays ?? 0));
   const sql = `
-    WITH scope AS (
-      SELECT checked_at, domain, MIN(rank) AS rank
+    WITH raw AS (
+      SELECT checked_at, domain, rank, url
       FROM ${TABLE_FQN}
       WHERE keyword = @keyword
         AND (@fromDays = 0 OR checked_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL @fromDays DAY))
-      GROUP BY checked_at, domain
     ),
-    n AS (SELECT COUNT(DISTINCT checked_at) AS batches FROM scope)
-    SELECT domain,
-           COUNT(*) AS appearances,
-           (SELECT batches FROM n) AS batches,
-           ROUND(AVG(rank), 1) AS avg_rank,
-           MIN(rank) AS best_rank,
-           ARRAY_AGG(rank ORDER BY checked_at DESC LIMIT 1)[SAFE_OFFSET(0)] AS latest_rank
-    FROM scope
-    WHERE domain != @target
-    GROUP BY domain
-    HAVING AVG(rank) <= 30
-    ORDER BY appearances DESC, avg_rank ASC
-    LIMIT ${CANDIDATE_LIMIT}
+    scope AS (
+      SELECT checked_at, domain, MIN(rank) AS rank FROM raw GROUP BY checked_at, domain
+    ),
+    n AS (SELECT COUNT(DISTINCT checked_at) AS batches FROM scope),
+    stats AS (
+      SELECT domain,
+             COUNT(*) AS appearances,
+             (SELECT batches FROM n) AS batches,
+             ROUND(AVG(rank), 1) AS avg_rank,
+             MIN(rank) AS best_rank,
+             ARRAY_AGG(rank ORDER BY checked_at DESC LIMIT 1)[SAFE_OFFSET(0)] AS latest_rank
+      FROM scope
+      WHERE domain != @target
+      GROUP BY domain
+      HAVING AVG(rank) <= 30
+      ORDER BY appearances DESC, avg_rank ASC
+      LIMIT ${CANDIDATE_LIMIT}
+    ),
+    latest_urls AS (
+      SELECT domain,
+             ARRAY_AGG(url ORDER BY checked_at DESC, rank ASC LIMIT 1)[SAFE_OFFSET(0)] AS latest_url
+      FROM raw
+      GROUP BY domain
+    )
+    SELECT st.domain, st.appearances, st.batches, st.avg_rank, st.best_rank, st.latest_rank,
+           lu.latest_url
+    FROM stats st
+    LEFT JOIN latest_urls lu ON lu.domain = st.domain
+    ORDER BY st.appearances DESC, st.avg_rank ASC
   `;
   const { rows } = await runQuery<CompetitorCandidate>({
     query: sql,
@@ -364,6 +422,29 @@ export async function fetchSiteSeriesRows(
   return rows;
 }
 
+// SSR→クライアントへ渡す props ペイロードの圧縮形。フラット行はキーワード・計測日時・
+// 取得件数がドメイン数ぶん（自社＋候補最大20社）重複するため、キーワード単位の時系列に
+// まとめてから渡す（100KW規模で実測1/4〜1/5）。純関数で、行は keyword, checked_at 順が前提。
+export type SiteSeriesPack = { keyword: string; points: TrendSeriesPoint[] }[];
+
+export function packSiteSeries(rows: SiteSeriesRow[]): SiteSeriesPack {
+  const m = new Map<string, TrendSeriesPoint[]>();
+  for (const r of rows) {
+    let arr = m.get(r.keyword);
+    if (!arr) {
+      arr = [];
+      m.set(r.keyword, arr);
+    }
+    let p = arr[arr.length - 1];
+    if (!p || p.checked_at !== r.checked_at) {
+      p = { checked_at: r.checked_at, total: r.total, ranks: {} };
+      arr.push(p);
+    }
+    if (r.domain) p.ranks[r.domain] = r.rank;
+  }
+  return [...m.entries()].map(([keyword, points]) => ({ keyword, points }));
+}
+
 // サイト内全キーワードの競合候補サマリを1クエリで取得する（プリロード用）。
 export type SiteCandidateRow = CompetitorCandidate & { keyword: string };
 
@@ -377,27 +458,42 @@ export async function fetchSiteCandidates(
     WITH tracked AS (
       SELECT DISTINCT keyword FROM ${KW_TABLE_FQN} WHERE target_domain = @target
     ),
-    scope AS (
-      SELECT keyword, checked_at, domain, MIN(rank) AS rank
+    raw AS (
+      SELECT keyword, checked_at, domain, rank, url
       FROM ${TABLE_FQN}
       WHERE keyword IN (SELECT keyword FROM tracked)
         AND checked_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL @fromDays DAY)
+    ),
+    scope AS (
+      SELECT keyword, checked_at, domain, MIN(rank) AS rank FROM raw
       GROUP BY keyword, checked_at, domain
     ),
-    n AS (SELECT keyword, COUNT(DISTINCT checked_at) AS batches FROM scope GROUP BY keyword)
-    SELECT s.keyword, s.domain,
-           COUNT(*) AS appearances,
-           ANY_VALUE(n.batches) AS batches,
-           ROUND(AVG(s.rank), 1) AS avg_rank,
-           MIN(s.rank) AS best_rank,
-           ARRAY_AGG(s.rank ORDER BY s.checked_at DESC LIMIT 1)[SAFE_OFFSET(0)] AS latest_rank
-    FROM scope s
-    JOIN n ON n.keyword = s.keyword
-    WHERE s.domain != @target
-    GROUP BY s.keyword, s.domain
-    HAVING AVG(s.rank) <= 30
-    QUALIFY ROW_NUMBER() OVER (PARTITION BY s.keyword ORDER BY COUNT(*) DESC, AVG(s.rank) ASC, s.domain) <= ${CANDIDATE_LIMIT}
-    ORDER BY s.keyword, appearances DESC, avg_rank ASC
+    n AS (SELECT keyword, COUNT(DISTINCT checked_at) AS batches FROM scope GROUP BY keyword),
+    stats AS (
+      SELECT s.keyword, s.domain,
+             COUNT(*) AS appearances,
+             ANY_VALUE(n.batches) AS batches,
+             ROUND(AVG(s.rank), 1) AS avg_rank,
+             MIN(s.rank) AS best_rank,
+             ARRAY_AGG(s.rank ORDER BY s.checked_at DESC LIMIT 1)[SAFE_OFFSET(0)] AS latest_rank
+      FROM scope s
+      JOIN n ON n.keyword = s.keyword
+      WHERE s.domain != @target
+      GROUP BY s.keyword, s.domain
+      HAVING AVG(s.rank) <= 30
+      QUALIFY ROW_NUMBER() OVER (PARTITION BY s.keyword ORDER BY COUNT(*) DESC, AVG(s.rank) ASC, s.domain) <= ${CANDIDATE_LIMIT}
+    ),
+    latest_urls AS (
+      SELECT keyword, domain,
+             ARRAY_AGG(url ORDER BY checked_at DESC, rank ASC LIMIT 1)[SAFE_OFFSET(0)] AS latest_url
+      FROM raw
+      GROUP BY keyword, domain
+    )
+    SELECT st.keyword, st.domain, st.appearances, st.batches, st.avg_rank, st.best_rank,
+           st.latest_rank, lu.latest_url
+    FROM stats st
+    LEFT JOIN latest_urls lu ON lu.keyword = st.keyword AND lu.domain = st.domain
+    ORDER BY st.keyword, st.appearances DESC, st.avg_rank ASC
   `;
   const { rows } = await runQuery<SiteCandidateRow>({
     query: sql,
