@@ -4,6 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // WBSデータの型（実体は src/data/wbs-tasks.json。F:\michi\remedi\keisoku\tasks.js が正で、
 // michi側の auto-sync（wbs-publish.mjs）が JSON へ変換して自動同期する）
+export type WbsKpiMetric = { name: string; baseline: string; current: string; target: string; asof: string };
+export type WbsKpi = {
+  kgi: string;
+  metrics: WbsKpiMetric[];
+  source: string;   // データソース（BigQuery/GSC/GA4等）
+  queryRef?: string; // 再計測クエリ・手順への参照
+  next: string;      // 次回判定タイミング
+};
 export type WbsTask = {
   id: string;
   pj: string;
@@ -13,6 +21,7 @@ export type WbsTask = {
   st: "todo" | "doing" | "wait" | "done";
   due: string;
   start?: string; // 任意（YYYY-MM-DD）。ガントの棒の開始日
+  kpi?: WbsKpi;   // 任意。効果計測つき施策に付与（Phase 1は手動更新・Phase 2で日次バッチ化予定）
 };
 export type WbsData = {
   updated: string;
@@ -400,6 +409,34 @@ function DetailPanel({
           {row("開始", isIso(task.start)
             ? <span className="tabular-nums">{task.start}</span>
             : <span className="text-ink-faint">未設定（ガントでは今日〜期限の破線で表示）</span>)}
+          {task.kpi && (
+            <div className="my-4 rounded-lg border border-line bg-white/60 p-4">
+              <p className="text-xs font-semibold tracking-[0.15em] uppercase text-bronze">効果計測（KPI）</p>
+              <p className="mt-2 text-sm leading-6 text-ink">
+                <span className="mr-2 text-xs text-ink-soft">KGI</span>{task.kpi.kgi}
+              </p>
+              <div className="mt-3 space-y-2.5">
+                {task.kpi.metrics.map((m) => (
+                  <div key={m.name} className="rounded-md border border-line/70 bg-paper/60 px-3 py-2.5">
+                    <p className="text-xs font-semibold text-ink">{m.name}</p>
+                    <div className="mt-1.5 grid grid-cols-3 gap-2 text-xs leading-5">
+                      <div><p className="text-ink-faint">ベースライン</p><p className="text-ink-soft">{m.baseline}</p></div>
+                      <div><p className="text-ink-faint">現在</p><p className="font-semibold text-ink">{m.current}</p></div>
+                      <div><p className="text-ink-faint">目標</p><p className="text-ink-soft">{m.target}</p></div>
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-ink-faint">計測時点: {m.asof}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-xs leading-5 text-ink-soft">
+                データソース: {task.kpi.source}
+                {task.kpi.queryRef && <span className="block">再計測: {task.kpi.queryRef}</span>}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-ink-soft">
+                次回判定: <span className="font-semibold text-ink">{task.kpi.next}</span>
+              </p>
+            </div>
+          )}
           {task.dep && row("依存・補足", <DepText text={task.dep} onOpen={onOpen} />)}
           {refTasks.length > 0 &&
             row("関連タスク", (
@@ -644,6 +681,11 @@ export default function WbsBoard({ data }: { data: WbsData }) {
                                 >
                                   {t.task}
                                 </button>
+                                {t.kpi && (
+                                  <span className="ml-1.5 inline-block rounded border border-bronze/30 bg-bronze/[0.07] px-1.5 py-px align-[2px] text-[11px] font-medium leading-4 text-bronze-deep">
+                                    KPI
+                                  </span>
+                                )}
                                 {t.dep && (
                                   <span className="mt-0.5 block truncate text-xs leading-5 text-ink-faint" title={t.dep}>
                                     └ <DepText text={t.dep} onOpen={openTask} />
