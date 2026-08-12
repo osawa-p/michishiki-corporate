@@ -637,6 +637,16 @@
    "due": "複製後"
   },
   {
+   "id": "S-39",
+   "pj": "shift-ai",
+   "task": "Slack連携をZapier→公式API直接取得へ移行（承認依頼→アプリ作成→トークン設定→並行稼働→Zapier停止）",
+   "dep": "スクリプト・マニフェスト・手順書・承認依頼文面は準備済み（docs/slack-api-sync-setup.md）。次: 承認依頼を中田さんへ送付",
+   "pri": 2,
+   "st": "doing",
+   "start": "2026-08-12",
+   "due": "承認後1週間"
+  },
+  {
    "id": "M-01",
    "pj": "moshimo",
    "task": "Clarityユーザビリティ分析（施策40）の集中実施→定例で進捗報告",
