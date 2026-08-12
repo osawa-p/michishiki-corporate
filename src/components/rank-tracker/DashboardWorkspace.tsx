@@ -14,15 +14,24 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type {
   LatestRank,
+  LatestSerp,
   TrackedKeyword,
   TrendSeriesPoint,
-  SiteSeriesRow,
+  SiteSeriesPack,
   SiteCandidateRow,
   CompetitorCandidate,
 } from "@/lib/rank-tracker/bigquery";
 import { cadenceLabel } from "@/lib/rank-tracker/cadence";
 import { targetKey } from "@/lib/rank-tracker/domain";
 import RankChart, { TARGET_COLOR, COMP_COLORS, MAX_COMPS } from "./RankChart";
+import OverviewTable, { BandBar } from "./OverviewTable";
+import {
+  Sparkline,
+  diffBadge,
+  cutoffFrom,
+  cleanSerpUrl,
+  type BandFilter,
+} from "./keyword-bits";
 
 const RANGES = [
   { value: 30, label: "1ヶ月" },
@@ -30,67 +39,18 @@ const RANGES = [
   { value: 0, label: "全期間" },
 ] as const;
 
-function diffBadge(l: LatestRank | undefined): { label: string; cls: string } {
-  if (!l) return { label: "未計測", cls: "text-ink-faint border-line" };
-  if (l.rank == null) return { label: "未検出", cls: "text-ink-faint border-line" };
-  if (!l.has_prev) return { label: "新規", cls: "text-bronze-deep border-bronze/40" };
-  if (l.prev_rank == null) return { label: "復帰", cls: "text-green-800 border-green-700/40" };
-  const d = l.prev_rank - l.rank;
-  if (d > 0) return { label: `▲${d}`, cls: "text-green-800 border-green-700/40" };
-  if (d < 0) return { label: `▼${-d}`, cls: "text-red-700 border-red-600/40" };
-  return { label: "→0", cls: "text-ink-faint border-line" };
-}
-
-// 最新計測日時から n 日前のJST日時文字列（"YYYY-MM-DD HH:MM"）。checked_at と辞書順比較できる。
-// 現在時刻でなくデータ側の最新時刻を起点にすることで、SSRとhydrationの時刻差による
-// 表示ずれ（hydration mismatch）を避け、純粋な導出にする。
-function cutoffFrom(latestCheckedAt: string, days: number): string {
-  const d = new Date(latestCheckedAt.replace(" ", "T") + ":00+09:00");
-  d.setTime(d.getTime() - days * 86_400_000);
-  return new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Asia/Tokyo",
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(d);
-}
-
-function Sparkline({ ranks }: { ranks: (number | null)[] }) {
-  const vals = ranks.slice(-16);
-  if (vals.filter((v) => v != null).length < 2) return <span className="w-16" aria-hidden />;
-  const w = 64;
-  const h = 22;
-  const pad = 2;
-  let d = "";
-  let pen = false;
-  vals.forEach((v, i) => {
-    if (v == null) {
-      pen = false;
-      return;
-    }
-    const px = pad + (i * (w - 2 * pad)) / (vals.length - 1);
-    const py = pad + ((Math.min(v, 30) - 1) * (h - 2 * pad)) / 29;
-    d += `${pen ? "L" : "M"}${px.toFixed(1)},${py.toFixed(1)} `;
-    pen = true;
-  });
-  return (
-    <svg width={w} height={h} aria-hidden className="shrink-0">
-      <path d={d.trim()} fill="none" stroke="#a17c3f" strokeWidth={1.4} />
-    </svg>
-  );
-}
-
 export default function DashboardWorkspace({
   domain,
   tracked,
   latest,
-  seriesRows,
+  series,
   candidates,
   loadError,
 }: {
   domain: string;
   tracked: TrackedKeyword[];
   latest: LatestRank[];
-  seriesRows: SiteSeriesRow[];
+  series: SiteSeriesPack;
   candidates: SiteCandidateRow[];
   loadError: boolean;
 }) {
@@ -104,24 +64,11 @@ export default function DashboardWorkspace({
 
   const latestBy = useMemo(() => new Map(latest.map((l) => [l.keyword, l])), [latest]);
 
-  // プリロード行 → キーワードごとの時系列（昇順・ranksマップ）へ組み立て
-  const seriesBy = useMemo(() => {
-    const m = new Map<string, TrendSeriesPoint[]>();
-    for (const r of seriesRows) {
-      let arr = m.get(r.keyword);
-      if (!arr) {
-        arr = [];
-        m.set(r.keyword, arr);
-      }
-      let p = arr[arr.length - 1];
-      if (!p || p.checked_at !== r.checked_at) {
-        p = { checked_at: r.checked_at, total: r.total, ranks: {} };
-        arr.push(p);
-      }
-      if (r.domain) p.ranks[r.domain] = r.rank;
-    }
-    return m;
-  }, [seriesRows]);
+  // サーバー側でパック済みの時系列（bigquery.packSiteSeries）を Map 化
+  const seriesBy = useMemo(
+    () => new Map(series.map((s) => [s.keyword, s.points])),
+    [series]
+  );
 
   const candidatesBy = useMemo(() => {
     const m = new Map<string, CompetitorCandidate[]>();
@@ -152,8 +99,42 @@ export default function DashboardWorkspace({
     [sp, domainKey]
   );
 
+  // ビュー: 俯瞰一覧（view=overview）/ 個別分析（未指定・不明値）。既存の共有URLは挙動不変
+  const view = sp.get("view") === "overview" ? "overview" : "detail";
+
   const [tagFilter, setTagFilter] = useState("");
+  // 個別分析の左リスト用の絞り込み・並べ替え（一時状態）
+  const [kwQuery, setKwQuery] = useState("");
+  const [kwSort, setKwSort] = useState<"reg" | "rank" | "diff" | "name">("reg");
+  // 俯瞰一覧の帯フィルタ（ソート・検索と同じく一時状態。KPIタイル・分布バーからも設定される）
+  const [band, setBand] = useState<BandFilter>("");
   const shownKeywords = tracked.filter((t) => !tagFilter || t.tags.includes(tagFilter));
+
+  // 個別分析の左リスト表示用（検索・並べ替え適用後）。選択の自動フォールバックには
+  // shownKeywords を使い続け、絞り込みで選択が勝手に変わらないようにする
+  const kwNeedle = kwQuery.trim().toLowerCase();
+  let listKeywords = kwNeedle
+    ? shownKeywords.filter((t) => t.keyword.toLowerCase().includes(kwNeedle))
+    : shownKeywords;
+  if (kwSort !== "reg") {
+    const by = (t: TrackedKeyword): number | string | null => {
+      if (kwSort === "name") return t.keyword;
+      const l = latestBy.get(t.keyword);
+      if (kwSort === "rank") return l?.rank ?? null;
+      // 変動順: 変動幅の大きい順（未計測・未検出は末尾）
+      return l && l.rank != null && l.prev_rank != null
+        ? -Math.abs(l.prev_rank - l.rank)
+        : null;
+    };
+    listKeywords = [...listKeywords].sort((a, b) => {
+      const va = by(a);
+      const vb = by(b);
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      return typeof va === "string" ? va.localeCompare(String(vb), "ja") : va - (vb as number);
+    });
+  }
   // タグ絞り込みで選択中キーワードが一覧から消えたら、表示中の先頭へ選択を移す
   const selected =
     urlKw && shownKeywords.some((t) => t.keyword === urlKw)
@@ -209,6 +190,40 @@ export default function DashboardWorkspace({
     };
   }, [range, selected, compsKey, domain, retry]);
 
+  // ── SERP詳細（選択キーワードの最新計測分）もオンデマンド取得 ──
+  // 全KW分をプリロードすると重いため、個別分析で選択されたキーワードだけ取りに行く
+  const [serpBy, setSerpBy] = useState<Record<string, LatestSerp>>({});
+  const [serpErrKey, setSerpErrKey] = useState<string | null>(null);
+  const [serpRetry, setSerpRetry] = useState(0);
+  const [serpFilter, setSerpFilter] = useState<"top20" | "all" | "own">("top20");
+  const serpFetchedRef = useRef(new Set<string>());
+
+  useEffect(() => {
+    if (view !== "detail" || !selected) return;
+    if (serpFetchedRef.current.has(selected)) return;
+    let aborted = false;
+    const key = selected;
+    queueMicrotask(() => {
+      if (!aborted) setSerpErrKey((k) => (k === key ? null : k));
+    });
+    const qs = new URLSearchParams({ domain, keyword: key });
+    fetch(`/api/rank-tracker/serp?${qs.toString()}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (aborted) return;
+        if (!data.ok) throw new Error();
+        serpFetchedRef.current.add(key);
+        setSerpBy((m) => ({ ...m, [key]: data.serp as LatestSerp }));
+        setSerpErrKey((k) => (k === key ? null : k));
+      })
+      .catch(() => {
+        if (!aborted) setSerpErrKey(key);
+      });
+    return () => {
+      aborted = true;
+    };
+  }, [view, selected, domain, serpRetry]);
+
   if (loadError) {
     return (
       <p className="text-sm text-ink-faint">
@@ -244,6 +259,7 @@ export default function DashboardWorkspace({
   const selectedLatest = latestBy.get(selected);
   const selBadge = diffBadge(selectedLatest);
   const selectedCandidates = candidatesBy.get(selected) ?? [];
+  const selectedSerp = serpBy[selected];
 
   // 表示する時系列: 1ヶ月/3ヶ月はプリロードからクライアントで切り出し、全期間はオンデマンド
   const preloaded = seriesBy.get(selected) ?? [];
@@ -287,13 +303,21 @@ export default function DashboardWorkspace({
           </div>
           <div className="text-[11px] text-ink-faint">登録キーワード</div>
         </div>
-        <div className={kpiCls}>
+        <button
+          type="button"
+          onClick={() => {
+            setBand("le10");
+            setUrl({ view: "overview" });
+          }}
+          title="俯瞰一覧をTop10で絞り込む"
+          className={`${kpiCls} text-left cursor-pointer transition-colors hover:border-bronze`}
+        >
           <div className="font-serif text-xl font-semibold leading-tight text-bronze-deep">
             {top10}
             <span className="font-sans text-xs font-normal text-ink-faint"> 件</span>
           </div>
-          <div className="text-[11px] text-ink-faint">Top10入り</div>
-        </div>
+          <div className="text-[11px] text-ink-faint">Top10入り ›</div>
+        </button>
         <div className={kpiCls}>
           <div className="font-serif text-xl font-semibold leading-tight text-green-800">
             {up}
@@ -301,13 +325,21 @@ export default function DashboardWorkspace({
           </div>
           <div className="text-[11px] text-ink-faint">前回から上昇</div>
         </div>
-        <div className={kpiCls}>
+        <button
+          type="button"
+          onClick={() => {
+            setBand("out");
+            setUrl({ view: "overview" });
+          }}
+          title="俯瞰一覧を未検出で絞り込む"
+          className={`${kpiCls} text-left cursor-pointer transition-colors hover:border-bronze`}
+        >
           <div className="font-serif text-xl font-semibold leading-tight text-ink-faint">
             {notFound}
             <span className="font-sans text-xs font-normal text-ink-faint"> 件</span>
           </div>
-          <div className="text-[11px] text-ink-faint">未検出</div>
-        </div>
+          <div className="text-[11px] text-ink-faint">未検出 ›</div>
+        </button>
         {lastChecked && (
           <div className={kpiCls}>
             <div className="text-sm font-semibold leading-tight pt-1 tabular-nums">
@@ -316,48 +348,121 @@ export default function DashboardWorkspace({
             <div className="text-[11px] text-ink-faint">最終取得</div>
           </div>
         )}
+        <BandBar
+          measured={measured}
+          onPick={(b) => {
+            setBand(b);
+            setUrl({ view: "overview" });
+          }}
+        />
       </div>
 
-      {/* タグ絞り込み */}
-      {allTags.length > 0 && (
+      {/* タグ絞り込みとビュー切替 */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2 text-xs text-ink-faint">
-          <span>タグ:</span>
+          {allTags.length > 0 && (
+            <>
+              <span>タグ:</span>
+              <button
+                type="button"
+                onClick={() => setTagFilter("")}
+                className={`px-2.5 py-1 border ${
+                  tagFilter === ""
+                    ? "bg-ink text-paper border-ink"
+                    : "bg-white border-line text-ink-soft hover:text-bronze-deep"
+                }`}
+              >
+                すべて
+              </button>
+              {allTags.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTagFilter(tagFilter === t ? "" : t)}
+                  className={`px-2.5 py-1 border ${
+                    tagFilter === t
+                      ? "bg-ink text-paper border-ink"
+                      : "bg-white border-line text-ink-soft hover:text-bronze-deep"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+        <div className="inline-flex border border-line" role="group" aria-label="表示ビュー">
           <button
             type="button"
-            onClick={() => setTagFilter("")}
-            className={`px-2.5 py-1 border ${
-              tagFilter === ""
-                ? "bg-ink text-paper border-ink"
-                : "bg-white border-line text-ink-soft hover:text-bronze-deep"
+            aria-pressed={view === "overview"}
+            onClick={() => setUrl({ view: "overview" })}
+            className={`px-3.5 py-1.5 text-xs ${
+              view === "overview"
+                ? "bg-ink text-paper"
+                : "bg-white text-ink-soft hover:text-bronze-deep"
             }`}
           >
-            すべて
+            俯瞰一覧
           </button>
-          {allTags.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTagFilter(tagFilter === t ? "" : t)}
-              className={`px-2.5 py-1 border ${
-                tagFilter === t
-                  ? "bg-ink text-paper border-ink"
-                  : "bg-white border-line text-ink-soft hover:text-bronze-deep"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
+          <button
+            type="button"
+            aria-pressed={view === "detail"}
+            onClick={() => setUrl({ view: null })}
+            className={`px-3.5 py-1.5 text-xs border-l border-line ${
+              view === "detail"
+                ? "bg-ink text-paper"
+                : "bg-white text-ink-soft hover:text-bronze-deep"
+            }`}
+          >
+            個別分析
+          </button>
         </div>
-      )}
+      </div>
 
-      {/* ワークスペース */}
+      {/* ワークスペース: 俯瞰一覧はプリロード済みデータの導出のみで全幅テーブル表示 */}
+      {view === "overview" ? (
+        <OverviewTable
+          tracked={shownKeywords}
+          latestBy={latestBy}
+          seriesBy={seriesBy}
+          domainKey={domainKey}
+          band={band}
+          onBandChange={setBand}
+          onSelect={(kw) => setUrl({ kw, view: null, comps: null })}
+        />
+      ) : (
       <div className="bg-white border border-line grid lg:grid-cols-[19rem_minmax(0,1fr)]">
         {/* 左: キーワード一覧 */}
         <div className="border-b lg:border-b-0 lg:border-r border-line max-h-[32rem] lg:max-h-none overflow-y-auto">
           <div className="px-4 py-3 border-b border-line text-[11px] tracking-wider text-ink-faint">
-            キーワード（{shownKeywords.length}）
+            キーワード（
+            {listKeywords.length !== shownKeywords.length
+              ? `${listKeywords.length}/${shownKeywords.length}`
+              : shownKeywords.length}
+            ）
           </div>
-          {shownKeywords.map((t) => {
+          <div className="px-4 py-2 border-b border-line flex items-center gap-2">
+            <input
+              type="search"
+              value={kwQuery}
+              onChange={(e) => setKwQuery(e.target.value)}
+              placeholder="絞り込み…"
+              aria-label="キーワードを絞り込み"
+              className="flex-1 min-w-0 px-2 py-1 text-xs border border-line bg-white text-ink focus:outline-2 focus:outline-bronze"
+            />
+            <select
+              value={kwSort}
+              onChange={(e) => setKwSort(e.target.value as typeof kwSort)}
+              aria-label="並べ替え"
+              className="px-1.5 py-1 text-xs border border-line bg-white text-ink-soft"
+            >
+              <option value="reg">登録順</option>
+              <option value="rank">順位順</option>
+              <option value="diff">変動順</option>
+              <option value="name">名前順</option>
+            </select>
+          </div>
+          {listKeywords.map((t) => {
             const l = latestBy.get(t.keyword);
             const badge = diffBadge(l);
             const sel = t.keyword === selected;
@@ -436,6 +541,33 @@ export default function DashboardWorkspace({
                   : " ・ まだ計測データがありません"}
               </p>
 
+              {/* 自社ランクインURL（最新計測で自社が入っている全URL。複数あればカニバリの手がかり） */}
+              {selectedLatest?.own_urls && selectedLatest.own_urls.length > 0 && (
+                <div className="mb-4 border border-line bg-white px-4 py-2.5">
+                  <p className="text-[11px] text-ink-faint mb-1">
+                    自社ランクインURL（{selectedLatest.own_urls.length}本・最新計測）
+                  </p>
+                  {selectedLatest.own_urls.map((o) => (
+                    <p
+                      key={`${o.rank}-${o.url}`}
+                      className="text-xs mt-0.5 flex items-baseline gap-2"
+                    >
+                      <span className="shrink-0 px-1.5 text-[10px] leading-4 border border-bronze/40 text-bronze-deep bg-white tabular-nums">
+                        {o.rank}位
+                      </span>
+                      <a
+                        href={cleanSerpUrl(o.url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-bronze-deep underline underline-offset-2 break-all"
+                      >
+                        {cleanSerpUrl(o.url)}
+                      </a>
+                    </p>
+                  ))}
+                </div>
+              )}
+
               {/* 凡例 */}
               <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2 text-xs text-ink-soft">
                 <span className="inline-flex items-center gap-1.5">
@@ -488,6 +620,7 @@ export default function DashboardWorkspace({
                             <th className="text-right px-3 py-2 border-b border-line font-semibold">最高</th>
                             <th className="text-right px-3 py-2 border-b border-line font-semibold">平均</th>
                             <th className="text-right px-3 py-2 border-b border-line font-semibold">出現</th>
+                            <th className="text-left px-3 py-2 border-b border-line font-semibold">最新URL</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -520,6 +653,20 @@ export default function DashboardWorkspace({
                                 <td className="px-3 py-1.5 text-right tabular-nums text-ink-faint">
                                   {c.appearances}/{c.batches}回
                                 </td>
+                                <td className="px-3 py-1.5 min-w-[14rem]">
+                                  {c.latest_url ? (
+                                    <a
+                                      href={cleanSerpUrl(c.latest_url)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-[11px] text-bronze-deep hover:underline underline-offset-2 break-all"
+                                    >
+                                      {cleanSerpUrl(c.latest_url)}
+                                    </a>
+                                  ) : (
+                                    <span className="text-ink-faint">—</span>
+                                  )}
+                                </td>
                               </tr>
                             );
                           })}
@@ -527,6 +674,145 @@ export default function DashboardWorkspace({
                       </table>
                     </div>
                   )}
+
+                  {/* SERP詳細（最新計測1回分の順位×URL×タイトル。オンデマンド取得） */}
+                  <div className="mt-5">
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+                      <p className="text-xs font-semibold text-ink-soft">
+                        SERP詳細
+                        {selectedSerp?.checked_at && (
+                          <span className="font-normal text-ink-faint">
+                            （最新計測 {selectedSerp.checked_at} ・ {selectedSerp.total}件取得・自社ハイライト）
+                          </span>
+                        )}
+                      </p>
+                      <div
+                        className="inline-flex border border-line"
+                        role="group"
+                        aria-label="SERP詳細の絞り込み"
+                      >
+                        {(
+                          [
+                            ["top20", "上位20"],
+                            ["all", "すべて"],
+                            ["own", "自社のみ"],
+                          ] as const
+                        ).map(([value, label], i) => (
+                          <button
+                            key={value}
+                            type="button"
+                            aria-pressed={serpFilter === value}
+                            onClick={() => setSerpFilter(value)}
+                            className={`px-3 py-1 text-xs ${i > 0 ? "border-l border-line" : ""} ${
+                              serpFilter === value
+                                ? "bg-ink text-paper"
+                                : "bg-white text-ink-soft hover:text-bronze-deep"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {serpErrKey === selected ? (
+                      <p className="text-sm text-red-600 py-4">
+                        SERP詳細の取得に失敗しました。
+                        <button
+                          type="button"
+                          onClick={() => setSerpRetry((r) => r + 1)}
+                          className="ml-3 px-3 py-1 text-xs border border-line bg-white text-bronze-deep hover:border-bronze"
+                        >
+                          再試行
+                        </button>
+                      </p>
+                    ) : !selectedSerp ? (
+                      <p className="text-xs text-ink-faint py-4 animate-pulse">
+                        SERP詳細を読み込み中…
+                      </p>
+                    ) : selectedSerp.rows.length === 0 ? (
+                      <p className="text-xs text-ink-faint py-4">まだ計測データがありません。</p>
+                    ) : (
+                      (() => {
+                        const shown =
+                          serpFilter === "top20"
+                            ? selectedSerp.rows.filter((r) => r.rank <= 20)
+                            : serpFilter === "own"
+                              ? selectedSerp.rows.filter((r) => r.domain === domainKey)
+                              : selectedSerp.rows;
+                        if (shown.length === 0) {
+                          return (
+                            <p className="text-xs text-ink-faint py-4">
+                              {serpFilter === "own"
+                                ? `自社はこのSERP（${selectedSerp.total}件）に未検出です。`
+                                : "該当する行がありません。"}
+                            </p>
+                          );
+                        }
+                        return (
+                          <div className="border border-line max-h-96 overflow-auto">
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="text-ink-faint">
+                                  <th className="sticky top-0 bg-white text-right px-3 py-2 border-b border-line font-semibold w-12">
+                                    順位
+                                  </th>
+                                  <th className="sticky top-0 bg-white text-left px-3 py-2 border-b border-line font-semibold">
+                                    タイトル / URL
+                                  </th>
+                                  <th className="sticky top-0 bg-white text-left px-3 py-2 border-b border-line font-semibold">
+                                    ドメイン
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {shown.map((row) => {
+                                  const own = row.domain === domainKey;
+                                  return (
+                                    <tr
+                                      key={`${row.rank}-${row.url}`}
+                                      className={own ? "bg-bronze/10" : "odd:bg-white even:bg-paper"}
+                                    >
+                                      <td
+                                        className={`px-3 py-1.5 text-right tabular-nums align-top font-medium ${
+                                          own ? "text-bronze-deep" : "text-ink-soft"
+                                        }`}
+                                      >
+                                        {row.rank}
+                                      </td>
+                                      <td className="px-3 py-1.5">
+                                        <a
+                                          href={cleanSerpUrl(row.url)}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="block group"
+                                        >
+                                          <span className="block text-ink group-hover:text-bronze-deep">
+                                            {row.title || row.url}
+                                          </span>
+                                          <span className="block text-[10px] text-ink-faint break-all">
+                                            {cleanSerpUrl(row.url)}
+                                          </span>
+                                        </a>
+                                      </td>
+                                      <td
+                                        className={`px-3 py-1.5 align-top whitespace-nowrap ${
+                                          own
+                                            ? "font-semibold text-bronze-deep"
+                                            : "text-ink-soft"
+                                        }`}
+                                      >
+                                        {own ? `${domainKey}（自社）` : row.domain}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        );
+                      })()
+                    )}
+                  </div>
 
                   {/* 計測履歴 */}
                   {points.length > 0 && (
@@ -568,6 +854,7 @@ export default function DashboardWorkspace({
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

@@ -3,11 +3,12 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getAccess, canViewDomain } from "@/lib/rank-tracker/auth";
-import type {
-  LatestRank,
-  TrackedKeyword,
-  SiteSeriesRow,
-  SiteCandidateRow,
+import {
+  packSiteSeries,
+  type LatestRank,
+  type TrackedKeyword,
+  type SiteSeriesRow,
+  type SiteCandidateRow,
 } from "@/lib/rank-tracker/bigquery";
 import {
   getLatestRanksCached,
@@ -91,7 +92,7 @@ export default async function DomainDashboardPage({ params }: Props) {
               domain={domain}
               tracked={tracked}
               latest={latest}
-              seriesRows={seriesRows}
+              series={packSiteSeries(seriesRows)}
               candidates={candidates}
               loadError={loadError}
             />
