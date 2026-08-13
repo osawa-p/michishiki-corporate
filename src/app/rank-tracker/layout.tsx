@@ -18,7 +18,11 @@ export default async function RankTrackerLayout({
   const access = await getAccess();
   return (
     <>
-      <RankTrackerNav role={access?.role ?? null} email={access?.email ?? null} />
+      <RankTrackerNav
+        role={access?.role ?? null}
+        email={access?.email ?? null}
+        domains={access?.domains ?? []}
+      />
       {children}
     </>
   );
