@@ -46,20 +46,28 @@ export default function MemberManager({
     setMsg(null);
     setInviteUrl(null);
     setCopied(false);
+    const to = email.trim();
     try {
       const res = await fetch(API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // 管理者は全サイト閲覧のため domains を持たせない（サーバー側でも強制）
-        body: JSON.stringify({ email: email.trim(), role, domains: role === "admin" ? [] : domains }),
+        body: JSON.stringify({ email: to, role, domains: role === "admin" ? [] : domains }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || "招待の発行に失敗しました。");
       setInviteUrl(data.inviteUrl as string);
-      setMsg({
-        kind: "ok",
-        text: "招待リンクを発行しました。コピーして相手に共有してください（有効期限7日）。",
-      });
+      setMsg(
+        data.emailSent
+          ? {
+              kind: "ok",
+              text: `${to} 宛に招待メールを送信しました（有効期限7日）。届かない場合は下のリンクを直接共有してください。`,
+            }
+          : {
+              kind: "err",
+              text: "招待リンクは発行しましたが、メール送信に失敗しました。下のリンクをコピーして直接共有してください（有効期限7日）。",
+            }
+      );
       setEmail("");
       await refresh().catch(() => {});
     } catch (err) {
@@ -69,7 +77,7 @@ export default function MemberManager({
     }
   }
 
-  // 招待中メンバーのリンク再発行（同じPOSTで上書き発行される）
+  // 招待中メンバーの再送（同じPOSTでリンクが上書き発行され、メールも再送される）
   async function reissue(m: Member) {
     setBusy(true);
     setMsg(null);
@@ -84,7 +92,14 @@ export default function MemberManager({
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || "再発行に失敗しました。");
       setInviteUrl(data.inviteUrl as string);
-      setMsg({ kind: "ok", text: `${m.email} の招待リンクを再発行しました（有効期限7日）。` });
+      setMsg(
+        data.emailSent
+          ? { kind: "ok", text: `${m.email} 宛に招待メールを再送しました（有効期限7日）。` }
+          : {
+              kind: "err",
+              text: `${m.email} の招待リンクを再発行しましたが、メール送信に失敗しました。下のリンクを直接共有してください（有効期限7日）。`,
+            }
+      );
       await refresh().catch(() => {});
     } catch (err) {
       setMsg({ kind: "err", text: err instanceof Error ? err.message : "再発行に失敗しました。" });
@@ -209,7 +224,7 @@ export default function MemberManager({
           disabled={busy || (role !== "admin" && domains.length === 0)}
           className="px-6 py-3 bg-ink text-paper text-sm font-semibold hover:bg-bronze-deep transition-colors disabled:opacity-60"
         >
-          招待リンクを発行
+          招待メールを送信
         </button>
 
         {msg && (
@@ -303,7 +318,7 @@ export default function MemberManager({
                       disabled={busy}
                       className="text-xs text-bronze-deep hover:underline disabled:opacity-60"
                     >
-                      リンク再発行
+                      招待を再送
                     </button>
                   )}
                   {m.email !== selfEmail && (

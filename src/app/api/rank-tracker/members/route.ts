@@ -1,6 +1,6 @@
 // メンバー管理API（管理者専用）。
 //   GET    → 一覧
-//   POST   {email, role, domains[]} → 招待発行（招待URLを返す）。invited への再送も同じ形
+//   POST   {email, role, domains[]} → 招待発行（招待メールを送信し、招待URLも返す）。invited への再送も同じ形
 //   PATCH  {email, role?, domains?} → 権限・閲覧サイトの更新
 //   DELETE {email} → 削除（自分自身は不可）
 import { NextResponse } from "next/server";
@@ -17,6 +17,7 @@ import {
 } from "@/lib/rank-tracker/members";
 import { requireAdminApi, invalidateMembersCache } from "@/lib/rank-tracker/auth";
 import { targetKey, isValidTargetDomain } from "@/lib/rank-tracker/domain";
+import { sendInviteEmail } from "@/lib/rank-tracker/invite-email";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -91,11 +92,15 @@ export async function POST(request: Request) {
       );
     }
     invalidateMembersCache();
-    // 招待URLは管理者が手動で共有する（メール送信はしない）
     const origin = new URL(request.url).origin;
+    const inviteUrl = `${origin}/rank-tracker/invite/${invite.token}`;
+    // メール送信の失敗は招待の失敗にしない（返した招待URLの手動共有でリカバリできる）
+    const mail = await sendInviteEmail({ to: email, inviteUrl, role, domains });
     return NextResponse.json({
       ok: true,
-      inviteUrl: `${origin}/rank-tracker/invite/${invite.token}`,
+      inviteUrl,
+      emailSent: mail.sent,
+      ...(mail.sent ? {} : { emailError: mail.reason }),
     });
   } catch (err) {
     console.error("[rank-tracker] 招待の発行に失敗:", err);
