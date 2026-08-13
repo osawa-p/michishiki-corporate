@@ -26,6 +26,7 @@ export type Member = {
   allowed_domains: string[];
   status: MemberStatus;
   invite_valid: boolean; // 招待中かつ期限内
+  invite_email_sent_at: string | null; // 現在有効な招待リンクのメール送信日時（JST表示用）
   created_at: string;
   last_login_at: string | null;
 };
@@ -80,6 +81,7 @@ export async function listMembers(): Promise<Member[]> {
       IFNULL(allowed_domains, []) AS allowed_domains,
       status,
       (status = 'invited' AND invite_expires_at > CURRENT_TIMESTAMP()) AS invite_valid,
+      FORMAT_TIMESTAMP('%Y-%m-%d %H:%M', invite_email_sent_at, 'Asia/Tokyo') AS invite_email_sent_at,
       FORMAT_TIMESTAMP('%Y-%m-%d %H:%M', created_at, 'Asia/Tokyo') AS created_at,
       FORMAT_TIMESTAMP('%Y-%m-%d %H:%M', last_login_at, 'Asia/Tokyo') AS last_login_at
     FROM ${MEMBERS_FQN}
@@ -126,6 +128,7 @@ export async function createInvite(input: {
       SET role = @role, allowed_domains = @domains,
           invite_token_hash = @tokenHash,
           invite_expires_at = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL ${INVITE_TTL_DAYS} DAY),
+          invite_email_sent_at = NULL,
           updated_at = CURRENT_TIMESTAMP()
       WHERE email = @email AND status = 'invited'
     `;
@@ -140,10 +143,10 @@ export async function createInvite(input: {
   const sql = `
     INSERT INTO ${MEMBERS_FQN}
       (email, role, allowed_domains, status, password_hash, invite_token_hash,
-       invite_expires_at, created_at, updated_at, last_login_at)
+       invite_expires_at, invite_email_sent_at, created_at, updated_at, last_login_at)
     VALUES
       (@email, @role, @domains, 'invited', NULL, @tokenHash,
-       TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL ${INVITE_TTL_DAYS} DAY),
+       TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL ${INVITE_TTL_DAYS} DAY), NULL,
        CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), NULL)
   `;
   await runQuery({
@@ -152,6 +155,18 @@ export async function createInvite(input: {
     types: { domains: ["STRING"] },
   });
   return { token };
+}
+
+// 招待メールの送信日時を記録する（招待中のみ）。表示用なので失敗は呼び出し側で握りつぶしてよい。
+export async function markInviteEmailSent(email: string): Promise<void> {
+  await runQuery({
+    query: `
+      UPDATE ${MEMBERS_FQN}
+      SET invite_email_sent_at = CURRENT_TIMESTAMP(), updated_at = CURRENT_TIMESTAMP()
+      WHERE email = @email AND status = 'invited'
+    `,
+    params: { email: normalizeEmail(email) },
+  });
 }
 
 // 招待の受諾（パスワード設定 → active化）。無効・期限切れなら null。
