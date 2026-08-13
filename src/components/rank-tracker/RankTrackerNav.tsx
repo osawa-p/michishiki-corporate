@@ -4,14 +4,16 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 // 社内ツール共通のタブナビ。rank-tracker 配下の各ページで共有する（layout に配置）。
-// 権限でタブを出し分ける。
-const TABS: { href: string; label: string; roles: string[] }[] = [
+// 権限でタブを出し分ける。requiresDomain 付きタブは、そのサイトのACL許可者と admin にのみ表示する。
+const TABS: { href: string; label: string; roles: string[]; requiresDomain?: string }[] = [
   { href: "/rank-tracker/dashboard", label: "ダッシュボード", roles: ["admin", "editor", "viewer_kw", "viewer"] },
   { href: "/rank-tracker/keywords", label: "キーワード管理", roles: ["admin", "editor", "viewer_kw"] },
   { href: "/rank-tracker/measure", label: "クイック計測", roles: ["admin"] },
   // SEO観測ツール（GSC/GA4 は許可サイトのみ全ロールに公開。AI提案・SEO設定は管理者専用）
   { href: "/rank-tracker/seo/gsc", label: "サーチコンソール", roles: ["admin", "editor", "viewer_kw", "viewer"] },
   { href: "/rank-tracker/seo/ga4", label: "GA4", roles: ["admin", "editor", "viewer_kw", "viewer"] },
+  // 月次レポート（現状はRASIKのみのため rasik.style の許可者限定で表示）
+  { href: "/rank-tracker/reports", label: "月次レポート", roles: ["admin", "editor", "viewer_kw", "viewer"], requiresDomain: "rasik.style" },
   { href: "/rank-tracker/seo/proposals", label: "AI提案", roles: ["admin"] },
   // WBS（大沢の全クライアント横断タスクボード）は管理者専用
   { href: "/rank-tracker/wbs", label: "WBS", roles: ["admin"] },
@@ -23,9 +25,11 @@ const TABS: { href: string; label: string; roles: string[] }[] = [
 export default function RankTrackerNav({
   role,
   email,
+  domains = [],
 }: {
   role: string | null;
   email: string | null;
+  domains?: string[];
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -39,7 +43,13 @@ export default function RankTrackerNav({
     }
   }
 
-  const tabs = role ? TABS.filter((t) => t.roles.includes(role)) : [];
+  const tabs = role
+    ? TABS.filter(
+        (t) =>
+          t.roles.includes(role) &&
+          (!t.requiresDomain || role === "admin" || domains.includes(t.requiresDomain)),
+      )
+    : [];
 
   return (
     <div className="sticky top-0 z-30 border-b border-line bg-paper/95 backdrop-blur">
