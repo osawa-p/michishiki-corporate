@@ -14,6 +14,7 @@ import {
   isMemberRole,
   isValidEmail,
   normalizeEmail,
+  markInviteEmailSent,
 } from "@/lib/rank-tracker/members";
 import { requireAdminApi, invalidateMembersCache } from "@/lib/rank-tracker/auth";
 import { targetKey, isValidTargetDomain } from "@/lib/rank-tracker/domain";
@@ -96,6 +97,12 @@ export async function POST(request: Request) {
     const inviteUrl = `${origin}/rank-tracker/invite/${invite.token}`;
     // メール送信の失敗は招待の失敗にしない（返した招待URLの手動共有でリカバリできる）
     const mail = await sendInviteEmail({ to: email, inviteUrl, role, domains });
+    if (mail.sent) {
+      // 記録失敗で招待を巻き添えにしない（一覧が「未送信」表示のままになるだけ）
+      await markInviteEmailSent(email).catch((err) =>
+        console.error("[rank-tracker] 招待メール送信日時の記録に失敗:", err)
+      );
+    }
     return NextResponse.json({
       ok: true,
       inviteUrl,

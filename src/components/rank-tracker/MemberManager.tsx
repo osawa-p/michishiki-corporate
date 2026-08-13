@@ -61,7 +61,7 @@ export default function MemberManager({
         data.emailSent
           ? {
               kind: "ok",
-              text: `${to} 宛に招待メールを送信しました（有効期限7日）。届かない場合は下のリンクを直接共有してください。`,
+              text: `✓ ${to} 宛に招待メールを送信しました（有効期限7日）。届かない場合は下のリンクを直接共有してください。`,
             }
           : {
               kind: "err",
@@ -94,7 +94,7 @@ export default function MemberManager({
       setInviteUrl(data.inviteUrl as string);
       setMsg(
         data.emailSent
-          ? { kind: "ok", text: `${m.email} 宛に招待メールを再送しました（有効期限7日）。` }
+          ? { kind: "ok", text: `✓ ${m.email} 宛に招待メールを再送しました（有効期限7日）。` }
           : {
               kind: "err",
               text: `${m.email} の招待リンクを再発行しましたが、メール送信に失敗しました。下のリンクを直接共有してください（有効期限7日）。`,
@@ -230,9 +230,9 @@ export default function MemberManager({
         {msg && (
           <div
             role={msg.kind === "err" ? "alert" : "status"}
-            className={`px-4 py-3 text-sm border ${
+            className={`px-4 py-3 text-sm font-medium border ${
               msg.kind === "ok"
-                ? "bg-bronze/10 border-bronze/30 text-bronze-deep"
+                ? "bg-green-50 border-green-300 text-green-800"
                 : "bg-red-50 border-red-200 text-red-700"
             }`}
           >
@@ -298,15 +298,19 @@ export default function MemberManager({
                 <div className="text-xs text-right">
                   {m.status === "active" ? (
                     <span className="text-green-800">有効</span>
-                  ) : m.invite_valid ? (
-                    <span className="text-ink-faint">招待中（リンク未使用）</span>
+                  ) : !m.invite_valid ? (
+                    <span className="text-red-700">招待期限切れ — 「招待を再送」してください</span>
+                  ) : m.invite_email_sent_at ? (
+                    <span className="text-green-800">✉ 招待メール送信済み（未ログイン）</span>
                   ) : (
-                    <span className="text-red-700">招待期限切れ</span>
+                    <span className="text-amber-700">✉ メール未送信 — リンクの手動共有が必要</span>
                   )}
                   <div className="text-[10px] text-ink-faint mt-0.5">
                     {m.status === "active" && m.last_login_at
                       ? `最終ログイン ${m.last_login_at}`
-                      : `登録 ${m.created_at}`}
+                      : m.status === "invited" && m.invite_valid && m.invite_email_sent_at
+                        ? `送信 ${m.invite_email_sent_at}`
+                        : `登録 ${m.created_at}`}
                   </div>
                 </div>
 
