@@ -22,8 +22,14 @@
   h1{font-size:25px;margin:0 0 6px;letter-spacing:.01em}
   .period{color:var(--sub);font-size:13.5px}
   .defs{margin-top:10px;font-size:11.5px;color:var(--sub);background:#fff;border:1px solid var(--line);
-    border-radius:9px;padding:9px 13px}
+    border-radius:9px;padding:11px 13px}
   .defs b{color:var(--ink)}
+  .defs .drow{display:grid;grid-template-columns:88px 1fr;gap:4px 10px;padding:3px 0;align-items:baseline}
+  .defs .drow+.drow{border-top:1px dashed var(--line)}
+  .defs .dlabel{font-weight:700;color:var(--ink);white-space:nowrap}
+  .defs .dseg{display:inline-block;margin-right:10px;white-space:nowrap}
+  .defs .dseg b{margin-right:2px}
+  @media(max-width:560px){.defs .drow{grid-template-columns:1fr;gap:1px}}
   .tabs{display:flex;gap:6px;margin:22px 0 6px;flex-wrap:wrap;border-bottom:2px solid var(--line)}
   .tab{appearance:none;border:none;background:none;cursor:pointer;font:inherit;font-size:14px;
     font-weight:600;color:var(--sub);padding:10px 14px;border-radius:9px 9px 0 0;position:relative;top:2px}
@@ -124,10 +130,14 @@
     <h1>月次オーガニックレポート｜2026年7月</h1>
     <div class="period">対象期間: 2026-07-01 〜 2026-07-31 ／ 前年同月比（2025年7月）</div>
     <div class="defs">
-      <b>定義:</b> オーガニック＝GA4で source/medium に "organic" を含むセッション（KPI/KGIシートと同一基準。Google・Yahoo・Bing等を含む）。
-      売上は<b>税抜</b>（GA4税込÷1.1）。<b>数値はすべてGA4実測</b>（推定按分なし）。
-      <b>セグメント</b>は着地ページで分類 — 指名: トップ`/`・`/pages/` ／ ライフ: `/blogs/` ／ その他: `/collections/`・`/products/` ／ 機能: `/cart`・`/checkouts/`・`/account/` 等。
-      <b>月次目標</b>＝前年同月の実測 × KPIシートのセグメント別成長率（必達）。合計はシート公式の7月必達 ¥103,726,259 に一致。
+      <div class="drow"><span class="dlabel">オーガニック</span><span>GA4で source/medium に "organic" を含むセッション（Google・Yahoo・Bing等を含む。KPI/KGIシートと同一基準）</span></div>
+      <div class="drow"><span class="dlabel">売上</span><span><b>税抜</b>（GA4税込 ÷ 1.1）。数値は<b>すべてGA4実測</b>で、推定按分はありません</span></div>
+      <div class="drow"><span class="dlabel">セグメント</span><span>着地ページのURLで分類 —
+        <span class="dseg"><b>指名:</b> トップ`/`・`/pages/`</span>
+        <span class="dseg"><b>ライフ:</b> `/blogs/`（記事）</span>
+        <span class="dseg"><b>その他:</b> `/collections/`・`/products/`</span>
+        <span class="dseg"><b>機能:</b> `/cart`・`/checkouts/` など上記以外</span></span></div>
+      <div class="drow"><span class="dlabel">月次目標</span><span>前年同月の実測 × KPIシートのセグメント別成長率（必達）。合計はシート公式の7月必達 ¥103,726,259 に一致</span></div>
     </div>
     <a class="sheetlink" href="https://docs.google.com/spreadsheets/d/1hacx0qfHX7VUIoAPF_WhCxtBVgkVuRQTyrGhk7D68Ik/edit" target="_blank" rel="noopener">
       <span class="ic">▦</span>詳細データをスプレッドシートで開く<small>／ 全8タブ（セグメント別・年間推移・月次目標の原本）</small>
