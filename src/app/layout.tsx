@@ -40,9 +40,8 @@ export const metadata: Metadata = {
     "データ分析",
     "michi-biki",
   ],
-  alternates: {
-    canonical: "/",
-  },
+  // canonicalは各ページで自ページを指定する（layoutで"/"を指定すると
+  // 全ページに継承され、サイト全体がトップの重複扱いになるため厳禁）
   // AdSenseのサイト所有権確認用（広告はロードしない純粋な確認タグ）。
   // 広告配信は trimming.michi-biki.jp 側のみ・コーポレートには広告を出さない
   other: {

@@ -186,6 +186,17 @@ export default function ContactForm() {
         />
       </div>
 
+      <p className="text-xs text-ink-faint leading-relaxed">
+        送信いただいた情報は、お問い合わせへの回答、連絡および対応履歴の管理のために利用します。詳細は
+        <a
+          href="/privacy"
+          className="underline underline-offset-2 hover:text-bronze-deep transition-colors"
+        >
+          プライバシーポリシー
+        </a>
+        をご確認ください。
+      </p>
+
       <button
         type="submit"
         disabled={status === "submitting"}

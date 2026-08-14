@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "ブログ",
   description:
     "SEO・AXO/LLMOをはじめとするWebマーケティングの知見やノウハウを発信する、株式会社ミチビキのブログです。",
+  alternates: { canonical: "/blog" },
 };
 
 export default function BlogPage() {

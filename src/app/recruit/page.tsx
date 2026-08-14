@@ -4,6 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "採用情報",
   description: "株式会社ミチビキの採用情報",
+  alternates: { canonical: "/recruit" },
 };
 
 export default function RecruitPage() {

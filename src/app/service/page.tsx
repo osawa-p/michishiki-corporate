@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "サービス",
   description:
     "SEOコンサルティング、AXO・LLMO支援（AI検索最適化）、CVR改善、データ分析・マーケティングDX、店舗向けWeb制作・サイト運用。株式会社ミチビキのサービス一覧。",
+  alternates: { canonical: "/service" },
 };
 
 export default function ServicePage() {
