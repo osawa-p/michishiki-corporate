@@ -5,6 +5,7 @@ import { getAllNews } from "@/lib/news";
 export const metadata: Metadata = {
   title: "お知らせ",
   description: "株式会社ミチビキからのお知らせ一覧",
+  alternates: { canonical: "/news" },
 };
 
 export default function NewsPage() {

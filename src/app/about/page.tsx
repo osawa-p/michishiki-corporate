@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "会社概要",
   description:
     "株式会社ミチビキの会社概要・代表メッセージ・ミッション。SEO・AXO/LLMOを軸としたWebマーケティング支援会社です。",
+  alternates: { canonical: "/about" },
 };
 
 const companyInfo = [

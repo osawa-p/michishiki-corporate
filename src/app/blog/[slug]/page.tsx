@@ -14,7 +14,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const post = getBlogPostBySlug(slug);
   if (!post) return {};
-  return { title: post.title, description: post.excerpt || undefined };
+  return {
+    title: post.title,
+    description: post.excerpt || undefined,
+    alternates: { canonical: `/blog/${slug}` },
+  };
 }
 
 export async function generateStaticParams() {

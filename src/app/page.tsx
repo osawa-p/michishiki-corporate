@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: "株式会社ミチビキ | SEO・AXO/LLMOコンサルティング",
   description:
     "検索にも、AIにも、選ばれる会社へ。SEO・AXO/LLMO（AI検索最適化）・CVR改善・データ分析に加え、店舗向けのWeb制作・サイト運用まで、戦略から実装まで一貫して支援します。",
+  alternates: { canonical: "/" },
 };
 
 const strengths = [

@@ -4,6 +4,7 @@ import ContactForm from "@/components/ContactForm";
 export const metadata: Metadata = {
   title: "お問い合わせ",
   description: "株式会社ミチビキへのお問い合わせフォーム",
+  alternates: { canonical: "/contact" },
 };
 
 export default function ContactPage() {

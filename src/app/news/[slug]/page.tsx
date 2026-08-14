@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const post = getNewsBySlug(slug);
   if (!post) return {};
-  return { title: post.title };
+  return { title: post.title, alternates: { canonical: `/news/${slug}` } };
 }
 
 export async function generateStaticParams() {
