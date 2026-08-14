@@ -639,12 +639,12 @@
   {
    "id": "S-39",
    "pj": "shift-ai",
-   "task": "Slack連携をZapier→公式API直接取得へ移行（並行稼働中→Zapier停止）",
-   "dep": "8/12稼働開始: アプリMichi Chat Archiver・30日バックフィル完了・15分毎自動取得。残: 1週間並行稼働→INDEX欠落なし確認→Zapier停止",
+   "task": "Slack連携をZapier→公式API直接取得へ移行",
+   "dep": "完了: 8/12稼働開始（Michi Chat Archiver・30日バックフィル・15分毎自動取得）→ 8/13 Zapier停止（ユーザー対応）・停止後の正常稼働確認済み",
    "pri": 2,
-   "st": "doing",
+   "st": "done",
    "start": "2026-08-12",
-   "due": "2026-08-19"
+   "due": "2026-08-13"
   },
   {
    "id": "M-01",
