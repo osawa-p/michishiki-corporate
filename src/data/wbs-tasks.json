@@ -32,7 +32,7 @@
    "id": "R-01",
    "pj": "remedi",
    "task": "メアド取得フォームの計測整備（フォームID特定・GUID付与の調整）",
-   "dep": "8/13の実送信1件で疎通は確認できたが hs_form_guid が空＝新フォームはGUIDが取れない実装。HubSpot側フォームID確認とGTM側guid付与をリメディ様と要調整（8/17 T+14判定で発覚）",
+   "dep": "8/13の実送信1件で疎通は確認できたが hs_form_guid が空＝新フォームはGUIDが取れない実装。HubSpot側フォームID確認とGTM側guid付与をリメディ様と要調整（8/17 T+14判定で発覚）。※代替案（/form/complete＋referrer判定のキーイベント化）は8/17検討→一旦保留",
    "pri": 1,
    "st": "todo",
    "due": "今週定例"
