@@ -1,0 +1,611 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RASIK 月次オーガニックレポート｜2026年8月</title>
+<style>
+  :root{
+    --bg:#f4f6f8; --card:#ffffff; --ink:#1c2530; --sub:#5b6b7b;
+    --line:#e3e8ee; --brand:#2f6f6a; --brand-soft:#e5f0ef; --brand-ink:#234f4b;
+    --pos:#1a8c5a; --pos-bg:#e7f6ee; --neg:#c0392b; --neg-bg:#fbecea;
+    --warn:#b8860b; --warn-bg:#fbf3df;
+    --shadow:0 1px 3px rgba(20,35,50,.08),0 4px 16px rgba(20,35,50,.06);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Segoe UI","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+    line-height:1.65;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 20px 64px}
+  header.top{margin-bottom:20px}
+  .eyebrow{font-size:13px;letter-spacing:.08em;color:var(--brand);font-weight:700;margin:0 0 6px}
+  h1{font-size:25px;margin:0 0 6px;letter-spacing:.01em}
+  .period{color:var(--sub);font-size:13.5px}
+  .defs{margin-top:10px;font-size:11.5px;color:var(--sub);background:#fff;border:1px solid var(--line);
+    border-radius:9px;padding:11px 13px}
+  .defs b{color:var(--ink)}
+  .defs .drow{display:grid;grid-template-columns:88px 1fr;gap:4px 10px;padding:3px 0;align-items:baseline}
+  .defs .drow+.drow{border-top:1px dashed var(--line)}
+  .defs .dlabel{font-weight:700;color:var(--ink);white-space:nowrap}
+  .defs .dseg{display:inline-block;margin-right:10px;white-space:nowrap}
+  .defs .dseg b{margin-right:2px}
+  @media(max-width:560px){.defs .drow{grid-template-columns:1fr;gap:1px}}
+  .tabs{display:flex;gap:6px;margin:22px 0 6px;flex-wrap:wrap;border-bottom:2px solid var(--line)}
+  .tab{appearance:none;border:none;background:none;cursor:pointer;font:inherit;font-size:14px;
+    font-weight:600;color:var(--sub);padding:10px 14px;border-radius:9px 9px 0 0;position:relative;top:2px}
+  .tab:hover{color:var(--brand-ink);background:#eef3f2}
+  .tab.active{color:var(--brand-ink);background:var(--brand-soft);border:2px solid var(--line);border-bottom:2px solid var(--brand-soft)}
+  .tab .badge{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:20px;margin-left:6px;vertical-align:1px}
+  .badge.up{color:var(--pos);background:var(--pos-bg)} .badge.down{color:var(--neg);background:var(--neg-bg)} .badge.warn{color:var(--warn);background:var(--warn-bg)}
+  .panel{display:none;animation:fade .2s ease}
+  .panel.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  section{margin-top:26px}
+  h2{font-size:16px;margin:0 0 13px;padding-left:11px;border-left:4px solid var(--brand);
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  h2 small{font-weight:400;font-size:11.5px;color:var(--sub)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:15px 17px;box-shadow:var(--shadow)}
+  .card .label{font-size:12px;color:var(--sub);margin-bottom:6px}
+  .card .val{font-size:25px;font-weight:700;letter-spacing:-.01em;line-height:1.12}
+  .card .val .unit{font-size:12.5px;font-weight:600;color:var(--sub);margin-left:2px}
+  .card .prev{font-size:11px;color:var(--sub);margin-top:3px}
+  .delta{display:inline-block;font-size:12px;font-weight:700;margin-top:8px;padding:2px 8px;border-radius:20px}
+  .delta.up{color:var(--pos);background:var(--pos-bg)} .delta.down{color:var(--neg);background:var(--neg-bg)}
+  .ach{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow)}
+  .ach .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}
+  .ach .top .big{font-size:27px;font-weight:700}
+  .ach .top .lab{font-size:12.5px;color:var(--sub)}
+  .ach .mini{position:relative;height:12px;background:#eef1f4;border-radius:6px;overflow:hidden}
+  .ach .mini .f{position:absolute;left:0;top:0;bottom:0;border-radius:6px}
+  .ach .cap{display:flex;justify-content:space-between;font-size:11.5px;color:var(--sub);margin-top:7px}
+  .f.g{background:linear-gradient(90deg,#2f6f6a,#3a9d92)} .f.y{background:linear-gradient(90deg,#c9a13a,#e0be5a)} .f.r{background:linear-gradient(90deg,#c0563f,#d67a63)}
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);
+    border-radius:12px;overflow:hidden;font-size:13px;box-shadow:var(--shadow)}
+  th,td{padding:10px 13px;text-align:right;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  thead th{background:var(--brand-soft);color:var(--brand-ink);font-weight:700;font-size:12px;border-bottom:1px solid #cfe0de}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr.total{background:#f7fafa;font-weight:700}
+  tbody tr.muted td{color:var(--sub)}
+  tbody tr:hover{background:#fafcfc}
+  .num{font-variant-numeric:tabular-nums}
+  .up-t{color:var(--pos);font-weight:700} .down-t{color:var(--neg);font-weight:700} .warn-t{color:var(--warn);font-weight:700}
+  .chip{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:20px}
+  .chip.up{color:var(--pos);background:var(--pos-bg)} .chip.down{color:var(--neg);background:var(--neg-bg)} .chip.warn{color:var(--warn);background:var(--warn-bg)}
+  .story{background:var(--brand-soft);border:1px solid #cfe0de;border-radius:12px;padding:16px 19px}
+  .story p{margin:0 0 8px} .story p:last-child{margin:0} .story .kw{font-weight:700;color:var(--brand-ink)}
+  .note{font-size:11px;color:var(--sub);margin-top:9px}
+  .callout{border-radius:10px;padding:12px 15px;font-size:12.5px;margin-top:6px}
+  .callout.pos{background:var(--pos-bg);border:1px solid #bfe6cf} .callout.neg{background:var(--neg-bg);border:1px solid #f0cdc7} .callout.warn{background:var(--warn-bg);border:1px solid #ecdcae}
+  .kgi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 22px 16px;box-shadow:var(--shadow)}
+  .kgi .row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:12.5px;color:var(--sub);margin-bottom:10px}
+  .bar{position:relative;height:24px;background:#eef1f4;border-radius:6px;overflow:hidden}
+  .bar .fill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#2f6f6a,#3a9d92);border-radius:6px}
+  .bar .mark{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.5}
+  .bar .mark span{position:absolute;top:-19px;transform:translateX(-50%);font-size:10px;color:var(--ink);white-space:nowrap}
+  .kgi .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:13px;font-size:12px;color:var(--sub)}
+  .kgi .legend b{color:var(--ink)}
+  /* スプレッドシートリンク */
+  .sheetlink{display:inline-flex;align-items:center;gap:8px;margin-top:10px;padding:9px 15px;
+    background:var(--brand);color:#fff;border-radius:9px;text-decoration:none;font-size:12.5px;font-weight:700;
+    box-shadow:var(--shadow);transition:filter .15s}
+  .sheetlink:hover{filter:brightness(1.1)}
+  .sheetlink .ic{font-size:14px}
+  .sheetlink small{font-weight:400;opacity:.85;font-size:11px}
+  /* 12ヶ月チャート */
+  .chartbox{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px 12px;box-shadow:var(--shadow)}
+  .chart-wrap{position:relative;padding:8px 0 0 58px}
+  .gridlines{position:absolute;left:58px;right:0;top:8px;height:240px;pointer-events:none}
+  .gline{position:absolute;left:0;right:0;border-top:1px dashed var(--line)}
+  .gline span{position:absolute;left:-54px;top:-8px;font-size:10px;color:var(--sub)}
+  .cols{display:flex;align-items:flex-end;gap:5px;height:240px;position:relative}
+  .col{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;border-radius:6px 6px 0 0}
+  .col.cur{background:rgba(47,111,106,.06)}
+  .stack{position:relative;width:100%;height:100%;display:flex;align-items:flex-end;justify-content:center;gap:3px}
+  .bar{width:12px;border-radius:3px 3px 0 0}
+  .bar.tgt{background:#cfe0de}
+  .bar.act.ok{background:linear-gradient(180deg,#3a9d92,#2f6f6a)}
+  .bar.act.near{background:linear-gradient(180deg,#e0be5a,#c9a13a)}
+  .bar.act.low{background:linear-gradient(180deg,#d67a63,#c0563f)}
+  .bar.act.empty{height:0}
+  .prev-tick{position:absolute;left:50%;transform:translateX(-50%);width:28px;height:2px;background:#8fa0ae;z-index:2;border-radius:2px}
+  .xlab{font-size:10.5px;color:var(--sub);margin-top:6px;white-space:nowrap}
+  .col.cur .xlab{color:var(--brand-ink);font-weight:700}
+  .clegend{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-size:11.5px;color:var(--sub);align-items:center}
+  .clegend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-2px}
+  .clegend .l-tgt{background:#cfe0de} .clegend .l-ok{background:#2f6f6a} .clegend .l-near{background:#c9a13a} .clegend .l-low{background:#c0563f}
+  .clegend .l-prev{width:16px;height:2px;background:#8fa0ae;border-radius:2px;vertical-align:3px}
+  .tablewrap{overflow-x:auto}
+  footer{margin-top:44px;padding-top:15px;border-top:1px solid var(--line);font-size:11px;color:var(--sub);
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  @media(max-width:560px){h1{font-size:21px}.card .val{font-size:21px}.tab{padding:9px 10px;font-size:13px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <p class="eyebrow">RASIK ／ SEO 月次レポート</p>
+    <h1>月次オーガニックレポート｜2026年8月</h1>
+    <div class="period">対象期間: 2026-08-01 〜 2026-08-31 ／ 前年同月比（2025年8月）</div>
+    <div class="defs">
+      <div class="drow"><span class="dlabel">オーガニック</span><span>GA4で source/medium に "organic" を含むセッション（Google・Yahoo・Bing等を含む。KPI/KGIシートと同一基準）</span></div>
+      <div class="drow"><span class="dlabel">売上</span><span><b>税抜</b>（GA4税込 ÷ 1.1）。数値は<b>すべてGA4実測</b>で、推定按分はありません</span></div>
+      <div class="drow"><span class="dlabel">セグメント</span><span>着地ページのURLで分類 —
+        <span class="dseg"><b>指名:</b> トップ`/`・`/pages/`</span>
+        <span class="dseg"><b>ライフ:</b> `/blogs/`（記事）</span>
+        <span class="dseg"><b>その他:</b> `/collections/`・`/products/`</span>
+        <span class="dseg"><b>機能:</b> `/cart`・`/checkouts/` など上記以外</span></span></div>
+      <div class="drow"><span class="dlabel">月次目標</span><span>前年同月の実測 × KPIシートのセグメント別成長率（必達）。合計はシート公式の8月必達 ¥84,518,602 に一致</span></div>
+    </div>
+    <a class="sheetlink" href="https://docs.google.com/spreadsheets/d/1TToO4VUZ2KFT7lUxYNV9-T0Q3Zusifq0OHvMnfJfTfg/edit" target="_blank" rel="noopener">
+      <span class="ic">▦</span>詳細データをスプレッドシートで開く<small>／ 全8タブ（セグメント別・年間推移・月次目標の原本）</small>
+    </a>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="overview">全体サマリー</button>
+    <button class="tab" data-tab="brand">指名<span class="badge up">121.1%</span></button>
+    <button class="tab" data-tab="life">ライフ<span class="badge down">25.0%</span></button>
+    <button class="tab" data-tab="other">その他<span class="badge up">115.3%</span></button>
+    <button class="tab" data-tab="func">機能ページ<span class="badge up">101.9%</span></button>
+    <button class="tab" data-tab="plan">年間計画<span class="badge warn">累計 99.7%</span></button>
+  </div>
+
+  <!-- ============ 全体サマリー ============ -->
+  <div class="panel active" id="overview">
+
+    <section>
+      <h2>ハイライト <small>オーガニック全体・前年同月比</small></h2>
+      <div class="cards">
+        <div class="card"><div class="label">セッション</div><div class="val num">243,122</div><div class="prev num">前年 347,445</div><div class="delta down">▼ 30.0%</div></div>
+        <div class="card"><div class="label">収益（税抜）</div><div class="val num">88,543,305<span class="unit">円</span></div><div class="prev num">前年 78,257,965 円</div><div class="delta up">▲ 13.1%</div></div>
+        <div class="card"><div class="label">キーイベント（CV）</div><div class="val num">2,728</div><div class="prev num">前年 2,456</div><div class="delta up">▲ 11.1%</div></div>
+        <div class="card"><div class="label">セッションCVR</div><div class="val num">1.12<span class="unit">%</span></div><div class="prev num">前年 0.71%</div><div class="delta up">▲ 0.42pt</div></div>
+        <div class="card"><div class="label">エンゲージメント率</div><div class="val num">70.73<span class="unit">%</span></div><div class="prev num">前年 67.26%</div><div class="delta up">▲ 3.47pt</div></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>今月のサマリー</h2>
+      <div class="story">
+        <p><span class="kw">収益は前年比 +13.1%・目標比 104.8% と達成。指名・その他の両輪で、7月の未達から一転して目標を超過した。</span></p>
+        <p>収益は ¥88.5M と、8月必達目標（¥84.5M・前年比+8%）を上回った。達成率104.8%は今期（4月以降）では5月（114.8%）に次ぐ水準。オーガニックセッションは前年比 −30.0%（主因は<b>ライフの計画的な記事整理 −53.3%</b>）ながら、CVは 2,728（+11.1%）・CVR 1.12%（+0.42pt）と<b>流入の質の改善が量の減少を上回り</b>、収益成長につながった。</p>
+        <p><span class="kw">指名は3ヶ月連続で目標超過（121.1%）</span>。これまで流入量が牽引だったが、8月はAOVも +13.3% と量・単価の両輪で収益 +22.6%。<span class="kw">7月に全体未達の主因だった「その他」も回復（115.3%）</span>：セッション +8.3% に加えCVR +0.17pt、課題だったAOVも前年差 −2.1% まで縮小し、収益 +19.0% と牽引役に戻った。一方<b>ライフは収益も −48.4%</b> と実額が減少（7月までは前年並みを維持）しており、記事整理後の受け皿づくりが次の論点。</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>オーガニック全体 実績 vs 8月目標 <small>税抜</small></h2>
+      <div class="cards">
+        <div class="ach">
+          <div class="top"><span class="big num">62.5<span style="font-size:15px">%</span></span><span class="lab">セッション達成率</span></div>
+          <div class="mini"><div class="f r" style="width:62.5%"></div></div>
+          <div class="cap"><span>実績 241,739</span><span>目標 386,920</span></div>
+        </div>
+        <div class="ach">
+          <div class="top"><span class="big num">104.8<span style="font-size:15px">%</span></span><span class="lab">収益達成率</span></div>
+          <div class="mini"><div class="f g" style="width:100%"></div></div>
+          <div class="cap"><span>実績 ¥88,543,305</span><span>目標 ¥84,518,602</span></div>
+        </div>
+      </div>
+      <div class="note">※ セッション実績はLP別集計値（241,739）。全体集計値（243,122）とは高カーディナリティ次元による僅少差があるが、収益・CVは完全一致。</div>
+    </section>
+
+    <section>
+      <h2>セグメント別 一覧 <small>実績 / 8月目標（必達）/ 達成率・税抜</small></h2>
+      <table>
+        <thead><tr><th>セグメント</th><th>セッション</th><th>目標</th><th>達成率</th><th>収益</th><th>目標</th><th>達成率</th><th>収益前年比</th></tr></thead>
+        <tbody>
+          <tr><td>指名</td><td class="num">32,063</td><td class="num">30,117</td><td class="num"><span class="chip up">106.5%</span></td><td class="num">¥24,852,136</td><td class="num">¥20,519,900</td><td class="num"><span class="chip up">121.1%</span></td><td class="num up-t">+22.6%</td></tr>
+          <tr><td>ライフ</td><td class="num">109,914</td><td class="num">254,330</td><td class="num"><span class="chip down">43.2%</span></td><td class="num">¥2,084,306</td><td class="num">¥8,337,828</td><td class="num"><span class="chip down">25.0%</span></td><td class="num down-t">−48.4%</td></tr>
+          <tr><td>その他</td><td class="num">86,183</td><td class="num">85,923</td><td class="num"><span class="chip up">100.3%</span></td><td class="num">¥41,942,665</td><td class="num">¥36,364,152</td><td class="num"><span class="chip up">115.3%</span></td><td class="num up-t">+19.0%</td></tr>
+          <tr class="muted"><td>機能ページ</td><td class="num">13,579</td><td class="num">16,550</td><td class="num"><span class="chip warn">82.0%</span></td><td class="num">¥19,664,196</td><td class="num">¥19,296,722</td><td class="num"><span class="chip up">101.9%</span></td><td class="num up-t">+5.2%</td></tr>
+          <tr class="total"><td>合計</td><td class="num">241,739</td><td class="num">386,920</td><td class="num"><span class="chip down">62.5%</span></td><td class="num">¥88,543,305</td><td class="num">¥84,518,602</td><td class="num"><span class="chip up">104.8%</span></td><td class="num up-t">+13.1%</td></tr>
+        </tbody>
+      </table>
+      <div class="note">※ 機能ページ（カート・決済・アカウント等）は再訪ユーザーが購入フローに直接着地したセッション。SEO施策の対象外だが収益の22.2%を占めるため別枠で計上。<br>
+      ※ ライフの目標（¥8.3M）はKPIシートのライフ成長率×2.16（記事整理後の回復を織り込む設計）による高基準。金額影響は構成比2.4%と限定的。</div>
+    </section>
+
+    <section>
+      <h2>収益構成比の変化 <small>税抜・前年同月比</small></h2>
+      <table>
+        <thead><tr><th>セグメント</th><th>2025-08</th><th>2026-08</th><th>変化</th></tr></thead>
+        <tbody>
+          <tr><td>指名</td><td class="num">25.9%</td><td class="num">28.1%</td><td class="num up-t">+2.2pt</td></tr>
+          <tr><td>ライフ</td><td class="num">5.2%</td><td class="num">2.4%</td><td class="num down-t">−2.8pt</td></tr>
+          <tr><td>その他</td><td class="num">45.0%</td><td class="num">47.4%</td><td class="num up-t">+2.3pt</td></tr>
+          <tr class="muted"><td>機能ページ</td><td class="num">23.9%</td><td class="num">22.2%</td><td class="num down-t">−1.7pt</td></tr>
+        </tbody>
+      </table>
+      <div class="note">※ 指名の構成比上昇（ブランド力の高まり）と、その他（一般検索）の回復が同時に進んだ月。ライフは記事整理の影響で構成比を落としている。</div>
+    </section>
+
+    <section>
+      <h2>KGI 年間進捗 <small>税抜・年間オーガニック売上</small></h2>
+      <div class="kgi">
+        <div class="row"><span>現状（前年実績）¥1,096,608,295</span><span>必達 ¥1,250,098,877（+14%）／ ストレッチ ¥1,326,881,244（+21%）</span></div>
+        <div class="bar"><div class="fill" style="width:82.6%"></div><div class="mark" style="left:94.2%"><span>必達</span></div><div class="mark" style="left:100%"><span>ストレッチ</span></div></div>
+        <div class="legend"><span>累計(4-8月) 必達 <b>¥440,862,784</b></span><span>8月 必達 <b>¥84,518,602</b></span><span>8月 実績 <b>¥88,543,305</b></span></div>
+      </div>
+      <div class="note">※ バー塗り幅はストレッチ目標を100%とした現状（前年実績）の相対値。年間進捗は下期（新生活需要期）の積み上げが本番。</div>
+    </section>
+  </div>
+
+  <!-- ============ 指名 ============ -->
+  <div class="panel" id="brand">
+    <section>
+      <h2>指名 <small>トップ `/`・`/pages/`（ブランド系ページ）着地</small></h2>
+      <div class="cards">
+        <div class="ach">
+          <div class="top"><span class="big num">106.5<span style="font-size:15px">%</span></span><span class="lab">セッション達成率</span></div>
+          <div class="mini"><div class="f g" style="width:100%"></div></div>
+          <div class="cap"><span>実績 32,063</span><span>目標 30,117</span></div>
+        </div>
+        <div class="ach">
+          <div class="top"><span class="big num">121.1<span style="font-size:15px">%</span></span><span class="lab">収益達成率</span></div>
+          <div class="mini"><div class="f g" style="width:100%"></div></div>
+          <div class="cap"><span>実績 ¥24,852,136</span><span>目標 ¥20,519,900</span></div>
+        </div>
+      </div>
+    </section>
+    <section>
+      <h2>指標詳細</h2>
+      <table>
+        <thead><tr><th>指標</th><th>当月実績</th><th>8月目標</th><th>達成率</th><th>前年(2025-08)</th><th>前年比</th></tr></thead>
+        <tbody>
+          <tr><td>セッション</td><td class="num">32,063</td><td class="num">30,117</td><td class="num up-t">106.5%</td><td class="num">27,886</td><td class="num up-t">+15.0%</td></tr>
+          <tr><td>収益（税抜）</td><td class="num">¥24,852,136</td><td class="num">¥20,519,900</td><td class="num up-t">121.1%</td><td class="num">¥20,276,055</td><td class="num up-t">+22.6%</td></tr>
+          <tr><td>キーイベント（CV）</td><td class="num">771</td><td class="num">—</td><td class="num">—</td><td class="num">713</td><td class="num up-t">+8.1%</td></tr>
+          <tr><td>セッションCVR</td><td class="num">2.40%</td><td class="num">—</td><td class="num">—</td><td class="num">2.56%</td><td class="num down-t">−0.15pt</td></tr>
+          <tr><td>AOV（税抜）</td><td class="num">¥32,234</td><td class="num">—</td><td class="num">—</td><td class="num">¥28,438</td><td class="num up-t">+13.3%</td></tr>
+          <tr><td>収益構成比</td><td class="num">28.1%</td><td class="num">—</td><td class="num">—</td><td class="num">25.9%</td><td class="num up-t">+2.2pt</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section>
+      <h2>所見</h2>
+      <div class="callout pos"><b>6月・7月に続き、3ヶ月連続の目標超過。</b>セッション +15.0%・収益 +22.6% と伸長し、収益達成率121.1%。過去2ヶ月は流入量の増加が成長を牽引しCVR・AOVは微減だったが、8月は<b>AOVも +13.3%（¥28,438 → ¥32,234）と単価が伸び、量・単価の両輪</b>で成長した。収益構成比は 25.9% → 28.1% へ上昇。</div>
+      <div class="note">留意点: CVRは −0.15pt（2.56% → 2.40%）と微減。<br>
+      対策方向: トップ・ブランドLPの高単価商品への導線強化、セット販売・アップセル訴求を継続。</div>
+    </section>
+  </div>
+
+  <!-- ============ ライフ ============ -->
+  <div class="panel" id="life">
+    <section>
+      <h2>ライフ <small>RASIK Life（`/blogs/`・オウンドメディア）着地</small></h2>
+      <div class="cards">
+        <div class="ach">
+          <div class="top"><span class="big num">43.2<span style="font-size:15px">%</span></span><span class="lab">セッション達成率</span></div>
+          <div class="mini"><div class="f r" style="width:43.2%"></div></div>
+          <div class="cap"><span>実績 109,914</span><span>目標 254,330</span></div>
+        </div>
+        <div class="ach">
+          <div class="top"><span class="big num">25.0<span style="font-size:15px">%</span></span><span class="lab">収益達成率</span></div>
+          <div class="mini"><div class="f r" style="width:25.0%"></div></div>
+          <div class="cap"><span>実績 ¥2,084,306</span><span>目標 ¥8,337,828</span></div>
+        </div>
+      </div>
+    </section>
+    <section>
+      <h2>指標詳細</h2>
+      <table>
+        <thead><tr><th>指標</th><th>当月実績</th><th>8月目標</th><th>達成率</th><th>前年(2025-08)</th><th>前年比</th></tr></thead>
+        <tbody>
+          <tr><td>セッション</td><td class="num">109,914</td><td class="num">254,330</td><td class="num down-t">43.2%</td><td class="num">235,491</td><td class="num down-t">−53.3%</td></tr>
+          <tr><td>収益（税抜）</td><td class="num">¥2,084,306</td><td class="num">¥8,337,828</td><td class="num down-t">25.0%</td><td class="num">¥4,040,156</td><td class="num down-t">−48.4%</td></tr>
+          <tr><td>キーイベント（CV）</td><td class="num">52</td><td class="num">—</td><td class="num">—</td><td class="num">105</td><td class="num down-t">−50.5%</td></tr>
+          <tr><td>セッションCVR</td><td class="num">0.05%</td><td class="num">—</td><td class="num">—</td><td class="num">0.04%</td><td class="num up-t">+0.00pt</td></tr>
+          <tr><td>AOV（税抜）</td><td class="num">¥40,083</td><td class="num">—</td><td class="num">—</td><td class="num">¥38,478</td><td class="num up-t">+4.2%</td></tr>
+          <tr><td>収益構成比</td><td class="num">2.4%</td><td class="num">—</td><td class="num">—</td><td class="num">5.2%</td><td class="num down-t">−2.8pt</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section>
+      <h2>所見</h2>
+      <div class="callout warn">セッション −53.3% は<b>段階的noindex→統合/リライトによる記事整理という計画済みの動き</b>の継続影響。7月は収益をほぼ前年並み（−1.5%）に保ったが、<b>8月は収益も −48.4%（¥4.04M → ¥2.08M）と実額が減少</b>した。セッションあたり収益は ¥17.2 → ¥19.0（+10.5%）と効率改善は維持している。</div>
+      <div class="note">目標達成率25.0%の読み方: KPIシートの8月ライフ目標は成長率×2.16（記事整理後の回復を織り込む設計）で目標水準自体が高い。全体収益に占める割合は 2.4% で金額インパクトは限定的（未達額 約625万円）。ただし実額の減少自体は7月までと異なる動きで、注視が必要。<br>
+      対策方向: 記事からカテゴリ／商品への内部リンク導線の強化と、統合後記事の順位モニタリング。改善した収益効率を保ったまま絶対額の回復を後追いさせる。</div>
+    </section>
+  </div>
+
+  <!-- ============ その他 ============ -->
+  <div class="panel" id="other">
+    <section>
+      <h2>その他 <small>`/collections/`・`/products/`（カテゴリ・商品＝一般検索の受け皿）着地</small></h2>
+      <div class="cards">
+        <div class="ach">
+          <div class="top"><span class="big num">100.3<span style="font-size:15px">%</span></span><span class="lab">セッション達成率</span></div>
+          <div class="mini"><div class="f g" style="width:100%"></div></div>
+          <div class="cap"><span>実績 86,183</span><span>目標 85,923</span></div>
+        </div>
+        <div class="ach">
+          <div class="top"><span class="big num">115.3<span style="font-size:15px">%</span></span><span class="lab">収益達成率</span></div>
+          <div class="mini"><div class="f g" style="width:100%"></div></div>
+          <div class="cap"><span>実績 ¥41,942,665</span><span>目標 ¥36,364,152</span></div>
+        </div>
+      </div>
+    </section>
+    <section>
+      <h2>指標詳細</h2>
+      <table>
+        <thead><tr><th>指標</th><th>当月実績</th><th>8月目標</th><th>達成率</th><th>前年(2025-08)</th><th>前年比</th></tr></thead>
+        <tbody>
+          <tr><td>セッション</td><td class="num">86,183</td><td class="num">85,923</td><td class="num up-t">100.3%</td><td class="num">79,558</td><td class="num up-t">+8.3%</td></tr>
+          <tr><td>収益（税抜）</td><td class="num">¥41,942,665</td><td class="num">¥36,364,152</td><td class="num up-t">115.3%</td><td class="num">¥35,241,023</td><td class="num up-t">+19.0%</td></tr>
+          <tr><td>キーイベント（CV）</td><td class="num">1,351</td><td class="num">—</td><td class="num">—</td><td class="num">1,111</td><td class="num up-t">+21.6%</td></tr>
+          <tr><td>セッションCVR</td><td class="num">1.57%</td><td class="num">—</td><td class="num">—</td><td class="num">1.40%</td><td class="num up-t">+0.17pt</td></tr>
+          <tr><td>AOV（税抜）</td><td class="num">¥31,046</td><td class="num">—</td><td class="num">—</td><td class="num">¥31,720</td><td class="num down-t">−2.1%</td></tr>
+          <tr><td>収益構成比</td><td class="num">47.4%</td><td class="num">—</td><td class="num">—</td><td class="num">45.0%</td><td class="num up-t">+2.3pt</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section>
+      <h2>所見</h2>
+      <div class="callout pos"><b>7月に全体未達の主因だったセグメントが、8月は収益 +19.0%・達成率115.3%へ回復し、指名と並ぶ牽引役に戻った。</b>セッション +8.3%（達成率100.3%）に加え、<b>CVRが 1.40% → 1.57%（+0.17pt）へ改善</b>。CVは 1,351（+21.6%）と大きく伸びた。</div>
+      <div class="note">分析: 課題だったAOVは前年差 −2.1%（¥31,720 → ¥31,046）まで縮小した（6月 −9.1% → 7月 −8.2% → 8月 −2.1%）。単価差の縮小とCVR改善が重なり、収益回復につながった。カテゴリ別の売上分解による要因検証は継続する。<br>
+      対策方向: 秋商戦に向けたベッド・ソファ等の高単価カテゴリKW強化とカテゴリページ最適化を継続。</div>
+    </section>
+  </div>
+
+  <!-- ============ 機能ページ ============ -->
+  <div class="panel" id="func">
+    <section>
+      <h2>機能ページ <small>`/cart`・`/checkouts/`・`/account/`・`/search` 等への着地</small></h2>
+      <div class="cards">
+        <div class="ach">
+          <div class="top"><span class="big num">82.0<span style="font-size:15px">%</span></span><span class="lab">セッション達成率</span></div>
+          <div class="mini"><div class="f y" style="width:82.0%"></div></div>
+          <div class="cap"><span>実績 13,579</span><span>目標 16,550</span></div>
+        </div>
+        <div class="ach">
+          <div class="top"><span class="big num">101.9<span style="font-size:15px">%</span></span><span class="lab">収益達成率</span></div>
+          <div class="mini"><div class="f g" style="width:100%"></div></div>
+          <div class="cap"><span>実績 ¥19,664,196</span><span>目標 ¥19,296,722</span></div>
+        </div>
+      </div>
+    </section>
+    <section>
+      <h2>指標詳細</h2>
+      <table>
+        <thead><tr><th>指標</th><th>当月実績</th><th>8月目標</th><th>達成率</th><th>前年(2025-08)</th><th>前年比</th></tr></thead>
+        <tbody>
+          <tr><td>セッション</td><td class="num">13,579</td><td class="num">16,550</td><td class="num warn-t">82.0%</td><td class="num">15,324</td><td class="num down-t">−11.4%</td></tr>
+          <tr><td>収益（税抜）</td><td class="num">¥19,664,196</td><td class="num">¥19,296,722</td><td class="num up-t">101.9%</td><td class="num">¥18,700,731</td><td class="num up-t">+5.2%</td></tr>
+          <tr><td>キーイベント（CV）</td><td class="num">554</td><td class="num">—</td><td class="num">—</td><td class="num">527</td><td class="num up-t">+5.1%</td></tr>
+          <tr><td>セッションCVR</td><td class="num">4.08%</td><td class="num">—</td><td class="num">—</td><td class="num">3.44%</td><td class="num up-t">+0.64pt</td></tr>
+          <tr><td>収益構成比</td><td class="num">22.2%</td><td class="num">—</td><td class="num">—</td><td class="num">23.9%</td><td class="num down-t">−1.7pt</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section>
+      <h2>この枠の読み方</h2>
+      <div class="callout neg"><b>SEO施策の直接対象ではありません。</b>これは「オーガニック流入と判定されたセッションのうち、着地ページがカート・決済・アカウント等だったもの」です。多くは<b>再訪ユーザーが購入フローに直接戻ってきたセッション</b>で、実際の発見・比較検討は過去のセッション（＝他セグメント）で行われています。</div>
+      <div class="note">なぜ別枠にしたか: 着地ページからは元の流入セグメントを特定できないため、指名/ライフ/その他へ按分すると恣意的な数字になります。<b>収益の22.2%（¥19.7M）という無視できない規模</b>のため、透明性を優先して独立計上しました。<br>
+      CVR 4.08%（+0.64pt）と効率が上がり、セッション −11.4% でも収益は +5.2%・達成率101.9%。セグメント別の達成率を読む際は、この枠を除いた3セグメントで施策評価してください。</div>
+    </section>
+  </div>
+
+  <!-- ============ 年間計画 ============ -->
+  <div class="panel" id="plan">
+
+    <section>
+      <h2>年間計画 vs 実測 <small>2026年4月 〜 2027年3月・売上（税抜）</small></h2>
+      <div class="chartbox">
+        <div class="chart-wrap">
+          <div class="gridlines">
+            <div class="gline" style="top:0"><span>160M</span></div>
+            <div class="gline" style="top:25%"><span>120M</span></div>
+            <div class="gline" style="top:50%"><span>80M</span></div>
+            <div class="gline" style="top:75%"><span>40M</span></div>
+            <div class="gline" style="top:100%"><span>0</span></div>
+          </div>
+          <div class="cols">
+        <div class="col">
+          <div class="stack">
+            <div class="prev-tick" style="bottom:57.5%" title="前年 91,951,977円"></div>
+            <div class="bar tgt" style="height:57.5%" title="必達 91,951,977円"></div>
+            <div class="bar act near" style="height:54.7%" title="実績 87,495,113円 / 達成率 95.2%"></div>
+          </div>
+          <div class="xlab">4月</div>
+        </div>
+        <div class="col">
+          <div class="stack">
+            <div class="prev-tick" style="bottom:46.4%" title="前年 74,167,856円"></div>
+            <div class="bar tgt" style="height:46.8%" title="必達 74,909,535円"></div>
+            <div class="bar act ok" style="height:53.8%" title="実績 86,023,271円 / 達成率 114.8%"></div>
+          </div>
+          <div class="xlab">5月</div>
+        </div>
+        <div class="col">
+          <div class="stack">
+            <div class="prev-tick" style="bottom:52.0%" title="前年 83,258,651円"></div>
+            <div class="bar tgt" style="height:53.6%" title="必達 85,756,411円"></div>
+            <div class="bar act near" style="height:52.9%" title="実績 84,673,383円 / 達成率 98.7%"></div>
+          </div>
+          <div class="xlab">6月</div>
+        </div>
+        <div class="col">
+          <div class="stack">
+            <div class="prev-tick" style="bottom:61.7%" title="前年 98,786,913円"></div>
+            <div class="bar tgt" style="height:64.8%" title="必達 103,726,259円"></div>
+            <div class="bar act low" style="height:58.0%" title="実績 92,820,746円 / 達成率 89.5%"></div>
+          </div>
+          <div class="xlab">7月</div>
+        </div>
+        <div class="col cur">
+          <div class="stack">
+            <div class="prev-tick" style="bottom:48.9%" title="前年 78,257,965円"></div>
+            <div class="bar tgt" style="height:52.8%" title="必達 84,518,602円"></div>
+            <div class="bar act ok" style="height:55.3%" title="実績 88,543,305円 / 達成率 104.8%"></div>
+          </div>
+          <div class="xlab">8月</div>
+        </div>
+        <div class="col">
+          <div class="stack">
+            <div class="prev-tick" style="bottom:51.6%" title="前年 82,585,653円"></div>
+            <div class="bar tgt" style="height:57.3%" title="必達 91,670,075円"></div>
+            <div class="bar act empty"></div>
+          </div>
+          <div class="xlab">9月</div>
+        </div>
+        <div class="col">
+          <div class="stack">
+            <div class="prev-tick" style="bottom:48.7%" title="前年 77,926,146円"></div>
+            <div class="bar tgt" style="height:55.0%" title="必達 88,056,545円"></div>
+            <div class="bar act empty"></div>
+          </div>
+          <div class="xlab">10月</div>
+        </div>
+        <div class="col">
+          <div class="stack">
+            <div class="prev-tick" style="bottom:63.4%" title="前年 101,425,520円"></div>
+            <div class="bar tgt" style="height:74.8%" title="必達 119,682,114円"></div>
+            <div class="bar act empty"></div>
+          </div>
+          <div class="xlab">11月</div>
+        </div>
+        <div class="col">
+          <div class="stack">
+            <div class="prev-tick" style="bottom:56.6%" title="前年 90,612,171円"></div>
+            <div class="bar tgt" style="height:67.4%" title="必達 107,828,483円"></div>
+            <div class="bar act empty"></div>
+          </div>
+          <div class="xlab">12月</div>
+        </div>
+        <div class="col">
+          <div class="stack">
+            <div class="prev-tick" style="bottom:58.4%" title="前年 93,376,098円"></div>
+            <div class="bar tgt" style="height:71.8%" title="必達 114,852,601円"></div>
+            <div class="bar act empty"></div>
+          </div>
+          <div class="xlab">1月</div>
+        </div>
+        <div class="col">
+          <div class="stack">
+            <div class="prev-tick" style="bottom:67.1%" title="前年 107,413,905円"></div>
+            <div class="bar tgt" style="height:85.3%" title="必達 136,415,659円"></div>
+            <div class="bar act empty"></div>
+          </div>
+          <div class="xlab">2月</div>
+        </div>
+        <div class="col">
+          <div class="stack">
+            <div class="prev-tick" style="bottom:73.0%" title="前年 116,845,440円"></div>
+            <div class="bar tgt" style="height:94.2%" title="必達 150,730,618円"></div>
+            <div class="bar act empty"></div>
+          </div>
+          <div class="xlab">3月</div>
+        </div>
+          </div>
+        </div>
+        <div class="clegend">
+          <span><i class="l-tgt"></i>必達目標</span>
+          <span><i class="l-ok"></i>実績（目標達成）</span>
+          <span><i class="l-near"></i>実績（90%以上）</span>
+          <span><i class="l-low"></i>実績（90%未満）</span>
+          <span><i class="l-prev"></i>前年実績</span>
+          <span style="margin-left:auto">各バーにカーソルを合わせると金額が表示されます</span>
+        </div>
+      </div>
+      <div class="note">※ 目標は下期（11月〜3月の新生活需要期）に大きく積み上がる設計。上期は前年並みで、勝負は下期。</div>
+    </section>
+
+    <section>
+      <h2>累計（4-8月）進捗 <small>累計・税抜</small></h2>
+      <div class="cards">
+        <div class="ach">
+          <div class="top"><span class="big num">99.7<span style="font-size:15px">%</span></span><span class="lab">累計(4-8月) 達成率</span></div>
+          <div class="mini"><div class="f y" style="width:99.7%"></div></div>
+          <div class="cap"><span>実績 ¥439,555,817</span><span>必達 ¥440,862,784</span></div>
+        </div>
+        <div class="ach">
+          <div class="top"><span class="big num">35.2<span style="font-size:15px">%</span></span><span class="lab">年間必達に対する進捗</span></div>
+          <div class="mini"><div class="f g" style="width:35.2%"></div></div>
+          <div class="cap"><span>累計 ¥439,555,817</span><span>年間必達 ¥1,250,098,877</span></div>
+        </div>
+      </div>
+      <div class="callout warn"><b>累計は必達比99.7%（不足 約131万円）。</b>7月末時点の不足 約533万円に対し、8月単月の超過 +402万円（104.8%）で大半を挽回し、必達ラインへほぼ復帰した。Q2（7-9月）の必達は ¥279,914,936 で、7-8月までの累計は ¥181,364,051（64.8%）。9月の必達は ¥91,670,075（目標成長率+11%）で、<b>その他・指名の好調を維持できれば累計100%回復が射程圏</b>。</div>
+    </section>
+
+    <section>
+      <h2>月次目標 vs 実績 <small>売上・セッションとも税抜／必達目標基準</small></h2>
+      <div class="tablewrap">
+      <table>
+        <thead><tr><th>月</th><th>売上 前年</th><th>売上 必達</th><th>売上 ストレッチ</th><th>売上 実績</th><th>達成率</th><th>sess 必達</th><th>sess 実績</th><th>達成率</th></tr></thead>
+        <tbody>
+          <tr><td>2026/4</td><td class="num">91,951,977</td><td class="num">91,951,977</td><td class="num">92,871,497</td><td class="num">87,495,113</td><td class="num"><span class="chip warn">95.2%</span></td><td class="num">397,162</td><td class="num">265,319</td><td class="num"><span class="chip down">66.8%</span></td></tr>
+          <tr><td>2026/5</td><td class="num">74,167,856</td><td class="num">74,909,535</td><td class="num">75,651,213</td><td class="num">86,023,271</td><td class="num"><span class="chip up">114.8%</span></td><td class="num">408,496</td><td class="num">248,528</td><td class="num"><span class="chip down">60.8%</span></td></tr>
+          <tr><td>2026/6</td><td class="num">83,258,651</td><td class="num">85,756,411</td><td class="num">86,588,997</td><td class="num">84,673,383</td><td class="num"><span class="chip warn">98.7%</span></td><td class="num">373,460</td><td class="num">234,301</td><td class="num"><span class="chip down">62.7%</span></td></tr>
+          <tr><td>2026/7</td><td class="num">98,786,913</td><td class="num">103,726,259</td><td class="num">106,689,866</td><td class="num">92,820,746</td><td class="num"><span class="chip down">89.5%</span></td><td class="num">358,907</td><td class="num">247,530</td><td class="num"><span class="chip down">69.0%</span></td></tr>
+          <tr class="total"><td>2026/8</td><td class="num">78,257,965</td><td class="num">84,518,602</td><td class="num">86,866,341</td><td class="num">88,543,305</td><td class="num"><span class="chip up">104.8%</span></td><td class="num">380,327</td><td class="num">243,122</td><td class="num"><span class="chip down">63.9%</span></td></tr>
+          <tr class="muted"><td>2026/9</td><td class="num">82,585,653</td><td class="num">91,670,075</td><td class="num">95,799,357</td><td class="num">—</td><td class="num">—</td><td class="num">385,372</td><td class="num">—</td><td class="num">—</td></tr>
+          <tr class="muted"><td>2026/10</td><td class="num">77,926,146</td><td class="num">88,056,545</td><td class="num">92,732,114</td><td class="num">—</td><td class="num">—</td><td class="num">383,645</td><td class="num">—</td><td class="num">—</td></tr>
+          <tr class="muted"><td>2026/11</td><td class="num">101,425,520</td><td class="num">119,682,114</td><td class="num">127,796,155</td><td class="num">—</td><td class="num">—</td><td class="num">389,584</td><td class="num">—</td><td class="num">—</td></tr>
+          <tr class="muted"><td>2026/12</td><td class="num">90,612,171</td><td class="num">107,828,483</td><td class="num">117,795,822</td><td class="num">—</td><td class="num">—</td><td class="num">381,028</td><td class="num">—</td><td class="num">—</td></tr>
+          <tr class="muted"><td>2027/1</td><td class="num">93,376,098</td><td class="num">114,852,601</td><td class="num">124,190,210</td><td class="num">—</td><td class="num">—</td><td class="num">470,899</td><td class="num">—</td><td class="num">—</td></tr>
+          <tr class="muted"><td>2027/2</td><td class="num">107,413,905</td><td class="num">136,415,659</td><td class="num">149,305,328</td><td class="num">—</td><td class="num">—</td><td class="num">420,823</td><td class="num">—</td><td class="num">—</td></tr>
+          <tr class="muted"><td>2027/3</td><td class="num">116,845,440</td><td class="num">150,730,618</td><td class="num">170,594,342</td><td class="num">—</td><td class="num">—</td><td class="num">445,156</td><td class="num">—</td><td class="num">—</td></tr>
+          <tr class="total"><td>年間合計</td><td class="num">1,096,608,295</td><td class="num">1,250,098,877</td><td class="num">1,326,881,244</td><td class="num">—</td><td class="num">—</td><td class="num">4,794,859</td><td class="num">—</td><td class="num">—</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="note">※ セッションは全月で目標を大きく下回っている（60〜69%）。ライフ（記事）の計画的な整理による流入減が主因で、売上は目標圏を維持できている。セッション目標の前提（記事流入の維持）は実態と乖離しており、次期の見直し余地がある。</div>
+    </section>
+
+    <section>
+      <h2>月次目標の記録 <small>クライアント共有済みのKPI/KGIシート原本・必達目標・税抜</small></h2>
+      <div class="tablewrap">
+      <table>
+        <thead><tr><th>月</th><th>売上 必達 合計</th><th>指名</th><th>ライフ</th><th>その他</th><th>sess 必達 合計</th><th>指名</th><th>ライフ</th><th>その他</th></tr></thead>
+        <tbody>
+          <tr><td>2026/4</td><td class="num">91,951,977</td><td class="num">48,734,548</td><td class="num">919,520</td><td class="num">42,297,909</td><td class="num">397,162</td><td class="num">91,347</td><td class="num">262,127</td><td class="num">43,688</td></tr>
+          <tr><td>2026/5</td><td class="num">74,909,535</td><td class="num">39,702,053</td><td class="num">749,095</td><td class="num">34,458,386</td><td class="num">408,496</td><td class="num">93,954</td><td class="num">265,522</td><td class="num">49,019</td></tr>
+          <tr><td>2026/6</td><td class="num">85,756,411</td><td class="num">45,450,898</td><td class="num">857,564</td><td class="num">39,447,949</td><td class="num">373,460</td><td class="num">85,896</td><td class="num">242,749</td><td class="num">44,815</td></tr>
+          <tr><td>2026/7</td><td class="num">103,726,259</td><td class="num">52,900,392</td><td class="num">2,074,525</td><td class="num">48,751,342</td><td class="num">358,907</td><td class="num">82,549</td><td class="num">236,878</td><td class="num">39,480</td></tr>
+          <tr class="total"><td>2026/8</td><td class="num">84,518,602</td><td class="num">43,104,487</td><td class="num">1,690,372</td><td class="num">39,723,743</td><td class="num">380,327</td><td class="num">87,475</td><td class="num">251,016</td><td class="num">41,836</td></tr>
+          <tr><td>2026/9</td><td class="num">91,670,075</td><td class="num">45,835,037</td><td class="num">1,833,401</td><td class="num">44,001,636</td><td class="num">385,372</td><td class="num">88,636</td><td class="num">254,346</td><td class="num">42,391</td></tr>
+          <tr><td>2026/10</td><td class="num">88,056,545</td><td class="num">44,028,272</td><td class="num">1,761,131</td><td class="num">42,267,142</td><td class="num">383,645</td><td class="num">88,238</td><td class="num">253,206</td><td class="num">42,201</td></tr>
+          <tr><td>2026/11</td><td class="num">119,682,114</td><td class="num">58,644,236</td><td class="num">2,393,642</td><td class="num">58,644,236</td><td class="num">389,584</td><td class="num">89,604</td><td class="num">257,125</td><td class="num">42,854</td></tr>
+          <tr><td>2026/12</td><td class="num">107,828,483</td><td class="num">52,835,957</td><td class="num">2,156,570</td><td class="num">52,835,957</td><td class="num">381,028</td><td class="num">87,637</td><td class="num">251,479</td><td class="num">41,913</td></tr>
+          <tr><td>2027/1</td><td class="num">114,852,601</td><td class="num">56,277,774</td><td class="num">2,297,052</td><td class="num">56,277,774</td><td class="num">470,899</td><td class="num">108,307</td><td class="num">310,794</td><td class="num">51,799</td></tr>
+          <tr><td>2027/2</td><td class="num">136,415,659</td><td class="num">65,479,516</td><td class="num">2,728,313</td><td class="num">68,207,830</td><td class="num">420,823</td><td class="num">96,789</td><td class="num">277,743</td><td class="num">46,291</td></tr>
+          <tr><td>2027/3</td><td class="num">150,730,618</td><td class="num">72,350,696</td><td class="num">3,014,612</td><td class="num">75,365,309</td><td class="num">445,156</td><td class="num">102,386</td><td class="num">293,803</td><td class="num">48,967</td></tr>
+          <tr class="total"><td>年間合計</td><td class="num">1,250,098,877</td><td class="num">625,343,867</td><td class="num">22,475,798</td><td class="num">602,279,212</td><td class="num">4,794,859</td><td class="num">1,102,818</td><td class="num">3,156,788</td><td class="num">535,254</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="callout warn"><b>この表は「共有済み原本」の記録です。</b>ここでのセグメント定義は<b>GSCクエリ基準</b>（指名＝ブランドクエリ）であり、本レポートの実測で用いる<b>GA4着地ページ基準</b>とは一致しません。そのため各セグメントの達成率は、他タブでは前年実測×成長率で<b>再基準化した目標</b>と比較しています（合計の必達 ¥84,518,602 は両者で共通）。</div>
+      <div class="note">次期の提案: KPI/KGIシートのセグメント定義を着地ページ基準に改定すると、目標と実測が直接比較でき、再基準化が不要になります。</div>
+    </section>
+
+    <section>
+      <h2>詳細データ</h2>
+      <a class="sheetlink" href="https://docs.google.com/spreadsheets/d/1TToO4VUZ2KFT7lUxYNV9-T0Q3Zusifq0OHvMnfJfTfg/edit" target="_blank" rel="noopener">
+        <span class="ic">▦</span>スプレッドシートで開く<small>／ サマリー・セグメント一覧・指名・ライフ・その他・機能ページ・年間推移・月次目標（原本）</small>
+      </a>
+    </section>
+  </div>
+
+  <footer>
+    <span>RASIK 月次オーガニックレポート｜2026年8月</span>
+    <span>データ: GA4 Data API（実測）／ KPI・KGIシート ／ 作成: 大沢</span>
+  </footer>
+
+</div>
+<script>
+  document.querySelectorAll('.tab').forEach(function(t){
+    t.addEventListener('click',function(){
+      document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});
+      document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active')});
+      t.classList.add('active');
+      document.getElementById(t.dataset.tab).classList.add('active');
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+  });
+</script>
+</body>
+</html>
