@@ -74,6 +74,8 @@ export async function listSeoSites(): Promise<SeoSite[]> {
         ? Number(r.inspection_daily_limit)
         : DEFAULT_SEO_SITE.inspection_daily_limit,
     stale_days: Number(r.stale_days) > 0 ? Number(r.stale_days) : DEFAULT_SEO_SITE.stale_days,
+    // 設定UI（upsertSeoSite）はこの列を触らないため、SQLで設定した値が保持される
+    auth_account: (r.auth_account as string) ?? null,
     updated_at: bqString(r.updated_at) ?? undefined,
   }));
 }

@@ -33,6 +33,8 @@ const TABLES = [
       { name: "crawl_enabled", type: "BOOL" },
       { name: "inspection_daily_limit", type: "INT64" },
       { name: "stale_days", type: "INT64" },
+      // GSC/GA4認証に使うアカウント名（NULL=既定）。"osawa" → GOOGLE_OAUTH_REFRESH_TOKEN_OSAWA
+      { name: "auth_account", type: "STRING" },
       { name: "updated_at", type: "TIMESTAMP" },
     ],
   },
