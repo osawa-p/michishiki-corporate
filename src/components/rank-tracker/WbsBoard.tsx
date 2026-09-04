@@ -519,7 +519,7 @@ function DetailPanel({
                 ))}
               </span>
             ))}
-          {meta && row("PJメモ", (
+          {meta?.note && row("PJメモ", (
             <span className={`text-xs leading-5 ${meta.stale ? "text-[#8f403a]" : "text-ink-soft"}`}>
               {meta.stale ? "⚠ " : ""}{meta.note}
             </span>
@@ -545,7 +545,18 @@ function DetailPanel({
   );
 }
 
-export default function WbsBoard({ data, kpiAuto }: { data: WbsData; kpiAuto?: WbsKpiResults }) {
+// heading / intro はクライアント共有ビュー（wbs/[pj]）が差し替える。未指定なら管理者向けの既定文言
+export default function WbsBoard({
+  data,
+  kpiAuto,
+  heading = "大沢タスクWBS",
+  intro,
+}: {
+  data: WbsData;
+  kpiAuto?: WbsKpiResults;
+  heading?: string;
+  intro?: string;
+}) {
   const [pj, setPj] = useState<string>("all");
   const [st, setSt] = useState<string>("all");
   const [q, setQ] = useState("");
@@ -594,10 +605,10 @@ export default function WbsBoard({ data, kpiAuto }: { data: WbsData; kpiAuto?: W
       <section className="border-b border-line">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
           <p className="text-xs tracking-[0.3em] uppercase text-bronze mb-4">WBS</p>
-          <h1 className="font-serif text-3xl md:text-4xl font-semibold">大沢タスクWBS</h1>
+          <h1 className="font-serif text-3xl md:text-4xl font-semibold">{heading}</h1>
           <p className="mt-4 text-sm text-ink-soft leading-relaxed">
-            全プロジェクト横断のタスクボード（管理者専用）。データ最終更新: {data.updated}。
-            正は各プロジェクトの CURRENT.md（tasks.js を編集すると auto-sync が自動反映）。
+            {intro ?? "全プロジェクト横断のタスクボード（管理者専用）。正は各プロジェクトの CURRENT.md（tasks.js を編集すると auto-sync が自動反映）。"}
+            {" "}データ最終更新: {data.updated}。
           </p>
           {staleNote.length > 0 && (
             <p className="mt-3 inline-block rounded border border-line bg-white/60 px-3 py-2 text-xs leading-5 text-ink-soft">

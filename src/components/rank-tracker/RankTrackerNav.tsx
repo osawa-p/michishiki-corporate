@@ -15,6 +15,8 @@ const TABS: { href: string; label: string; roles: string[]; requiresDomain?: str
   // 月次レポート（現状はRASIKのみのため rasik.style の許可者限定で表示）
   { href: "/rank-tracker/reports", label: "月次レポート", roles: ["admin", "editor", "viewer_kw", "viewer"], requiresDomain: "rasik.style" },
   { href: "/rank-tracker/seo/proposals", label: "AI提案", roles: ["admin"] },
+  // クライアント共有WBS（Cin-Cia様向け施策スケジュール）。対象サイトの許可者と admin に表示
+  { href: "/rank-tracker/wbs/cin-cia", label: "施策スケジュール", roles: ["admin", "editor", "viewer_kw", "viewer"], requiresDomain: "cin-cia.com" },
   // WBS（大沢の全クライアント横断タスクボード）は管理者専用
   { href: "/rank-tracker/wbs", label: "WBS", roles: ["admin"] },
   { href: "/rank-tracker/members", label: "メンバー", roles: ["admin"] },
