@@ -17,17 +17,44 @@ const SCOPES = [
   "https://www.googleapis.com/auth/analytics.readonly",
 ];
 
-let cachedClient: AuthClient | null = null;
+const cachedClients = new Map<string, AuthClient>();
 
-async function getClient(): Promise<AuthClient> {
-  if (cachedClient) return cachedClient;
+// アカウント名 → 環境変数サフィックス（"osawa" → "OSAWA"）
+function envSuffix(account: string): string {
+  return account.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+}
+
+// account 指定時は GOOGLE_OAUTH_REFRESH_TOKEN_<ACCOUNT> のリフレッシュトークンを使う
+// （クライアントID/シークレットは同じOAuthアプリを共用。個別指定も可）。
+// 未指定（null/undefined）は従来どおり既定の運用アカウント。
+async function getClient(account?: string | null): Promise<AuthClient> {
+  const key = account ?? "";
+  const cached = cachedClients.get(key);
+  if (cached) return cached;
 
   const oauthClientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
   const oauthClientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+
+  if (account) {
+    const sfx = envSuffix(account);
+    const id = process.env[`GOOGLE_OAUTH_CLIENT_ID_${sfx}`] ?? oauthClientId;
+    const secret = process.env[`GOOGLE_OAUTH_CLIENT_SECRET_${sfx}`] ?? oauthClientSecret;
+    const refresh = process.env[`GOOGLE_OAUTH_REFRESH_TOKEN_${sfx}`];
+    if (!id || !secret || !refresh) {
+      throw new Error(
+        `認証アカウント "${account}" の環境変数（GOOGLE_OAUTH_REFRESH_TOKEN_${sfx}）が未設定です。`
+      );
+    }
+    const client = new UserRefreshClient(id, secret, refresh);
+    cachedClients.set(key, client);
+    return client;
+  }
+
   const oauthRefreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
   if (oauthClientId && oauthClientSecret && oauthRefreshToken) {
-    cachedClient = new UserRefreshClient(oauthClientId, oauthClientSecret, oauthRefreshToken);
-    return cachedClient;
+    const client = new UserRefreshClient(oauthClientId, oauthClientSecret, oauthRefreshToken);
+    cachedClients.set(key, client);
+    return client;
   }
 
   const b64 = process.env.GCP_SA_KEY_BASE64;
@@ -38,12 +65,13 @@ async function getClient(): Promise<AuthClient> {
           credentials: JSON.parse(Buffer.from(b64, "base64").toString("utf8")),
         })
       : new GoogleAuth({ scopes: SCOPES });
-  cachedClient = await auth.getClient();
-  return cachedClient;
+  const client = await auth.getClient();
+  cachedClients.set(key, client);
+  return client;
 }
 
-async function request<T>(url: string, body?: unknown): Promise<T> {
-  const client = await getClient();
+async function request<T>(url: string, body?: unknown, account?: string | null): Promise<T> {
+  const client = await getClient(account);
   const res = await client.request<T>({
     url,
     method: body === undefined ? "GET" : "POST",
@@ -68,7 +96,8 @@ export type SearchAnalyticsRow = {
 // GSCのデータは約3日遅れで確定するため、呼び出し側は3日前の日付を渡す。
 export async function fetchSearchAnalytics(
   gscSiteUrl: string,
-  date: string
+  date: string,
+  account?: string | null
 ): Promise<SearchAnalyticsRow[]> {
   type Api = {
     rows?: Array<{ keys: string[]; clicks: number; impressions: number; position: number }>;
@@ -79,14 +108,18 @@ export async function fetchSearchAnalytics(
   const rowLimit = 25000;
   // ページングで全行取得（通常は1リクエストで収まる）
   for (let i = 0; i < 4; i++) {
-    const data = await request<Api>(url, {
-      startDate: date,
-      endDate: date,
-      dimensions: ["query", "page"],
-      rowLimit,
-      startRow,
-      dataState: "final",
-    });
+    const data = await request<Api>(
+      url,
+      {
+        startDate: date,
+        endDate: date,
+        dimensions: ["query", "page"],
+        rowLimit,
+        startRow,
+        dataState: "final",
+      },
+      account
+    );
     const rows = data.rows ?? [];
     for (const r of rows) {
       out.push({
@@ -118,7 +151,11 @@ export type InspectionResult = {
   lastCrawlTime: string | null;
 };
 
-export async function inspectUrl(gscSiteUrl: string, url: string): Promise<InspectionResult> {
+export async function inspectUrl(
+  gscSiteUrl: string,
+  url: string,
+  account?: string | null
+): Promise<InspectionResult> {
   type Api = {
     inspectionResult?: {
       indexStatusResult?: {
@@ -135,7 +172,8 @@ export async function inspectUrl(gscSiteUrl: string, url: string): Promise<Inspe
   };
   const data = await request<Api>(
     "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect",
-    { inspectionUrl: url, siteUrl: gscSiteUrl, languageCode: "ja" }
+    { inspectionUrl: url, siteUrl: gscSiteUrl, languageCode: "ja" },
+    account
   );
   const r = data.inspectionResult?.indexStatusResult ?? {};
   return {
@@ -195,10 +233,15 @@ type Ga4ReportResponse = {
 
 export type Ga4Row = { dims: string[]; metrics: number[] };
 
-export async function runGa4Report(propertyId: string, req: Ga4ReportRequest): Promise<Ga4Row[]> {
+export async function runGa4Report(
+  propertyId: string,
+  req: Ga4ReportRequest,
+  account?: string | null
+): Promise<Ga4Row[]> {
   const data = await request<Ga4ReportResponse>(
     `https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(propertyId)}:runReport`,
-    { ...req, limit: req.limit ?? 10000 }
+    { ...req, limit: req.limit ?? 10000 },
+    account
   );
   return (data.rows ?? []).map((r) => ({
     dims: (r.dimensionValues ?? []).map((d) => d.value ?? ""),

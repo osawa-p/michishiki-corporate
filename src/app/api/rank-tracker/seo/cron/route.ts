@@ -133,7 +133,7 @@ export async function GET(request: Request) {
         if (await hasQueryStats(s.site, gscDate)) {
           sum.querySkipped = true;
         } else {
-          const rows = await fetchSearchAnalytics(s.gsc_site_url, gscDate);
+          const rows = await fetchSearchAnalytics(s.gsc_site_url, gscDate, s.auth_account);
           sum.queryRows = await insertQueryStats(
             rows.map((r) => ({
               site: s.site,
@@ -183,22 +183,30 @@ export async function GET(request: Request) {
           const metrics = GA4_METRICS.map((name) => ({ name }));
           const dateRanges = [{ startDate: ga4Date, endDate: ga4Date }];
           const [channelRows, pageRows] = await Promise.all([
-            runGa4Report(pid, {
-              dateRanges,
-              dimensions: [
-                { name: "sessionDefaultChannelGroup" },
-                { name: "sessionSource" },
-                { name: "sessionMedium" },
-              ],
-              metrics,
-            }),
+            runGa4Report(
+              pid,
+              {
+                dateRanges,
+                dimensions: [
+                  { name: "sessionDefaultChannelGroup" },
+                  { name: "sessionSource" },
+                  { name: "sessionMedium" },
+                ],
+                metrics,
+              },
+              s.auth_account
+            ),
             // landingPage（クエリパラメータなし）を使う。landingPagePlusQueryString だと
             // パラメータ付きURLで行数が爆発する（rasikで1日4万行超の実績）
-            runGa4Report(pid, {
-              dateRanges,
-              dimensions: [{ name: "landingPage" }],
-              metrics,
-            }),
+            runGa4Report(
+              pid,
+              {
+                dateRanges,
+                dimensions: [{ name: "landingPage" }],
+                metrics,
+              },
+              s.auth_account
+            ),
           ]);
           const ch: Ga4ChannelRow[] = channelRows.map((r) => ({
             site: s.site,

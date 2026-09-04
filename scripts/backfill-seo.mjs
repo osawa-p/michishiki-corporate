@@ -40,28 +40,52 @@ const bq = new BigQuery({
     : {}),
 });
 
-async function getGoogleClient() {
+// アカウント名 → 環境変数サフィックス（"osawa" → "OSAWA"）。
+// seo_sites.auth_account が設定されたサイトは GOOGLE_OAUTH_REFRESH_TOKEN_<ACCOUNT> で認証する
+// （プロパティが既定アカウントに共有されていないサイト用。cin-cia 等）。
+const googleClients = new Map();
+async function getGoogleClient(account) {
+  const key = account ?? "";
+  if (googleClients.has(key)) return googleClients.get(key);
   const id = process.env.GOOGLE_OAUTH_CLIENT_ID;
   const secret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
-  const refresh = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
-  if (id && secret && refresh) return new UserRefreshClient(id, secret, refresh);
-  if (saCreds) {
-    const auth = new GoogleAuth({
-      scopes: [
-        "https://www.googleapis.com/auth/webmasters.readonly",
-        "https://www.googleapis.com/auth/analytics.readonly",
-      ],
-      credentials: saCreds,
-    });
-    return auth.getClient();
+  let client = null;
+  if (account) {
+    const sfx = account.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+    const accId = process.env[`GOOGLE_OAUTH_CLIENT_ID_${sfx}`] ?? id;
+    const accSecret = process.env[`GOOGLE_OAUTH_CLIENT_SECRET_${sfx}`] ?? secret;
+    const accRefresh = process.env[`GOOGLE_OAUTH_REFRESH_TOKEN_${sfx}`];
+    if (!accId || !accSecret || !accRefresh) {
+      throw new Error(
+        `認証アカウント "${account}" の環境変数（GOOGLE_OAUTH_REFRESH_TOKEN_${sfx}）が未設定です。`
+      );
+    }
+    client = new UserRefreshClient(accId, accSecret, accRefresh);
+  } else {
+    const refresh = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
+    if (id && secret && refresh) {
+      client = new UserRefreshClient(id, secret, refresh);
+    } else if (saCreds) {
+      const auth = new GoogleAuth({
+        scopes: [
+          "https://www.googleapis.com/auth/webmasters.readonly",
+          "https://www.googleapis.com/auth/analytics.readonly",
+        ],
+        credentials: saCreds,
+      });
+      client = await auth.getClient();
+    } else {
+      throw new Error(
+        "Google API の認証情報がありません（GOOGLE_OAUTH_* または GCP_SA_KEY_BASE64 を設定）。"
+      );
+    }
   }
-  throw new Error(
-    "Google API の認証情報がありません（GOOGLE_OAUTH_* または GCP_SA_KEY_BASE64 を設定）。"
-  );
+  googleClients.set(key, client);
+  return client;
 }
-const google = await getGoogleClient();
 
-async function api(url, body) {
+async function api(url, body, account) {
+  const google = await getGoogleClient(account);
   const res = await google.request({ url, method: body ? "POST" : "GET", data: body });
   return res.data;
 }
@@ -150,7 +174,8 @@ for (const s of sites) {
               rowLimit: 25000,
               startRow,
               dataState: "final",
-            }
+            },
+            s.auth_account
           );
           const batch = data.rows ?? [];
           for (const r of batch) {
@@ -224,7 +249,8 @@ for (const s of sites) {
             metrics,
             limit: 100000,
             offset,
-          }
+          },
+          s.auth_account
         );
       let chInserted = 0;
       let pgInserted = 0;

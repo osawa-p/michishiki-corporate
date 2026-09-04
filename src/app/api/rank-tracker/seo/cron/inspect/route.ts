@@ -182,7 +182,7 @@ async function runRotation(): Promise<RotationResult> {
         }
         const batch = targets.slice(i, i + INSPECT_CONCURRENCY);
         const results = await Promise.allSettled(
-          batch.map((url) => inspectUrl(s.gsc_site_url!, url))
+          batch.map((url) => inspectUrl(s.gsc_site_url!, url, s.auth_account))
         );
         const retryUrls = handleResults(batch, results, false);
         if (retryUrls.length > 0 && !aborted) {
@@ -193,7 +193,7 @@ async function runRotation(): Promise<RotationResult> {
           }
           await new Promise((resolve) => setTimeout(resolve, RETRY_WAIT_MS));
           const retryResults = await Promise.allSettled(
-            retryUrls.map((url) => inspectUrl(s.gsc_site_url!, url))
+            retryUrls.map((url) => inspectUrl(s.gsc_site_url!, url, s.auth_account))
           );
           handleResults(retryUrls, retryResults, true);
         }

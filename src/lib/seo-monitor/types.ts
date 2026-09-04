@@ -21,6 +21,10 @@ export type SeoSite = {
   inspection_daily_limit: number;
   // 「長期未クロール」と判定する経過日数のしきい値
   stale_days: number;
+  // GSC/GA4 の認証に使うアカウント名。null は既定の運用アカウント。
+  // 例: "osawa" → 環境変数 GOOGLE_OAUTH_REFRESH_TOKEN_OSAWA を使う
+  // （プロパティが既定アカウントに共有されていないサイト用。cin-cia 等）
+  auth_account?: string | null;
   updated_at?: string;
 };
 

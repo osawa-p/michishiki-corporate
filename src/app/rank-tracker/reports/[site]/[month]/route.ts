@@ -2,17 +2,20 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
 import { getAccess, canViewDomain } from "@/lib/rank-tracker/auth";
+import { reportSiteBySlug } from "@/lib/rank-tracker/reports";
 
-// RASIK 月次オーガニックレポート（自己完結HTML）を認証付きでそのまま配信する。
-// クライアント売上を含むため、rasik.style の閲覧権限（ACL）を持つメンバー限定。
+// 月次レポート（自己完結HTML）を認証付きでそのまま配信する。
+// クライアント売上等の機微情報を含むため、対象サイトの閲覧権限（ACL）を持つ
+// メンバー限定。権限がない場合と存在しないslugの場合は同一挙動（一覧へリダイレクト）
+// にして、URL探索で他クライアントの存在が推測できないようにする。
 // 配信時に共通ナビバー（一覧へ戻る・前月/次月・ツールへ）をbody直後へ注入する。
 export const dynamic = "force-dynamic";
 
-const REPORTS_DIR = path.join(process.cwd(), "src", "data", "reports", "rasik");
+const REPORTS_ROOT = path.join(process.cwd(), "src", "data", "reports");
 
-async function availableMonths(): Promise<string[]> {
+async function availableMonths(slug: string): Promise<string[]> {
   try {
-    const files = await fs.readdir(REPORTS_DIR);
+    const files = await fs.readdir(path.join(REPORTS_ROOT, slug));
     return files
       .filter((f) => /^\d{6}\.html$/.test(f))
       .map((f) => f.slice(0, 6))
@@ -27,16 +30,16 @@ function monthLabel(yyyymm: string): string {
 }
 
 // レポートHTMLのCSSと衝突しないよう #rtnav 配下に閉じる。印刷時は非表示。
-function buildNavHtml(month: string, months: string[]): string {
+function buildNavHtml(slug: string, month: string, months: string[]): string {
   const i = months.indexOf(month);
   const prev = i > 0 ? months[i - 1] : null;
   const next = i >= 0 && i < months.length - 1 ? months[i + 1] : null;
 
   const prevEl = prev
-    ? `<a href="/rank-tracker/reports/rasik/${prev}">← ${monthLabel(prev)}</a>`
+    ? `<a href="/rank-tracker/reports/${slug}/${prev}">← ${monthLabel(prev)}</a>`
     : `<span class="dis">← 前月</span>`;
   const nextEl = next
-    ? `<a href="/rank-tracker/reports/rasik/${next}">${monthLabel(next)} →</a>`
+    ? `<a href="/rank-tracker/reports/${slug}/${next}">${monthLabel(next)} →</a>`
     : `<span class="dis">翌月 →</span>`;
 
   return `
@@ -64,32 +67,35 @@ function buildNavHtml(month: string, months: string[]): string {
 
 export async function GET(
   req: Request,
-  { params }: { params: Promise<{ month: string }> },
+  { params }: { params: Promise<{ site: string; month: string }> },
 ) {
   const access = await getAccess();
   if (!access) {
     return NextResponse.redirect(new URL("/rank-tracker/login", req.url));
   }
-  if (!canViewDomain(access, "rasik.style")) {
-    return NextResponse.redirect(new URL("/rank-tracker/dashboard", req.url));
+
+  // slug不明と権限なしを区別しない（他クライアントの存在をURL探索で推測させない）
+  const { site: slugParam, month } = await params;
+  const site = reportSiteBySlug(slugParam);
+  if (!site || !canViewDomain(access, site.domain)) {
+    return NextResponse.redirect(new URL("/rank-tracker/reports", req.url));
   }
 
-  // パストラバーサル防止: YYYYMM 形式のみ受け付ける
-  const { month } = await params;
+  // パストラバーサル防止: YYYYMM 形式のみ受け付ける（slugは上でホワイトリスト照合済み）
   if (!/^\d{6}$/.test(month)) {
     return new NextResponse("Not Found", { status: 404 });
   }
 
   let html: string;
   try {
-    html = await fs.readFile(path.join(REPORTS_DIR, `${month}.html`), "utf-8");
+    html = await fs.readFile(path.join(REPORTS_ROOT, site.slug, `${month}.html`), "utf-8");
   } catch {
     return new NextResponse("Not Found", { status: 404 });
   }
 
   // body開始タグ直後にナビを注入（レポートHTML自体は無加工で運用する）
-  const months = await availableMonths();
-  const nav = buildNavHtml(month, months);
+  const months = await availableMonths(site.slug);
+  const nav = buildNavHtml(site.slug, month, months);
   const injected = html.replace(/<body([^>]*)>/i, (m) => `${m}${nav}`);
 
   return new NextResponse(injected, {
