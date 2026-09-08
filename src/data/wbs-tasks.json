@@ -798,9 +798,9 @@
    "id": "M-14",
    "pj": "moshimo",
    "task": "ページスピード改善指示書（11項目）のスプシリンクを渡邉さんへ送付",
-   "dep": "9/3定例宿題。優先度1・2（LCP画像preload＋fetchpriority）から着手で合意。送付済みかを要確認。スプシ: docs.google.com/spreadsheets/d/1qRNxrv9rhIEfsCl6nlJ2xer8Zm0ns4NEljMTm8Y8U6M",
+   "dep": "完了（2026-09-08確認）: 送付済み。優先度1・2（LCP画像preload＋fetchpriority）から着手で合意。スプシ: docs.google.com/spreadsheets/d/1qRNxrv9rhIEfsCl6nlJ2xer8Zm0ns4NEljMTm8Y8U6M",
    "pri": 1,
-   "st": "todo",
+   "st": "done",
    "start": "2026-09-03",
    "due": "2026-09-08"
   },
@@ -838,9 +838,9 @@
    "id": "M-18",
    "pj": "moshimo",
    "task": "optyinoの閲覧権限を実藤さんへ付与＋8月データURL共有",
-   "dep": "9/1宿題（権限未付与の可能性を大沢が認めた）。継続判断（新プラン月額6,000円・年払い5,000円・20プロンプト）は実藤さん",
+   "dep": "完了（2026-09-08確認）: 権限付与・8月データURL共有済み。継続判断（新プラン月額6,000円・年払い5,000円・20プロンプト）は実藤さん",
    "pri": 1,
-   "st": "todo",
+   "st": "done",
    "start": "2026-09-01",
    "due": "2026-09-08"
   },
