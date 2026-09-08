@@ -808,7 +808,7 @@
    "id": "M-15",
    "pj": "moshimo",
    "task": "モバイル直帰のUI/UX要因分析→定例で報告",
-   "dep": "分析・スライド完成（2026-09-08・13枚・Googleスライド docs.google.com/presentation/d/1WyjD0rFy4CMjEam4Bij418FvQF3BwItkBajwEIciozg）。51%＝計測ノイズ13pt＋再入場22pt＋検索クリック16pt（33% vs PC18.5%）。Clarity最新ヒートマップの提供があれば差し替え。9/10定例で報告",
+   "dep": "分析・スライド完成（2026-09-08・13枚・Googleスライド docs.google.com/presentation/d/1WyjD0rFy4CMjEam4Bij418FvQF3BwItkBajwEIciozg）。51%＝計測ノイズ13pt＋再入場22pt＋検索クリック16pt（33% vs PC18.5%）。Codex監修反映済み（言い切り緩和・スライド5の参照元表削除・GSC乖離未解明を明記）。Clarity追加データ（参照元なし群の録画分類／(not set)群の捕捉率／参照元あり新規のFV視認・最新スクロール/タップマップ）が届けば差し替え。9/10定例で報告",
    "pri": 1,
    "st": "doing",
    "start": "2026-09-03",
