@@ -6,6 +6,8 @@ import { useSearchParams } from "next/navigation";
 // クライアント向け「施策WBS」。データは src/data/wbs-client/<slug>.json
 // （michi 側 wbs-client-publish.mjs が tasks.js＋公開文面から生成。内部メモは含まない）。
 // 認証済み server component（projects/[site]/page.tsx）から props で受け取る。
+// 画面構成（GPT-6 Astra 設計監修 2026-09-10）: 変化・成果／次の節目 → 判断・確認が必要な施策 →
+// 一覧（領域別）／工程表 → 月間工数。月は独立フィルター（既定＝内容確認日の月）。
 
 export type ClientWbsStatus = "todo" | "doing" | "wait" | "done" | "skipped" | "paused";
 export type ClientWbsKpi = {
@@ -29,6 +31,8 @@ export type ClientWbsTask = {
   reason: string;
   next: string;
   outcome: string;
+  impact: string;
+  stoppedOn: string | null;
   effort: Record<string, number>;
   links: { label: string; url: string }[];
   kpi?: ClientWbsKpi;
@@ -36,7 +40,7 @@ export type ClientWbsTask = {
 export type ClientWbsData = {
   site: { slug: string; domain: string; label: string; client: string; since: string };
   updated: string;
-  generatedAt: string;
+  summary: { asOf: string; changes: string[]; unmeasured: string[]; milestones: { date: string; label: string }[] };
   effortNote: Record<string, string>;
   overhead: Record<string, { label: string; hours: number }[]>;
   tasks: ClientWbsTask[];
@@ -47,8 +51,16 @@ const STATUS_LABEL: Record<ClientWbsStatus, string> = {
   wait: "待ち",
   todo: "予定",
   done: "完了",
-  skipped: "未実行",
+  skipped: "見送り",
   paused: "中断",
+};
+const STATUS_HELP: Record<ClientWbsStatus, string> = {
+  doing: "大沢が作業中",
+  wait: "他の方の判断・実装を待っている",
+  todo: "着手前",
+  done: "対応が終わり、効果を監視中または完了",
+  skipped: "検討のうえ実施しないと判断した",
+  paused: "着手後に止めている（再開条件あり）",
 };
 // ステータス配色（マーカー・バーのみ。文字は墨色を保つ）
 const STATUS_COLOR: Record<ClientWbsStatus, string> = {
@@ -62,15 +74,15 @@ const STATUS_COLOR: Record<ClientWbsStatus, string> = {
 const STATUS_ORDER: ClientWbsStatus[] = ["wait", "doing", "todo", "done", "paused", "skipped"];
 const AREA_ORDER = ["カテゴリ上位表示", "テクニカル", "計測・データ", "サイト改善", "コンテンツ（LIFE）", "AI検索（AEO）", "レポート"];
 const DAY = 86400000;
+const ALL = "all";
 
 const isIso = (s: string | null | undefined): s is string => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
 const ms = (iso: string) => Date.parse(`${iso}T00:00:00+09:00`);
 const ym = (iso: string) => iso.slice(0, 7);
 const monthLabel = (m: string) => `${m.slice(0, 4)}年${Number(m.slice(5))}月`;
 const fmtDate = (iso: string) => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`;
-const sumEffort = (t: ClientWbsTask, month?: string) =>
-  Object.entries(t.effort).reduce((a, [k, v]) => a + (!month || k === month ? v : 0), 0);
 const fmtH = (h: number) => (h % 1 === 0 ? `${h}` : h.toFixed(1));
+const isActive = (t: ClientWbsTask) => t.status === "doing" || t.status === "wait" || t.status === "todo";
 
 // 前後の月を列挙（YYYY-MM）
 function monthRange(from: string, to: string): string[] {
@@ -88,14 +100,18 @@ function monthRange(from: string, to: string): string[] {
   return out;
 }
 
-// 月フィルタ: その月に稼働があった／期間が重なる施策
+// 月フィルタの定義: その月に稼働を記録した施策、または期間（開始日〜期限）がその月と重なる施策。
+// 日付のない施策（期限が「実装後」等）は、進行中・待ち・予定のものだけ対象にする
 function inMonth(t: ClientWbsTask, month: string): boolean {
+  if (month === ALL) return true;
   if (t.effort[month]) return true;
   const s = t.start ?? t.dueDate;
   const e = t.dueDate ?? t.start;
-  if (!s || !e) return t.status === "doing" || t.status === "wait";
+  if (!s || !e) return isActive(t);
   return ym(s) <= month && month <= ym(e);
 }
+const isOverdue = (t: ClientWbsTask, today: number | null) =>
+  today !== null && t.dueDate !== null && (t.status === "todo" || t.status === "doing") && ms(t.dueDate) + DAY <= today;
 
 function StatusPill({ st, small }: { st: ClientWbsStatus; small?: boolean }) {
   const dashed = st === "skipped" || st === "paused";
@@ -104,6 +120,7 @@ function StatusPill({ st, small }: { st: ClientWbsStatus; small?: boolean }) {
       className={`inline-flex items-center gap-1.5 rounded-full border bg-white font-medium text-ink whitespace-nowrap ${
         small ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs"
       } ${dashed ? "border-dashed border-ink-faint/60" : "border-line"}`}
+      title={STATUS_HELP[st]}
     >
       <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: STATUS_COLOR[st] }} />
       {STATUS_LABEL[st]}
@@ -111,13 +128,16 @@ function StatusPill({ st, small }: { st: ClientWbsStatus; small?: boolean }) {
   );
 }
 
-function Chip({ on, onClick, children, title }: { on: boolean; onClick: () => void; children: React.ReactNode; title?: string }) {
+function OverdueBadge() {
+  return <span className="rounded-md bg-[#b3352e]/10 px-1.5 py-0.5 text-[11px] font-semibold text-[#8f2a24]">期限超過</span>;
+}
+
+function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={on}
-      title={title}
       className={`rounded-full border px-3 py-1 text-xs whitespace-nowrap transition focus-visible:outline-2 focus-visible:outline-bronze-deep ${
         on ? "border-bronze bg-bronze/10 text-bronze-deep font-semibold" : "border-line bg-white text-ink-soft hover:border-bronze"
       }`}
@@ -127,16 +147,25 @@ function Chip({ on, onClick, children, title }: { on: boolean; onClick: () => vo
   );
 }
 
-function StatCard({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
+function Period({ t }: { t: ClientWbsTask }) {
+  const s = t.start ? fmtDate(t.start) : null;
+  const e = t.dueDate ? fmtDate(t.dueDate) : t.due;
   return (
-    <div className="rounded-xl border border-line bg-white px-4 py-3">
-      <div className="flex items-center gap-2 text-[11px] text-ink-faint">
-        {accent && <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: accent }} />}
-        {label}
-      </div>
-      <div className="mt-1 font-serif text-2xl font-semibold text-ink leading-none">{value}</div>
-      {sub && <div className="mt-1 text-[11px] text-ink-faint">{sub}</div>}
-    </div>
+    <span className="whitespace-nowrap tabular-nums">
+      {s ? `${s}〜${e}` : e}
+      {!t.dueDate && <span className="ml-1 text-[11px] text-ink-faint">（時期未定）</span>}
+    </span>
+  );
+}
+
+// 一覧の「次の対応・担当」: 次に起きること（無ければ現在地）＋担当／待ち先
+function NextText({ t }: { t: ClientWbsTask }) {
+  const who = t.waitFor ? `${t.owner}／待ち: ${t.waitFor}` : t.owner;
+  return (
+    <>
+      <span className="text-ink">{t.next || t.now}</span>
+      <span className="mt-0.5 block text-[12px] text-ink-faint">{who}</span>
+    </>
   );
 }
 
@@ -146,26 +175,21 @@ function EffectText({ t }: { t: ClientWbsTask }) {
     return (
       <span className="text-ink">
         {m.name}: {m.baseline} → <span className="font-semibold">{m.current}</span>
+        <span className="ml-1 text-[11px] text-ink-faint">（{m.asof}時点）</span>
       </span>
     );
   }
   if (t.outcome) return <span className="text-ink">{t.outcome}</span>;
-  if (t.status === "done") return <span className="text-ink-faint">効果測定なし（対応完了）</span>;
+  if (t.status === "done") return <span className="text-ink-faint">効果測定の対象外（対応完了）</span>;
   return <span className="text-ink-faint">効果測定前</span>;
 }
 
-function Period({ t }: { t: ClientWbsTask }) {
-  const s = t.start ? fmtDate(t.start) : null;
-  const e = t.dueDate ? fmtDate(t.dueDate) : t.due;
-  return (
-    <span className="whitespace-nowrap tabular-nums">
-      {s ? `${s}〜${e}` : e}
-    </span>
-  );
+// ---- 詳細ドロワー ------------------------------------------------------------------------
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return <h3 className="text-xs font-semibold tracking-wide text-bronze-deep">{children}</h3>;
 }
 
-// ---- 詳細ドロワー ------------------------------------------------------------------------
-function DetailPanel({ t, onClose, months }: { t: ClientWbsTask; onClose: () => void; months: string[] }) {
+function DetailPanel({ t, onClose, months, today }: { t: ClientWbsTask; onClose: () => void; months: string[]; today: number | null }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
@@ -201,12 +225,13 @@ function DetailPanel({ t, onClose, months }: { t: ClientWbsTask; onClose: () => 
       <button type="button" aria-label="閉じる" className="absolute inset-0 bg-night/30" onClick={onClose} />
       <div
         ref={ref}
-        className="absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-2xl bg-paper shadow-2xl sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[520px] sm:rounded-none"
+        className="absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-2xl bg-paper shadow-2xl sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[540px] sm:rounded-none"
       >
         <div className="sticky top-0 flex items-start justify-between gap-3 border-b border-line bg-paper/95 px-5 py-4 backdrop-blur">
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <StatusPill st={t.status} />
+              {isOverdue(t, today) && <OverdueBadge />}
               <span className="text-[11px] text-ink-faint">{t.area}</span>
             </div>
             <h2 id={`wbs-detail-${t.id}`} className="mt-2 font-serif text-lg font-semibold leading-snug text-ink">
@@ -221,8 +246,8 @@ function DetailPanel({ t, onClose, months }: { t: ClientWbsTask; onClose: () => 
             閉じる
           </button>
         </div>
-        <div className="space-y-5 px-5 py-5 text-sm leading-relaxed text-ink">
-          <dl className="grid grid-cols-[6rem_1fr] gap-x-3 gap-y-2 text-sm">
+        <div className="space-y-5 px-5 py-5 text-[15px] leading-relaxed text-ink sm:text-sm">
+          <dl className="grid grid-cols-[6rem_1fr] gap-x-3 gap-y-2">
             <dt className="text-ink-faint">期間</dt>
             <dd><Period t={t} /></dd>
             <dt className="text-ink-faint">担当</dt>
@@ -233,25 +258,37 @@ function DetailPanel({ t, onClose, months }: { t: ClientWbsTask; onClose: () => 
                 <dd className="font-medium">{t.waitFor}</dd>
               </>
             )}
+            {t.stoppedOn && (
+              <>
+                <dt className="text-ink-faint">{t.status === "paused" ? "中断日" : "停止日"}</dt>
+                <dd className="tabular-nums">{t.stoppedOn}</dd>
+              </>
+            )}
           </dl>
           <section>
-            <h3 className="text-xs font-semibold tracking-wide text-bronze-deep">現在地</h3>
+            <SectionHeading>現在地</SectionHeading>
             <p className="mt-1">{t.now}</p>
           </section>
+          {t.impact && (
+            <section>
+              <SectionHeading>止まっていることの影響</SectionHeading>
+              <p className="mt-1">{t.impact}</p>
+            </section>
+          )}
           {t.reason && (
             <section>
-              <h3 className="text-xs font-semibold tracking-wide text-bronze-deep">判断の記録</h3>
+              <SectionHeading>判断の記録</SectionHeading>
               <p className="mt-1">{t.reason}</p>
             </section>
           )}
           {t.next && (
             <section>
-              <h3 className="text-xs font-semibold tracking-wide text-bronze-deep">次に起きること</h3>
+              <SectionHeading>{t.status === "wait" || t.status === "paused" ? "再開に必要なこと" : "次に起きること"}</SectionHeading>
               <p className="mt-1">{t.next}</p>
             </section>
           )}
           <section>
-            <h3 className="text-xs font-semibold tracking-wide text-bronze-deep">効果</h3>
+            <SectionHeading>効果</SectionHeading>
             {t.kpi ? (
               <div className="mt-2 overflow-x-auto rounded-lg border border-line bg-white">
                 <table className="w-full text-xs">
@@ -261,6 +298,7 @@ function DetailPanel({ t, onClose, months }: { t: ClientWbsTask; onClose: () => 
                       <th className="px-3 py-2 font-medium">基準</th>
                       <th className="px-3 py-2 font-medium">現在</th>
                       <th className="px-3 py-2 font-medium">目標</th>
+                      <th className="px-3 py-2 font-medium">測定日</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -270,6 +308,7 @@ function DetailPanel({ t, onClose, months }: { t: ClientWbsTask; onClose: () => 
                         <td className="px-3 py-2 tabular-nums">{m.baseline}</td>
                         <td className="px-3 py-2 font-semibold tabular-nums">{m.current}</td>
                         <td className="px-3 py-2">{m.target}</td>
+                        <td className="px-3 py-2 tabular-nums">{m.asof}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -283,7 +322,7 @@ function DetailPanel({ t, onClose, months }: { t: ClientWbsTask; onClose: () => 
             )}
           </section>
           <section>
-            <h3 className="text-xs font-semibold tracking-wide text-bronze-deep">工数</h3>
+            <SectionHeading>工数</SectionHeading>
             {effortMonths.length ? (
               <ul className="mt-1 flex flex-wrap gap-2">
                 {effortMonths.map((m) => (
@@ -298,7 +337,7 @@ function DetailPanel({ t, onClose, months }: { t: ClientWbsTask; onClose: () => 
           </section>
           {t.links.length > 0 && (
             <section>
-              <h3 className="text-xs font-semibold tracking-wide text-bronze-deep">関連資料</h3>
+              <SectionHeading>関連資料</SectionHeading>
               <ul className="mt-1 space-y-1">
                 {t.links.map((l) => (
                   <li key={l.url}>
@@ -316,7 +355,7 @@ function DetailPanel({ t, onClose, months }: { t: ClientWbsTask; onClose: () => 
   );
 }
 
-// ---- タイムライン（月単位） ---------------------------------------------------------------
+// ---- 工程表（月単位） ---------------------------------------------------------------------
 function Timeline({ tasks, months, today, onOpen }: { tasks: ClientWbsTask[]; months: string[]; today: number | null; onOpen: (id: string) => void }) {
   const first = ms(`${months[0]}-01`);
   const lastM = months[months.length - 1];
@@ -324,53 +363,62 @@ function Timeline({ tasks, months, today, onOpen }: { tasks: ClientWbsTask[]; mo
   const span = end - first;
   const pct = (t: number) => Math.min(100, Math.max(0, ((t - first) / span) * 100));
   const rows = tasks.filter((t) => t.start || t.dueDate);
+  const undated = tasks.filter((t) => !t.start && !t.dueDate);
   if (!rows.length) return <p className="rounded-xl border border-dashed border-line px-5 py-6 text-sm text-ink-faint">表示できる期間つきの施策がありません。</p>;
   return (
-    <div className="overflow-x-auto rounded-xl border border-line bg-white">
-      <div className="min-w-[720px]">
-        <div className="grid" style={{ gridTemplateColumns: "minmax(220px,1.2fr) 3fr" }}>
-          <div className="border-b border-line px-4 py-2 text-[11px] text-ink-faint">施策</div>
-          <div className="relative border-b border-line">
-            <div className="flex">
-              {months.map((m) => (
-                <div key={m} className="flex-1 border-l border-line px-2 py-2 text-[11px] text-ink-faint">{monthLabel(m)}</div>
-              ))}
-            </div>
-          </div>
-          {rows.map((t) => {
-            const s = ms(t.start ?? t.dueDate!);
-            const e = ms(t.dueDate ?? t.start!) + DAY;
-            const l = pct(s);
-            const w = Math.max(1.2, pct(e) - l);
-            return (
-              <div key={t.id} className="contents">
-                <button
-                  type="button"
-                  onClick={() => onOpen(t.id)}
-                  className="flex items-center gap-2 border-t border-line px-4 py-2 text-left text-xs text-ink hover:bg-paper focus-visible:outline-2 focus-visible:outline-bronze-deep"
-                >
-                  <span aria-hidden className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: STATUS_COLOR[t.status] }} />
-                  <span className="truncate">{t.title}</span>
-                </button>
-                <div className="relative border-t border-line">
-                  <div className="absolute inset-0 flex" aria-hidden>
-                    {months.map((m) => <div key={m} className="flex-1 border-l border-line/70" />)}
-                  </div>
-                  {today !== null && today >= first && today <= end && (
-                    <div aria-hidden className="absolute inset-y-0 w-px bg-bronze" style={{ left: `${pct(today)}%` }} />
-                  )}
-                  <div
-                    role="img"
-                    aria-label={`${t.title} ${t.start ? fmtDate(t.start) : ""}〜${t.dueDate ? fmtDate(t.dueDate) : t.due}`}
-                    className={`absolute top-1/2 h-3 -translate-y-1/2 rounded-full ${t.status === "skipped" || t.status === "paused" ? "opacity-40" : ""}`}
-                    style={{ left: `${l}%`, width: `${w}%`, background: STATUS_COLOR[t.status] }}
-                  />
-                </div>
+    <div className="space-y-3">
+      <p className="text-xs text-ink-faint md:hidden">工程表は横にスクロールできます。スマホでは「一覧」の方が読みやすくなっています。</p>
+      <div className="overflow-x-auto rounded-xl border border-line bg-white">
+        <div className="min-w-[720px]">
+          <div className="grid" style={{ gridTemplateColumns: "minmax(240px,1.2fr) 3fr" }}>
+            <div className="border-b border-line px-4 py-2 text-[11px] text-ink-faint">施策</div>
+            <div className="relative border-b border-line">
+              <div className="flex">
+                {months.map((m) => (
+                  <div key={m} className="flex-1 border-l border-line px-2 py-2 text-[11px] text-ink-faint">{monthLabel(m)}</div>
+                ))}
               </div>
-            );
-          })}
+            </div>
+            {rows.map((t) => {
+              const s = ms(t.start ?? t.dueDate!);
+              const e = ms(t.dueDate ?? t.start!) + DAY;
+              const l = pct(s);
+              const w = Math.max(1.2, pct(e) - l);
+              return (
+                <div key={t.id} className="contents">
+                  <button
+                    type="button"
+                    onClick={() => onOpen(t.id)}
+                    className="flex items-center gap-2 border-t border-line px-4 py-2 text-left text-xs text-ink hover:bg-paper focus-visible:outline-2 focus-visible:outline-bronze-deep"
+                  >
+                    <span aria-hidden className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: STATUS_COLOR[t.status] }} />
+                    <span className="leading-snug">{t.title}</span>
+                  </button>
+                  <div className="relative border-t border-line">
+                    <div className="absolute inset-0 flex" aria-hidden>
+                      {months.map((m) => <div key={m} className="flex-1 border-l border-line/70" />)}
+                    </div>
+                    {today !== null && today >= first && today <= end && (
+                      <div aria-hidden className="absolute inset-y-0 w-px bg-bronze" style={{ left: `${pct(today)}%` }} />
+                    )}
+                    <div
+                      role="img"
+                      aria-label={`${t.title} ${t.start ? fmtDate(t.start) : ""}〜${t.dueDate ? fmtDate(t.dueDate) : t.due}`}
+                      className={`absolute top-1/2 h-3 -translate-y-1/2 rounded-full ${t.status === "skipped" || t.status === "paused" ? "opacity-40" : ""}`}
+                      style={{ left: `${l}%`, width: `${w}%`, background: STATUS_COLOR[t.status] }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
+      {undated.length > 0 && (
+        <p className="text-xs text-ink-faint">
+          時期未定のため工程表に出していない施策: {undated.map((t) => t.title).join("、")}
+        </p>
+      )}
     </div>
   );
 }
@@ -383,22 +431,25 @@ const todayServer = () => null;
 export default function ClientWbsBoard({ data }: { data: ClientWbsData }) {
   // 「今日」はサーバー描画では未確定（null）にし、クライアントで日付を確定する（SSR不一致の回避）
   const today = useSyncExternalStore(subscribeNoop, todayClient, todayServer);
-  // 絞り込み状態はURLから初期化する（共有したURLで同じ表示になる）
+  const currentMonth = data.updated.slice(0, 7);
+  // 絞り込み状態はURLから初期化する（共有したURLで同じ表示になる）。月の既定は内容確認日の月
   const sp = useSearchParams();
-  const [month, setMonth] = useState<string>(() => sp.get("m") ?? "");
+  const [month, setMonth] = useState<string>(() => sp.get("m") ?? currentMonth);
   const [statuses, setStatuses] = useState<Set<ClientWbsStatus>>(
     () => new Set((sp.get("st")?.split(",").filter((s) => s in STATUS_LABEL) ?? []) as ClientWbsStatus[]),
   );
   const [areas, setAreas] = useState<Set<string>>(() => new Set(sp.get("area")?.split(",").filter(Boolean) ?? []));
   const [q, setQ] = useState(() => sp.get("q") ?? "");
   const [view, setView] = useState<"list" | "timeline">(() => (sp.get("v") === "timeline" ? "timeline" : "list"));
+  const [filtersOpen, setFiltersOpen] = useState(() => !!(sp.get("st") || sp.get("area") || sp.get("q")));
+  const [showAllAsks, setShowAllAsks] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
 
   useEffect(() => {
     if (today === null) return;
     try {
       const p = new URLSearchParams();
-      if (month) p.set("m", month);
+      if (month !== currentMonth) p.set("m", month);
       if (statuses.size) p.set("st", [...statuses].join(","));
       if (areas.size) p.set("area", [...areas].join(","));
       if (q) p.set("q", q);
@@ -408,14 +459,14 @@ export default function ClientWbsBoard({ data }: { data: ClientWbsData }) {
     } catch {
       // 共有用URLの更新は補助機能
     }
-  }, [month, statuses, areas, q, view, today]);
+  }, [month, statuses, areas, q, view, today, currentMonth]);
 
   const months = useMemo(() => {
     const ymsAll = data.tasks.flatMap((t) => [t.start, t.dueDate].filter(isIso).map(ym)).concat(Object.keys(data.overhead));
-    const max = [...ymsAll, data.updated.slice(0, 7)].sort().pop()!;
+    const max = [...ymsAll, currentMonth].sort().pop()!;
     return monthRange(data.site.since, max);
-  }, [data]);
-  const currentMonth = data.updated.slice(0, 7);
+  }, [data, currentMonth]);
+  const effortMonth = month === ALL ? currentMonth : month; // 工数集計の対象月
 
   const toggle = <T,>(set: Set<T>, v: T, setter: (s: Set<T>) => void) => {
     const n = new Set(set);
@@ -423,8 +474,7 @@ export default function ClientWbsBoard({ data }: { data: ClientWbsData }) {
     else n.add(v);
     setter(n);
   };
-  const reset = () => {
-    setMonth("");
+  const resetFilters = () => {
     setStatuses(new Set());
     setAreas(new Set());
     setQ("");
@@ -433,30 +483,38 @@ export default function ClientWbsBoard({ data }: { data: ClientWbsData }) {
     const needle = q.trim().toLowerCase();
     return data.tasks.filter(
       (t) =>
-        (!month || inMonth(t, month)) &&
+        inMonth(t, month) &&
         (!statuses.size || statuses.has(t.status)) &&
         (!areas.size || areas.has(t.area)) &&
-        (!needle || [t.title, t.now, t.reason, t.next, t.outcome, t.owner, t.waitFor].join(" ").toLowerCase().includes(needle)),
+        (!needle || [t.title, t.now, t.reason, t.next, t.outcome, t.owner, t.waitFor, t.impact].join(" ").toLowerCase().includes(needle)),
     );
   }, [data.tasks, month, statuses, areas, q]);
 
+  // 全期間の状態別件数（補助情報）
   const counts = useMemo(() => {
     const c: Record<ClientWbsStatus, number> = { todo: 0, doing: 0, wait: 0, done: 0, skipped: 0, paused: 0 };
     for (const t of data.tasks) c[t.status] += 1;
     return c;
   }, [data.tasks]);
-  const monthEffort = useMemo(() => {
-    const tasksH = data.tasks.reduce((a, t) => a + (t.effort[currentMonth] ?? 0), 0);
-    const ovH = (data.overhead[currentMonth] ?? []).reduce((a, r) => a + r.hours, 0);
-    return { tasksH, ovH, total: tasksH + ovH };
-  }, [data, currentMonth]);
 
-  // いま止まっている施策: 待ち／期限超過の予定・進行中
-  const stalled = useMemo(() => {
-    return data.tasks
-      .filter((t) => t.status === "wait" || (today !== null && t.dueDate !== null && (t.status === "todo" || t.status === "doing") && ms(t.dueDate) + DAY <= today))
-      .sort((a, b) => (a.status === b.status ? 0 : a.status === "wait" ? -1 : 1));
+  // 判断・確認が必要な施策（全期間）: 待ち＋期限超過。期限の近い順→優先度順
+  const asks = useMemo(() => {
+    const key = (t: ClientWbsTask) => (t.dueDate ? ms(t.dueDate) : Number.MAX_SAFE_INTEGER) * 10 + t.pri;
+    return data.tasks.filter((t) => t.status === "wait" || isOverdue(t, today)).sort((a, b) => key(a) - key(b));
   }, [data.tasks, today]);
+  const asksShown = showAllAsks ? asks : asks.slice(0, 3);
+
+  // 月間工数: 対象月の施策別（多い順）＋定例等
+  const effort = useMemo(() => {
+    const byTask = data.tasks
+      .filter((t) => t.effort[effortMonth])
+      .map((t) => ({ id: t.id, title: t.title, hours: t.effort[effortMonth] }))
+      .sort((a, b) => b.hours - a.hours);
+    const tasksH = byTask.reduce((a, r) => a + r.hours, 0);
+    const overhead = data.overhead[effortMonth] ?? [];
+    const ovH = overhead.reduce((a, r) => a + r.hours, 0);
+    return { byTask, tasksH, overhead, ovH, total: tasksH + ovH, note: data.effortNote[effortMonth] ?? "" };
+  }, [data, effortMonth]);
 
   const groups = useMemo(() => {
     const byArea = new Map<string, ClientWbsTask[]>();
@@ -471,126 +529,135 @@ export default function ClientWbsBoard({ data }: { data: ClientWbsData }) {
   const closeTask = useCallback(() => setOpen(null), []);
   const selected = open ? data.tasks.find((t) => t.id === open) ?? null : null;
   const stale = today !== null && (today - ms(data.updated)) / DAY > 7;
-  const filterActive = !!(month || statuses.size || areas.size || q);
+  const filterActive = !!(statuses.size || areas.size || q);
+  const upcoming = data.summary.milestones.filter((m) => today === null || ms(m.date) + DAY > today);
 
   return (
     <>
-      {/* ヘッダー */}
+      {/* ヘッダー: 変化・成果／次の節目 */}
       <section className="border-b border-line">
-        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 md:py-10 lg:px-8">
+        <div className="mx-auto max-w-6xl px-4 py-7 sm:px-6 md:py-9 lg:px-8">
           <p className="mb-3 text-xs uppercase tracking-[0.3em] text-bronze">Projects / {data.site.label}</p>
-          <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
             <div>
               <h1 className="font-serif text-3xl font-semibold md:text-4xl">{data.site.label} SEO施策WBS</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-soft">
-                {data.site.client}様向けに大沢が進めているSEO施策の進行表です。進行中・待ち・完了に加え、見送りや中断の判断理由と工数を記録しています。対象期間: {monthLabel(data.site.since)}〜
+              <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-ink-soft sm:text-sm">
+                {data.site.client}様向けに大沢が進めているSEO施策の進行表です。ご判断・ご対応をお願いしたい事項を先頭に、施策ごとの現在地・次の対応・判断の記録・工数・効果を掲載しています。
               </p>
             </div>
-            <div className="text-right text-xs text-ink-faint">
-              <div>
-                更新日 <span className="font-semibold text-ink tabular-nums">{data.updated}</span>
-              </div>
-              {stale && <div className="mt-1 rounded-md bg-bronze/10 px-2 py-1 text-bronze-deep">更新から7日以上経過しています</div>}
+            <div className="flex flex-wrap items-center gap-3 text-xs text-ink-faint">
+              <label className="flex items-center gap-2">
+                <span>対象月</span>
+                <select
+                  value={month}
+                  onChange={(e) => setMonth(e.target.value)}
+                  className="rounded-full border border-line bg-white px-3 py-1.5 text-sm text-ink focus-visible:outline-2 focus-visible:outline-bronze-deep"
+                >
+                  {months.map((m) => (
+                    <option key={m} value={m}>{monthLabel(m)}{m === currentMonth ? "（当月）" : ""}</option>
+                  ))}
+                  <option value={ALL}>全期間（{monthLabel(data.site.since)}〜）</option>
+                </select>
+              </label>
+              <span>
+                内容確認日 <span className="font-semibold text-ink tabular-nums">{data.updated}</span>
+                <span className="ml-1">（データは自動同期）</span>
+              </span>
+              {stale && <span className="rounded-md bg-bronze/10 px-2 py-1 text-bronze-deep">確認から7日以上経過</span>}
             </div>
           </div>
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            <StatCard label="進行中" value={`${counts.doing}`} accent={STATUS_COLOR.doing} />
-            <StatCard label="待ち（判断・実装待ち）" value={`${counts.wait}`} accent={STATUS_COLOR.wait} />
-            <StatCard label="予定" value={`${counts.todo}`} accent={STATUS_COLOR.todo} />
-            <StatCard label="完了" value={`${counts.done}`} sub={`未実行 ${counts.skipped}・中断 ${counts.paused}`} accent={STATUS_COLOR.done} />
-            <StatCard
-              label={`${monthLabel(currentMonth)}の工数`}
-              value={`${fmtH(monthEffort.total)}h`}
-              sub={`施策 ${fmtH(monthEffort.tasksH)}h＋定例等 ${fmtH(monthEffort.ovH)}h${data.effortNote[currentMonth] ? "・" + data.effortNote[currentMonth] : ""}`}
-            />
+
+          <div className="mt-6 grid gap-3 md:grid-cols-2">
+            <div className="rounded-xl border border-line bg-white px-5 py-4">
+              <h2 className="text-xs font-semibold tracking-wide text-bronze-deep">前回定例からの変化・成果（{fmtDate(data.summary.asOf)}時点）</h2>
+              <ul className="mt-2 space-y-1.5 text-[15px] leading-relaxed text-ink sm:text-sm">
+                {data.summary.changes.map((c) => (
+                  <li key={c} className="flex gap-2"><span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-bronze" />{c}</li>
+                ))}
+              </ul>
+              {data.summary.unmeasured.length > 0 && (
+                <p className="mt-3 text-xs leading-relaxed text-ink-faint">
+                  効果測定前: {data.summary.unmeasured.join("／")}
+                </p>
+              )}
+            </div>
+            <div className="rounded-xl border border-line bg-white px-5 py-4">
+              <h2 className="text-xs font-semibold tracking-wide text-bronze-deep">次の節目</h2>
+              <ol className="mt-2 space-y-1.5 text-[15px] leading-relaxed text-ink sm:text-sm">
+                {(upcoming.length ? upcoming : data.summary.milestones).map((m) => (
+                  <li key={m.date + m.label} className="flex gap-3">
+                    <span className="w-14 shrink-0 tabular-nums text-ink-soft">{fmtDate(m.date)}</span>
+                    <span>{m.label}</span>
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-3 text-xs text-ink-faint">
+                全期間の件数: {STATUS_ORDER.map((st) => `${STATUS_LABEL[st]} ${counts[st]}`).join("・")}
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* いま止まっている施策 */}
-      {stalled.length > 0 && (
-        <section className="border-b border-line bg-white/60">
-          <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 className="font-serif text-xl font-semibold">ご判断・ご対応をお願いしたい施策</h2>
-              <span className="text-xs text-ink-faint">{stalled.length}件</span>
-            </div>
-            <p className="mt-1 text-xs text-ink-faint">他の方の判断・実装を待っている施策と、期限を過ぎた大沢の施策です。定例の議題にそのままお使いください。</p>
-            <ul className="mt-4 grid gap-3 md:grid-cols-2">
-              {stalled.map((t) => (
-                <li key={t.id}>
-                  <button
-                    type="button"
-                    onClick={() => openTask(t.id)}
-                    className="flex w-full flex-col gap-2 rounded-xl border border-line bg-white px-4 py-3 text-left transition hover:border-bronze hover:shadow-sm focus-visible:outline-2 focus-visible:outline-bronze-deep"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <StatusPill st={t.status} small />
-                      <span className="text-[11px] text-ink-faint">{t.area}</span>
-                      <span className="ml-auto text-[11px] text-ink-faint">期限 <Period t={t} /></span>
-                    </div>
-                    <div className="font-medium leading-snug text-ink">{t.title}</div>
-                    <div className="text-xs text-ink-soft">
-                      {t.status === "wait" ? (
-                        <>
-                          <span className="font-semibold text-ink">待ち先: {t.waitFor}</span>
-                          {t.next && <span className="block mt-0.5">再開に必要なこと: {t.next}</span>}
-                        </>
-                      ) : (
-                        <span>期限超過（大沢）: {t.now}</span>
-                      )}
-                    </div>
-                  </button>
-                </li>
-              ))}
-            </ul>
+      {/* 判断・確認が必要な施策 */}
+      <section className="border-b border-line bg-white/60">
+        <div className="mx-auto max-w-6xl px-4 py-7 sm:px-6 lg:px-8">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 className="font-serif text-xl font-semibold">ご判断・ご確認をお願いしたい施策</h2>
+            <span className="text-xs text-ink-faint">全期間 {asks.length}件（他の方の判断・実装待ちと、期限を過ぎた大沢の施策）</span>
           </div>
-        </section>
-      )}
+          {asks.length === 0 ? (
+            <p className="mt-3 rounded-xl border border-dashed border-line px-5 py-5 text-sm text-ink-faint">現在、ご判断をお願いしている施策はありません。</p>
+          ) : (
+            <>
+              <ul className="mt-4 grid gap-3 md:grid-cols-3">
+                {asksShown.map((t) => {
+                  const overdue = isOverdue(t, today);
+                  return (
+                    <li key={t.id}>
+                      <button
+                        type="button"
+                        onClick={() => openTask(t.id)}
+                        className="flex h-full w-full flex-col gap-2 rounded-xl border border-line bg-white px-4 py-3 text-left transition hover:border-bronze hover:shadow-sm focus-visible:outline-2 focus-visible:outline-bronze-deep"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <StatusPill st={t.status} small />
+                          {overdue && <OverdueBadge />}
+                          <span className="ml-auto text-[11px] text-ink-faint">期限 <Period t={t} /></span>
+                        </div>
+                        <div className="text-[15px] font-medium leading-snug text-ink sm:text-sm">{t.title}</div>
+                        <dl className="grid grid-cols-[3.5rem_1fr] gap-x-2 gap-y-1 text-xs">
+                          <dt className="text-ink-faint">依頼</dt>
+                          <dd className="font-medium text-ink">{t.status === "wait" ? t.next || "ご判断・ご対応" : "期限の見直し（大沢）"}</dd>
+                          <dt className="text-ink-faint">影響</dt>
+                          <dd className="text-ink-soft">{t.impact || t.now}</dd>
+                          <dt className="text-ink-faint">担当</dt>
+                          <dd className="text-ink-soft">{t.waitFor ? `${t.waitFor} ／ 大沢` : t.owner}</dd>
+                        </dl>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              {asks.length > 3 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllAsks((v) => !v)}
+                  aria-expanded={showAllAsks}
+                  className="mt-3 text-xs text-bronze-deep underline decoration-bronze/40 underline-offset-2 hover:decoration-bronze-deep"
+                >
+                  {showAllAsks ? "上位3件だけ表示する" : `すべて表示する（${asks.length}件）`}
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </section>
 
-      {/* 絞り込み */}
+      {/* 表示切替・絞り込み */}
       <div className="sticky top-[49px] z-20 border-b border-line bg-paper/95 backdrop-blur print:hidden">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-4 py-2.5 sm:px-6 lg:px-8">
-          <label className="flex items-center gap-1 text-xs text-ink-soft">
-            <span className="sr-only">月で絞り込み</span>
-            <select
-              value={month}
-              onChange={(e) => setMonth(e.target.value)}
-              className="rounded-full border border-line bg-white px-3 py-1 text-xs text-ink focus-visible:outline-2 focus-visible:outline-bronze-deep"
-            >
-              <option value="">すべての月</option>
-              {months.map((m) => (
-                <option key={m} value={m}>{monthLabel(m)}</option>
-              ))}
-            </select>
-          </label>
-          <span aria-hidden className="mx-1 h-4 w-px bg-line" />
-          {STATUS_ORDER.map((st) => (
-            <Chip key={st} on={statuses.has(st)} onClick={() => toggle(statuses, st, setStatuses)}>
-              <span aria-hidden className="mr-1 inline-block h-1.5 w-1.5 rounded-full align-middle" style={{ background: STATUS_COLOR[st] }} />
-              {STATUS_LABEL[st]} {counts[st]}
-            </Chip>
-          ))}
-          <span aria-hidden className="mx-1 hidden h-4 w-px bg-line sm:inline-block" />
-          <div className="flex flex-wrap gap-1.5">
-            {AREA_ORDER.filter((a) => data.tasks.some((t) => t.area === a)).map((a) => (
-              <Chip key={a} on={areas.has(a)} onClick={() => toggle(areas, a, setAreas)}>{a}</Chip>
-            ))}
-          </div>
-          <input
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="施策名・内容で検索"
-            aria-label="施策名・内容で検索"
-            className="min-w-[160px] flex-1 rounded-full border border-line bg-white px-3 py-1 text-xs text-ink placeholder:text-ink-faint focus-visible:outline-2 focus-visible:outline-bronze-deep"
-          />
-          <div className="ml-auto flex items-center gap-1">
-            {filterActive && (
-              <button type="button" onClick={reset} className="rounded-full px-3 py-1 text-xs text-ink-faint hover:text-bronze-deep">
-                絞り込みを解除
-              </button>
-            )}
+        <div className="mx-auto max-w-6xl px-4 py-2 sm:px-6 lg:px-8">
+          <div className="flex flex-wrap items-center gap-2">
             <div role="group" aria-label="表示切替" className="flex overflow-hidden rounded-full border border-line bg-white text-xs">
               {(["list", "timeline"] as const).map((v) => (
                 <button
@@ -598,26 +665,63 @@ export default function ClientWbsBoard({ data }: { data: ClientWbsData }) {
                   type="button"
                   onClick={() => setView(v)}
                   aria-pressed={view === v}
-                  className={`px-3 py-1 ${view === v ? "bg-bronze/10 font-semibold text-bronze-deep" : "text-ink-soft hover:text-bronze-deep"}`}
+                  className={`px-3 py-1.5 ${view === v ? "bg-bronze/10 font-semibold text-bronze-deep" : "text-ink-soft hover:text-bronze-deep"}`}
                 >
-                  {v === "list" ? "一覧" : "タイムライン"}
+                  {v === "list" ? "一覧" : "工程表"}
                 </button>
               ))}
             </div>
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((v) => !v)}
+              aria-expanded={filtersOpen}
+              className={`rounded-full border px-3 py-1.5 text-xs ${filterActive ? "border-bronze bg-bronze/10 font-semibold text-bronze-deep" : "border-line bg-white text-ink-soft hover:border-bronze"}`}
+            >
+              絞り込み{filterActive ? "（適用中）" : ""} {filtersOpen ? "▴" : "▾"}
+            </button>
+            <span className="text-xs text-ink-faint">
+              {month === ALL ? "全期間" : monthLabel(month)}の施策 {filtered.length}件
+            </span>
+            {filterActive && (
+              <button type="button" onClick={resetFilters} className="ml-auto text-xs text-ink-faint hover:text-bronze-deep">
+                絞り込みを解除
+              </button>
+            )}
           </div>
+          {filtersOpen && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 pb-1">
+              {STATUS_ORDER.map((st) => (
+                <Chip key={st} on={statuses.has(st)} onClick={() => toggle(statuses, st, setStatuses)}>
+                  <span aria-hidden className="mr-1 inline-block h-1.5 w-1.5 rounded-full align-middle" style={{ background: STATUS_COLOR[st] }} />
+                  {STATUS_LABEL[st]}
+                </Chip>
+              ))}
+              <span aria-hidden className="mx-1 hidden h-4 w-px bg-line sm:inline-block" />
+              {AREA_ORDER.filter((a) => data.tasks.some((t) => t.area === a)).map((a) => (
+                <Chip key={a} on={areas.has(a)} onClick={() => toggle(areas, a, setAreas)}>{a}</Chip>
+              ))}
+              <input
+                type="search"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="施策名・内容で検索"
+                aria-label="施策名・内容で検索"
+                className="min-w-[180px] flex-1 rounded-full border border-line bg-white px-3 py-1 text-xs text-ink placeholder:text-ink-faint focus-visible:outline-2 focus-visible:outline-bronze-deep"
+              />
+            </div>
+          )}
         </div>
       </div>
 
-      {/* 本体 */}
+      {/* 一覧／工程表 */}
       <section className="py-8 md:py-10">
         <div className="mx-auto max-w-6xl space-y-10 px-4 sm:px-6 lg:px-8">
-          <p className="text-xs text-ink-faint">
-            {filtered.length}件を表示{filterActive ? "（絞り込み中）" : ""}
-          </p>
           {view === "timeline" ? (
-            <Timeline tasks={filtered} months={month ? [month] : months} today={today} onOpen={openTask} />
+            <Timeline tasks={filtered} months={month === ALL ? months : [month]} today={today} onOpen={openTask} />
           ) : groups.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-line px-5 py-6 text-sm text-ink-faint">条件に合う施策がありません。</p>
+            <p className="rounded-xl border border-dashed border-line px-5 py-6 text-sm text-ink-faint">
+              条件に合う施策がありません。対象月を「全期間」にするか、絞り込みを解除してください。
+            </p>
           ) : (
             groups.map(([area, ts]) => (
               <div key={area}>
@@ -630,39 +734,38 @@ export default function ClientWbsBoard({ data }: { data: ClientWbsData }) {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-paper text-left text-[11px] text-ink-faint">
+                        <th className="w-[38%] px-3 py-2 font-medium">施策</th>
                         <th className="px-3 py-2 font-medium">状態</th>
-                        <th className="px-3 py-2 font-medium">施策</th>
-                        <th className="px-3 py-2 font-medium">期間</th>
-                        <th className="px-3 py-2 font-medium">担当・待ち先</th>
-                        <th className="px-3 py-2 font-medium">現在地</th>
-                        <th className="px-3 py-2 text-right font-medium">工数</th>
-                        <th className="px-3 py-2 font-medium">効果</th>
+                        <th className="px-3 py-2 font-medium">次の対応・担当</th>
+                        <th className="px-3 py-2 font-medium">期限</th>
                       </tr>
                     </thead>
                     <tbody>
                       {ts.map((t) => (
                         <tr key={t.id} className="border-t border-line align-top hover:bg-paper/60">
-                          <td className="px-3 py-2.5"><StatusPill st={t.status} small /></td>
                           <td className="px-3 py-2.5">
                             <button
                               type="button"
                               onClick={() => openTask(t.id)}
-                              className="text-left font-medium text-ink underline-offset-2 hover:text-bronze-deep hover:underline focus-visible:outline-2 focus-visible:outline-bronze-deep"
+                              className="text-left font-medium leading-snug text-ink underline-offset-2 hover:text-bronze-deep hover:underline focus-visible:outline-2 focus-visible:outline-bronze-deep"
                             >
                               {t.title}
                             </button>
-                            {t.reason && (t.status === "skipped" || t.status === "paused") && (
-                              <div className="mt-1 text-xs text-ink-soft">理由: {t.reason}</div>
+                            {(t.status === "skipped" || t.status === "paused") && t.reason && (
+                              <div className="mt-1 text-xs leading-relaxed text-ink-soft">
+                                {t.status === "skipped" ? "見送りの理由" : "中断の理由"}: {t.reason}
+                                {t.next && <span className="block">再開条件: {t.next}</span>}
+                              </div>
                             )}
                           </td>
-                          <td className="px-3 py-2.5 text-xs text-ink-soft"><Period t={t} /></td>
-                          <td className="px-3 py-2.5 text-xs">
-                            <div>{t.owner}</div>
-                            {t.waitFor && <div className="text-ink-soft">待ち: {t.waitFor}</div>}
+                          <td className="px-3 py-2.5">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <StatusPill st={t.status} small />
+                              {isOverdue(t, today) && <OverdueBadge />}
+                            </div>
                           </td>
-                          <td className="max-w-[26rem] px-3 py-2.5 text-xs leading-relaxed text-ink-soft">{t.now}</td>
-                          <td className="px-3 py-2.5 text-right text-xs tabular-nums">{sumEffort(t) ? `${fmtH(sumEffort(t))}h` : "—"}</td>
-                          <td className="max-w-[18rem] px-3 py-2.5 text-xs leading-relaxed"><EffectText t={t} /></td>
+                          <td className="max-w-[26rem] px-3 py-2.5 text-xs leading-relaxed"><NextText t={t} /></td>
+                          <td className="px-3 py-2.5 text-xs text-ink-soft"><Period t={t} /></td>
                         </tr>
                       ))}
                     </tbody>
@@ -677,16 +780,13 @@ export default function ClientWbsBoard({ data }: { data: ClientWbsData }) {
                         onClick={() => openTask(t.id)}
                         className="w-full rounded-xl border border-line bg-white px-4 py-3 text-left focus-visible:outline-2 focus-visible:outline-bronze-deep"
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <StatusPill st={t.status} small />
-                          <span className="ml-auto text-[11px] text-ink-faint"><Period t={t} /></span>
+                          {isOverdue(t, today) && <OverdueBadge />}
+                          <span className="ml-auto text-[11px] text-ink-faint">期限 <Period t={t} /></span>
                         </div>
-                        <div className="mt-1.5 font-medium leading-snug text-ink">{t.title}</div>
-                        <div className="mt-1 text-xs leading-relaxed text-ink-soft">{t.now}</div>
-                        <div className="mt-1.5 flex flex-wrap gap-x-3 text-[11px] text-ink-faint">
-                          <span>{t.owner}{t.waitFor ? `／待ち: ${t.waitFor}` : ""}</span>
-                          {sumEffort(t) > 0 && <span className="tabular-nums">工数 {fmtH(sumEffort(t))}h</span>}
-                        </div>
+                        <div className="mt-1.5 text-[15px] font-medium leading-snug text-ink">{t.title}</div>
+                        <div className="mt-1 text-[13px] leading-relaxed"><NextText t={t} /></div>
                       </button>
                     </li>
                   ))}
@@ -695,6 +795,45 @@ export default function ClientWbsBoard({ data }: { data: ClientWbsData }) {
             ))
           )}
 
+          {/* 月間工数・主要内訳 */}
+          <div className="rounded-xl border border-line bg-white px-5 py-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="font-serif text-lg font-semibold">{monthLabel(effortMonth)}の工数</h2>
+              <span className="font-serif text-2xl font-semibold tabular-nums">{fmtH(effort.total)}h</span>
+            </div>
+            {effort.note && <p className="mt-1 text-xs text-ink-faint">{effort.note}</p>}
+            {effort.total === 0 ? (
+              <p className="mt-3 text-sm text-ink-faint">この月の工数記録はありません。</p>
+            ) : (
+              <div className="mt-3 grid gap-4 md:grid-cols-2">
+                <div>
+                  <h3 className="text-xs font-semibold tracking-wide text-bronze-deep">施策別（{fmtH(effort.tasksH)}h）</h3>
+                  <ul className="mt-1.5 space-y-1 text-sm">
+                    {effort.byTask.map((r) => (
+                      <li key={r.id} className="flex items-baseline justify-between gap-3">
+                        <button type="button" onClick={() => openTask(r.id)} className="text-left text-ink underline-offset-2 hover:text-bronze-deep hover:underline">
+                          {r.title}
+                        </button>
+                        <span className="shrink-0 tabular-nums text-ink-soft">{fmtH(r.hours)}h</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="text-xs font-semibold tracking-wide text-bronze-deep">定例・調整など（{fmtH(effort.ovH)}h）</h3>
+                  <ul className="mt-1.5 space-y-1 text-sm">
+                    {effort.overhead.map((r) => (
+                      <li key={r.label} className="flex items-baseline justify-between gap-3">
+                        <span className="text-ink">{r.label}</span>
+                        <span className="shrink-0 tabular-nums text-ink-soft">{fmtH(r.hours)}h</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* 凡例・用語 */}
           <div className="rounded-xl border border-line bg-white px-5 py-4 text-xs leading-relaxed text-ink-soft">
             <div className="flex flex-wrap gap-x-5 gap-y-2">
@@ -702,26 +841,18 @@ export default function ClientWbsBoard({ data }: { data: ClientWbsData }) {
                 <span key={st} className="inline-flex items-center gap-1.5">
                   <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: STATUS_COLOR[st] }} />
                   <span className="font-medium text-ink">{STATUS_LABEL[st]}</span>
-                  <span>
-                    {st === "wait" && "＝他の方の判断・実装を待っている"}
-                    {st === "skipped" && "＝検討のうえ実施しないと判断した"}
-                    {st === "paused" && "＝着手後に止めている（再開条件あり）"}
-                    {st === "doing" && "＝大沢が作業中"}
-                    {st === "todo" && "＝着手前"}
-                    {st === "done" && "＝対応が終わり効果を監視中／完了"}
-                  </span>
+                  <span>＝{STATUS_HELP[st]}</span>
                 </span>
               ))}
             </div>
             <p className="mt-3">
-              工数は施策単位で記録できたものを表示しています。定例・議事録・調整などの稼働は上部の「工数」カードに含めています。
-              {Object.entries(data.effortNote).map(([m, n]) => ` ${monthLabel(m)}: ${n}。`)}
+              「期限超過」は状態とは別に、期限を過ぎた予定・進行中の施策に表示します。対象月の絞り込みは「その月に稼働があった、または期間が重なる施策」を表示し、時期未定の施策は進行中・待ち・予定のものだけ含めます。件数は全期間、工数は対象月（全期間のときは当月）で集計しています。
             </p>
           </div>
         </div>
       </section>
 
-      {selected && <DetailPanel t={selected} onClose={closeTask} months={months} />}
+      {selected && <DetailPanel t={selected} onClose={closeTask} months={months} today={today} />}
     </>
   );
 }

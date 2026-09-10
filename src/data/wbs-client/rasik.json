@@ -7,6 +7,37 @@
     "since": "2026-07"
   },
   "updated": "2026-09-10",
+  "summary": {
+    "asOf": "2026-09-10",
+    "changes": [
+      "8月のオーガニック収益は目標達成（達成率109.6%・前年比+18.3%）。累計も必達を超過",
+      "モバイル直帰51%の要因分析が完了（計測欠損の疑い13pt＋再入場22pt＋検索クリック16pt）。直帰の指標は「検索クリック群」に再定義",
+      "GTMタグ棚卸し（117タグ＋直書き22件）を報告し、停止中タグは削除する方針で合意",
+      "「ベッド」カテゴリのタイトルタグ修正プラン（競合上位20件の分析つき）を提出"
+    ],
+    "unmeasured": [
+      "ページスピード改善（指示書11項目）は承認・実装待ちのため効果測定前",
+      "価格エリア到達イベントは公開待ちのため「価格到達×直帰」の検証は未開始"
+    ],
+    "milestones": [
+      {
+        "date": "2026-09-15",
+        "label": "火曜定例: 「その他」の指名／非指名分割レポート・施策WBSのレビュー"
+      },
+      {
+        "date": "2026-09-17",
+        "label": "GTM削除候補の確定／送客計測イベントの分析／ランキングページ課題の整理"
+      },
+      {
+        "date": "2026-10-01",
+        "label": "JADE定例（第1木曜）"
+      },
+      {
+        "date": "2026-10-06",
+        "label": "9月分の月次オーガニックレポート公開"
+      }
+    ]
+  },
   "effortNote": {
     "2026-08": "稼働一覧（実績90h）から施策別に按分",
     "2026-09": "9/1〜9/10の概算。月末の稼働一覧で確定"
@@ -65,6 +96,8 @@
       "reason": "商品ページ単体の改善は売上インパクトが見込めないと判断し（8/11）、カテゴリと導線全体の分析へ切り替えました。",
       "next": "",
       "outcome": "記事着地はセッションあたり収益¥28、カテゴリ¥456、商品¥692。着地面の構成（記事48%）が最大の改善余地と判明",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {
         "2026-08": 24
       },
@@ -85,6 +118,8 @@
       "reason": "",
       "next": "",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {},
       "links": []
     },
@@ -103,6 +138,8 @@
       "reason": "",
       "next": "",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {},
       "links": []
     },
@@ -121,6 +158,8 @@
       "reason": "alt整備は工数と定義が課題、価格入り合成画像はブランド上の懸念があるため、効果が見込める軽量化に絞りました。",
       "next": "",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {},
       "links": []
     },
@@ -139,6 +178,8 @@
       "reason": "",
       "next": "",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {},
       "links": []
     },
@@ -157,6 +198,8 @@
       "reason": "noindexではなくcanonical維持のまま実装フェーズへ進める方針（7/23）に変更したため、JADEへの報告が形式的なものとなり優先度を下げていました。",
       "next": "JADEの所見を受領→月次ウォッチの指標に反映",
       "outcome": "",
+      "impact": "月次ウォッチの指標確定が遅れる",
+      "stoppedOn": "2026-07-30",
       "effort": {},
       "links": []
     },
@@ -175,6 +218,8 @@
       "reason": "",
       "next": "",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {},
       "links": []
     },
@@ -193,6 +238,8 @@
       "reason": "",
       "next": "",
       "outcome": "占有率 39.9% → 63.9%（2026-08-12）。明確に下がった場合はタイトルを戻します",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {},
       "links": [],
       "kpi": {
@@ -225,6 +272,8 @@
       "reason": "",
       "next": "",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {
         "2026-08": 8
       },
@@ -250,6 +299,8 @@
       "reason": "",
       "next": "実装時期の共有→計測イベントの設計・設定",
       "outcome": "",
+      "impact": "ポップアップの効果（クーポン・送客）が計測できない",
+      "stoppedOn": null,
       "effort": {},
       "links": []
     },
@@ -268,6 +319,8 @@
       "reason": "12ヶ月の収益データで広告流入が自然検索の2倍あり、noindexの副作用リスクが便益を上回ると判断しました。月次ウォッチに切り替えています。",
       "next": "",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": "2026-07-23",
       "effort": {},
       "links": []
     },
@@ -286,6 +339,8 @@
       "reason": "",
       "next": "",
       "outcome": "カテゴリ側の改修（ガイド文・FAQ等）は「あるべきだが効果不透明」→301試験とセットで検討する整理",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {
         "2026-08": 7
       },
@@ -306,6 +361,8 @@
       "reason": "",
       "next": "",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {},
       "links": []
     },
@@ -324,6 +381,8 @@
       "reason": "",
       "next": "",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {
         "2026-09": 8
       },
@@ -349,6 +408,8 @@
       "reason": "",
       "next": "",
       "outcome": "51%は「計測欠損の疑い13pt＋再入場等22pt＋検索クリック16pt」に分解。検索クリック群の直帰はモバイル33% vs PC18.5%",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {
         "2026-09": 12
       },
@@ -378,6 +439,8 @@
       "reason": "",
       "next": "削除候補の確定→イベント系タグは担当者へ確認→削除の実施依頼",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {
         "2026-09": 5
       },
@@ -403,6 +466,8 @@
       "reason": "分析用GA4にGTM経由のイベントが届いていない構造が判明したため、送信先を分析用プロパティへ揃える修正を加えました。",
       "next": "公開→2週間で「価格到達×直帰」を検証→モバイルの第一画面改修の投資判断",
       "outcome": "",
+      "impact": "「価格到達×直帰」の検証が始められず、モバイル第一画面改修の投資判断が遅れる",
+      "stoppedOn": null,
       "effort": {
         "2026-08": 2,
         "2026-09": 3
@@ -424,6 +489,8 @@
       "reason": "",
       "next": "",
       "outcome": "無料トライアル実測: 全体引用率23%、Gemini／Google AIモード約50%、ChatGPTほぼ0%",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {},
       "links": []
     },
@@ -442,6 +509,8 @@
       "reason": "",
       "next": "止まっている施策の再開判断と優先順位を定例で協議",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {
         "2026-09": 4
       },
@@ -462,6 +531,8 @@
       "reason": "",
       "next": "承認→JADEレビュー→Backlog起票→Shopifyエンジニアと実装",
       "outcome": "",
+      "impact": "LCP 22秒の改善着手が遅れる（モバイル直帰・順位への影響が続く）",
+      "stoppedOn": null,
       "effort": {},
       "links": []
     },
@@ -480,6 +551,8 @@
       "reason": "",
       "next": "9/15定例を目安に提出",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {},
       "links": []
     },
@@ -498,6 +571,8 @@
       "reason": "",
       "next": "9/24までに報告",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {},
       "links": []
     },
@@ -516,6 +591,8 @@
       "reason": "",
       "next": "9/17までに提案書を更新",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {},
       "links": []
     },
@@ -534,6 +611,8 @@
       "reason": "",
       "next": "9/17までに分析結果を共有",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {},
       "links": []
     },
@@ -552,6 +631,8 @@
       "reason": "",
       "next": "9/24までに施策案を提示",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {},
       "links": []
     },
@@ -570,6 +651,8 @@
       "reason": "102番は代替記事が出る「いたちごっこ」リスクがあるため対象外にしました。",
       "next": "9/30までに実施可否を判断",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {},
       "links": []
     },
@@ -588,6 +671,8 @@
       "reason": "",
       "next": "実装完了日の共有",
       "outcome": "",
+      "impact": "CTA変更の良し悪しが判断できない",
+      "stoppedOn": null,
       "effort": {},
       "links": []
     },
@@ -606,6 +691,8 @@
       "reason": "",
       "next": "",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {},
       "links": []
     },
@@ -624,6 +711,8 @@
       "reason": "",
       "next": "",
       "outcome": "ランクイン47→53件、TOP10入り34→42件（8/6→8/30）。「ベッド」は記事130が9位。入れ替わりはまだ0件",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {
         "2026-08": 11.5,
         "2026-09": 2
@@ -673,6 +762,8 @@
       "reason": "",
       "next": "",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {},
       "links": []
     },
@@ -691,6 +782,8 @@
       "reason": "分析はShopify連携GA4（売上が正常に入る側）で運用できているため優先度を下げていました。GTM整理と合わせて再開の要否を判断します。",
       "next": "GTM棚卸しの結果を踏まえて再開可否を決定",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": "2026-07-30",
       "effort": {},
       "links": []
     },
@@ -709,6 +802,8 @@
       "reason": "カテゴリ上位表示とページスピードを優先したため後回しにしていました。",
       "next": "WBS整理後に優先順位を再協議",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": "2026-07-30",
       "effort": {},
       "links": []
     },
@@ -727,6 +822,8 @@
       "reason": "",
       "next": "実装日の共有→4週間の前後比較",
       "outcome": "",
+      "impact": "サイズ絞り込み後の並び順改善の効果が判定できない",
+      "stoppedOn": null,
       "effort": {},
       "links": []
     },
@@ -745,6 +842,8 @@
       "reason": "",
       "next": "",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {
         "2026-08": 7.5,
         "2026-09": 3
@@ -762,14 +861,21 @@
       "start": "2026-09-08",
       "due": "2026-09-10",
       "dueDate": "2026-09-10",
-      "now": "競合上位20件の分析と提案をまとめ、9/10定例で提出します。",
+      "now": "競合上位20件の分析と提案をまとめ、9/10定例で提出しました。上位20件のうち15件がECのカテゴリページで、記事は3件のみです。",
       "reason": "",
       "next": "実施可否の判断→谷口さんが設定変更→2週・4週で効果報告",
       "outcome": "",
+      "impact": "",
+      "stoppedOn": null,
       "effort": {
         "2026-09": 3
       },
-      "links": []
+      "links": [
+        {
+          "label": "タイトルタグ修正プラン",
+          "url": "https://docs.google.com/document/d/1bQf_zX7jQ8cJzeEuk0Fi5k_NcI6FGWD7z7kQvfC3Hts/edit"
+        }
+      ]
     },
     {
       "id": "M-36",
@@ -786,6 +892,8 @@
       "reason": "",
       "next": "",
       "outcome": "",
+      "impact": "リニューアル効果の前後比較の起点が決まらない",
+      "stoppedOn": null,
       "effort": {},
       "links": []
     }
