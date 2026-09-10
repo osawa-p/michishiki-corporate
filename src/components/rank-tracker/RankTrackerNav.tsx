@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { REPORT_DOMAINS } from "@/lib/rank-tracker/reports";
+import { PROJECT_DOMAINS } from "@/lib/rank-tracker/projects";
 
 // 社内ツール共通のタブナビ。rank-tracker 配下の各ページで共有する（layout に配置）。
 // 権限でタブを出し分ける。requiresAnyDomain 付きタブは、いずれかのサイトの
@@ -16,6 +17,8 @@ const TABS: { href: string; label: string; roles: string[]; requiresAnyDomain?: 
   { href: "/rank-tracker/seo/ga4", label: "GA4", roles: ["admin", "editor", "viewer_kw", "viewer"] },
   // 月次レポート（レポート対象サイトの許可者限定で表示。対象は reports.ts で管理）
   { href: "/rank-tracker/reports", label: "月次レポート", roles: ["admin", "editor", "viewer_kw", "viewer"], requiresAnyDomain: REPORT_DOMAINS },
+  // 施策WBS（クライアント向け。対象サイトの許可者限定で表示。対象は projects.ts で管理）
+  { href: "/rank-tracker/projects", label: "施策WBS", roles: ["admin", "editor", "viewer_kw", "viewer"], requiresAnyDomain: PROJECT_DOMAINS },
   { href: "/rank-tracker/seo/proposals", label: "AI提案", roles: ["admin"] },
   // WBS（大沢の全クライアント横断タスクボード）は管理者専用
   { href: "/rank-tracker/wbs", label: "WBS", roles: ["admin"] },
