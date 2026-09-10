@@ -9,9 +9,22 @@
   "updated": "2026-09-10",
   "summary": {
     "asOf": "2026-09-10",
+    "kpi": {
+      "label": "2026年8月 オーガニック収益（税抜・GA4実測）",
+      "actual": "¥92,600,518",
+      "target": "¥84,518,602",
+      "rate": "109.6%",
+      "yoy": "前年同月比 +18.3%",
+      "note": "累計（4〜8月）は必達比100.6%。9月分は10/6公開予定",
+      "link": {
+        "label": "月次レポート",
+        "url": "https://www.michi-biki.jp/rank-tracker/reports/rasik/"
+      }
+    },
     "changes": [
-      "8月のオーガニック収益は目標達成（達成率109.6%・前年比+18.3%）。累計も必達を超過",
-      "モバイル直帰51%の要因分析が完了（計測欠損の疑い13pt＋再入場22pt＋検索クリック16pt）。直帰の指標は「検索クリック群」に再定義",
+      "8月のオーガニック収益は目標達成（達成率109.6%・前年同月比+18.3%）。累計も必達を超過",
+      "モバイル直帰51%の要因分析が完了。51%のうち、計測の欠損が疑われる分が13pt、再訪など検索以外の入り方が22pt、検索クリック直後の離脱が16pt。直帰の指標は「検索クリック群」に再定義",
+      "順位は改善傾向（ランクイン47→53件・TOP10入り34→42件）だが、記事→カテゴリの入れ替わりはまだ0件（8/30時点）",
       "GTMタグ棚卸し（117タグ＋直書き22件）を報告し、停止中タグは削除する方針で合意",
       "「ベッド」カテゴリのタイトルタグ修正プラン（競合上位20件の分析つき）を提出"
     ],
@@ -39,7 +52,7 @@
     ]
   },
   "effortNote": {
-    "2026-08": "稼働一覧（実績90h）から施策別に按分",
+    "2026-08": "稼働一覧の実績90h（施策52h＋定例・調整等38h）を施策別に按分",
     "2026-09": "9/1〜9/10の概算。月末の稼働一覧で確定"
   },
   "overhead": {
@@ -98,6 +111,8 @@
       "outcome": "記事着地はセッションあたり収益¥28、カテゴリ¥456、商品¥692。着地面の構成（記事48%）が最大の改善余地と判明",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": false,
       "effort": {
         "2026-08": 24
       },
@@ -120,6 +135,8 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": true,
       "effort": {},
       "links": []
     },
@@ -140,6 +157,8 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": true,
       "effort": {},
       "links": []
     },
@@ -160,6 +179,8 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": true,
       "effort": {},
       "links": []
     },
@@ -180,6 +201,8 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": true,
       "effort": {},
       "links": []
     },
@@ -200,6 +223,8 @@
       "outcome": "",
       "impact": "月次ウォッチの指標確定が遅れる",
       "stoppedOn": "2026-07-30",
+      "decision": null,
+      "noEffect": false,
       "effort": {},
       "links": []
     },
@@ -220,6 +245,8 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": true,
       "effort": {},
       "links": []
     },
@@ -240,6 +267,8 @@
       "outcome": "占有率 39.9% → 63.9%（2026-08-12）。明確に下がった場合はタイトルを戻します",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": false,
       "effort": {},
       "links": [],
       "kpi": {
@@ -274,9 +303,9 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": null,
-      "effort": {
-        "2026-08": 8
-      },
+      "decision": null,
+      "noEffect": true,
+      "effort": {},
       "links": [
         {
           "label": "月次レポート閲覧サイト",
@@ -301,6 +330,8 @@
       "outcome": "",
       "impact": "ポップアップの効果（クーポン・送客）が計測できない",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": false,
       "effort": {},
       "links": []
     },
@@ -321,6 +352,8 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": "2026-07-23",
+      "decision": null,
+      "noEffect": false,
       "effort": {},
       "links": []
     },
@@ -341,6 +374,8 @@
       "outcome": "カテゴリ側の改修（ガイド文・FAQ等）は「あるべきだが効果不透明」→301試験とセットで検討する整理",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": false,
       "effort": {
         "2026-08": 7
       },
@@ -363,6 +398,8 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": true,
       "effort": {},
       "links": []
     },
@@ -383,6 +420,8 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": true,
       "effort": {
         "2026-09": 8
       },
@@ -410,6 +449,8 @@
       "outcome": "51%は「計測欠損の疑い13pt＋再入場等22pt＋検索クリック16pt」に分解。検索クリック群の直帰はモバイル33% vs PC18.5%",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": false,
       "effort": {
         "2026-09": 12
       },
@@ -441,6 +482,8 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": false,
       "effort": {
         "2026-09": 5
       },
@@ -468,6 +511,8 @@
       "outcome": "",
       "impact": "「価格到達×直帰」の検証が始められず、モバイル第一画面改修の投資判断が遅れる",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": false,
       "effort": {
         "2026-08": 2,
         "2026-09": 3
@@ -491,6 +536,13 @@
       "outcome": "無料トライアル実測: 全体引用率23%、Gemini／Google AIモード約50%、ChatGPTほぼ0%",
       "impact": "",
       "stoppedOn": null,
+      "decision": {
+        "ask": "AI検索計測ツール（optyino）の継続可否（新プラン月額6,000円・年払い5,000円・20プロンプト）",
+        "who": "実藤さん",
+        "by": "2026-09-15",
+        "replyTo": "9/15火曜定例またはSlack"
+      },
+      "noEffect": true,
       "effort": {},
       "links": []
     },
@@ -511,6 +563,8 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": true,
       "effort": {
         "2026-09": 4
       },
@@ -521,18 +575,25 @@
       "title": "ページスピード改善指示書のJADEレビュー回付",
       "area": "テクニカル",
       "owner": "大沢",
-      "waitFor": "渡邉さん（内容確認・優先順位の承認）",
+      "waitFor": "渡邉さん（指示書11項目の優先順位の承認）",
       "status": "wait",
       "pri": 2,
       "start": null,
       "due": "承認後",
       "dueDate": null,
-      "now": "承認後にJADEへレビューを依頼し、Backlog起票へ進みます。9/8定例で「進める」と確認いただきました。",
+      "now": "9/8定例で「進める」方針は確認済みです。着手順とShopifyエンジニアとの役割分担の承認をいただき次第、JADEレビューへ回付しBacklog起票へ進みます。",
       "reason": "",
       "next": "承認→JADEレビュー→Backlog起票→Shopifyエンジニアと実装",
       "outcome": "",
       "impact": "LCP 22秒の改善着手が遅れる（モバイル直帰・順位への影響が続く）",
       "stoppedOn": null,
+      "decision": {
+        "ask": "指示書11項目の着手順（No.1-2 LCP画像の先読みから）と、Shopifyエンジニア連携との役割分担の承認。承認後にJADEレビューへ回します",
+        "who": "渡邉さん",
+        "by": "2026-09-15",
+        "replyTo": "9/15火曜定例またはSlack"
+      },
+      "noEffect": false,
       "effort": {},
       "links": []
     },
@@ -553,6 +614,8 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": false,
       "effort": {},
       "links": []
     },
@@ -573,6 +636,8 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": false,
       "effort": {},
       "links": []
     },
@@ -593,6 +658,8 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": false,
       "effort": {},
       "links": []
     },
@@ -613,6 +680,8 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": false,
       "effort": {},
       "links": []
     },
@@ -633,6 +702,8 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": false,
       "effort": {},
       "links": []
     },
@@ -653,6 +724,8 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": false,
       "effort": {},
       "links": []
     },
@@ -673,6 +746,8 @@
       "outcome": "",
       "impact": "CTA変更の良し悪しが判断できない",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": false,
       "effort": {},
       "links": []
     },
@@ -693,6 +768,8 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": false,
       "effort": {},
       "links": []
     },
@@ -713,6 +790,8 @@
       "outcome": "ランクイン47→53件、TOP10入り34→42件（8/6→8/30）。「ベッド」は記事130が9位。入れ替わりはまだ0件",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": false,
       "effort": {
         "2026-08": 11.5,
         "2026-09": 2
@@ -764,6 +843,8 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": false,
       "effort": {},
       "links": []
     },
@@ -784,6 +865,8 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": "2026-07-30",
+      "decision": null,
+      "noEffect": false,
       "effort": {},
       "links": []
     },
@@ -804,6 +887,8 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": "2026-07-30",
+      "decision": null,
+      "noEffect": false,
       "effort": {},
       "links": []
     },
@@ -824,6 +909,8 @@
       "outcome": "",
       "impact": "サイズ絞り込み後の並び順改善の効果が判定できない",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": false,
       "effort": {},
       "links": []
     },
@@ -844,8 +931,10 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": true,
       "effort": {
-        "2026-08": 7.5,
+        "2026-08": 8,
         "2026-09": 3
       },
       "links": []
@@ -867,6 +956,13 @@
       "outcome": "",
       "impact": "",
       "stoppedOn": null,
+      "decision": {
+        "ask": "A-1案（ベッド通販・サイズやタイプで選ぶ｜RASIK（ラシク）公式）の実施可否。可なら谷口さんが設定変更し実施日を共有",
+        "who": "渡邉さん",
+        "by": "2026-09-15",
+        "replyTo": "9/15火曜定例またはSlack"
+      },
+      "noEffect": false,
       "effort": {
         "2026-09": 3
       },
@@ -894,6 +990,8 @@
       "outcome": "",
       "impact": "リニューアル効果の前後比較の起点が決まらない",
       "stoppedOn": null,
+      "decision": null,
+      "noEffect": false,
       "effort": {},
       "links": []
     }

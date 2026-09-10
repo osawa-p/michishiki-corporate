@@ -28,20 +28,41 @@ export default async function ProjectSitePage({ params }: { params: Promise<{ si
   const load = DATA[slug];
   if (!site || !load || !canViewDomain(access, site.domain)) redirect("/rank-tracker/projects");
 
-  // 読み込み失敗（同期直後の欠損など）は空画面ではなく案内を出す
-  let data: ClientWbsData;
+  // 読み込み失敗・構造不正（同期直後の欠損など）は空画面ではなく案内と再読み込み導線を出す
+  let data: ClientWbsData | null = null;
   try {
-    data = await load();
+    const d = await load();
+    if (isClientWbsData(d)) data = d;
+    else console.error("[rank-tracker] 施策WBSデータの構造が不正です:", slug);
   } catch (err) {
     console.error("[rank-tracker] 施策WBSデータの読み込みに失敗しました:", err);
+  }
+  if (!data) {
     return (
       <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
         <h1 className="font-serif text-2xl font-semibold">{site.label} SEO施策WBS</h1>
-        <p className="mt-4 rounded-xl border border-dashed border-line px-5 py-6 text-sm text-ink-faint">
-          データを読み込めませんでした。しばらくしてから再度お開きください。続く場合は大沢までご連絡ください。
+        <p className="mt-4 rounded-xl border border-dashed border-line px-5 py-6 text-sm text-ink-soft">
+          データを読み込めませんでした。
+          <a href={`/rank-tracker/projects/${site.slug}`} className="ml-2 text-bronze-deep underline underline-offset-2">再読み込み</a>
+          しても直らない場合は大沢までご連絡ください。
         </p>
       </section>
     );
   }
   return <ClientWbsBoard data={data} />;
+}
+
+// 公開JSONの最低限の構造検証（欠損・型違いは案内画面へ）
+function isClientWbsData(d: unknown): d is ClientWbsData {
+  if (!d || typeof d !== "object") return false;
+  const o = d as Record<string, unknown>;
+  const site = o.site as Record<string, unknown> | undefined;
+  const summary = o.summary as Record<string, unknown> | undefined;
+  return (
+    typeof o.updated === "string" &&
+    !!site && typeof site.label === "string" && typeof site.since === "string" &&
+    !!summary && Array.isArray(summary.changes) && Array.isArray(summary.milestones) &&
+    Array.isArray(o.tasks) &&
+    (o.tasks as unknown[]).every((t) => !!t && typeof t === "object" && typeof (t as Record<string, unknown>).id === "string" && typeof (t as Record<string, unknown>).title === "string")
+  );
 }
