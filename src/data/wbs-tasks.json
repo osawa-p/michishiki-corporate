@@ -744,7 +744,7 @@
       "asof": "2026-08-12"
      }
     ],
-    "source": "GSC（rasik.style）",
+    "source": "Search Console（rasik.style）",
     "queryRef": "施策37の月次モニタリング／wbs-measure.mjs（GSC系）",
     "next": "月次"
    }
@@ -975,7 +975,7 @@
       "asof": "2026-08-30"
      }
     ],
-    "source": "独自順位計測（rank-weekly CSV・週次）",
+    "source": "弊社の順位計測（週次・毎週土曜）",
     "queryRef": "moshimo/ops/rank-weekly/順位計測_rasik_YYYY-MM-DD.csv",
     "next": "毎週土曜計測→火曜定例で報告"
    }
@@ -1156,9 +1156,9 @@
       "asof": "2026-09-04"
      }
     ],
-    "source": "GA4（properties/377021963）・GSC",
-    "queryRef": "nailschool/ops/計測定義書_v1.0_2026-08-21.md",
-    "next": "受信実数との照合で補正系列を確定"
+    "source": "GA4・Search Console",
+    "queryRef": "nailschool/ops/計測定義書_v1.0_2026-08-21.md（GA4 properties/377021963）",
+    "next": "実際の問い合わせ件数との照合で、数値の補正方法を確定"
    }
   },
   {
