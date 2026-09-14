@@ -17,6 +17,12 @@ export const PROJECT_SITES: ProjectSite[] = [
     label: "RASIK",
     description: "SEO施策の進捗・待ち・完了と効果（大沢が更新）",
   },
+  {
+    slug: "cincia",
+    domain: "cin-cia.com",
+    label: "Cin-Cia Nail Academy",
+    description: "SEO・CV改善施策の進捗・待ち・完了と効果（大沢が更新）",
+  },
 ];
 
 // ナビの「施策WBS」タブ表示判定に使う（いずれかのサイトの許可があれば表示）

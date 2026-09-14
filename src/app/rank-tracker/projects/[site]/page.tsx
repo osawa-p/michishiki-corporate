@@ -16,6 +16,7 @@ export const metadata: Metadata = {
 // slug → 公開JSON。新しいサイトを増やすときは projects.ts と併せてここに追加する
 const DATA: Record<string, () => Promise<ClientWbsData>> = {
   rasik: () => import("@/data/wbs-client/rasik.json").then((m) => m.default as unknown as ClientWbsData),
+  cincia: () => import("@/data/wbs-client/cincia.json").then((m) => m.default as unknown as ClientWbsData),
 };
 
 export default async function ProjectSitePage({ params }: { params: Promise<{ site: string }> }) {
