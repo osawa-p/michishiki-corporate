@@ -154,8 +154,8 @@
             "asof": "2026-09-04"
           }
         ],
-        "source": "GA4（properties/377021963）・GSC",
-        "next": "受信実数との照合で補正系列を確定"
+        "source": "GA4・Search Console",
+        "next": "実際の問い合わせ件数との照合で、数値の補正方法を確定"
       }
     },
     {

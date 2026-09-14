@@ -238,7 +238,7 @@
             "asof": "2026-08-12"
           }
         ],
-        "source": "GSC（rasik.style）",
+        "source": "Search Console（rasik.style）",
         "next": "月次"
       }
     },
@@ -762,7 +762,7 @@
             "asof": "2026-08-30"
           }
         ],
-        "source": "独自順位計測（rank-weekly CSV・週次）",
+        "source": "弊社の順位計測（週次・毎週土曜）",
         "next": "毎週土曜計測→火曜定例で報告"
       }
     },
