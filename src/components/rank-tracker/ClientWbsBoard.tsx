@@ -346,16 +346,23 @@ function Timeline({ tasks, months, todayIso, onOpen }: { tasks: ClientWbsTask[];
               const e = ms(t.dueDate ?? t.start!) + DAY;
               const l = pct(s);
               const w = Math.max(1.2, pct(e) - l);
-              const label = `${t.title}（${STATUS_LABEL[t.status]}）${t.start ? fmtDate(t.start) : ""}〜${t.dueDate ? fmtDate(t.dueDate) : t.due}`;
+              const overdue = isOverdue(t, todayIso);
+              const label = `${t.title}（${STATUS_LABEL[t.status]}${overdue ? "・期限超過" : ""}）${t.start ? fmtDate(t.start) : ""}〜${t.dueDate ? fmtDate(t.dueDate) : t.due}`;
               return (
                 <div key={t.id} className="contents">
                   <button
                     type="button"
                     onClick={() => onOpen(t.id)}
-                    className="flex items-center gap-2 border-t border-line px-4 py-2 text-left text-sm text-ink hover:bg-paper focus-visible:outline-2 focus-visible:outline-bronze-deep md:text-xs"
+                    className="flex flex-col gap-1 border-t border-line px-4 py-2 text-left hover:bg-paper focus-visible:outline-2 focus-visible:outline-bronze-deep"
                   >
-                    <span aria-hidden className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: STATUS_COLOR[t.status] }} />
-                    <span className="leading-snug">{t.title}</span>
+                    <span className="flex items-center gap-2 text-sm leading-snug text-ink md:text-xs">
+                      <span aria-hidden className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: STATUS_COLOR[t.status] }} />
+                      <span>{t.title}</span>
+                    </span>
+                    <span className="flex flex-wrap items-center gap-1.5 pl-4 text-xs text-ink-soft">
+                      <Period t={t} />
+                      {overdue && <OverdueBadge />}
+                    </span>
                     <span className="sr-only">（{STATUS_LABEL[t.status]}）</span>
                   </button>
                   <div className="relative border-t border-line">
@@ -369,7 +376,7 @@ function Timeline({ tasks, months, todayIso, onOpen }: { tasks: ClientWbsTask[];
                       role="img"
                       aria-label={label}
                       className={`absolute top-1/2 h-3 -translate-y-1/2 rounded-full ${t.status === "skipped" || t.status === "paused" ? "opacity-40" : ""}`}
-                      style={{ left: `${l}%`, width: `${w}%`, background: STATUS_COLOR[t.status] }}
+                      style={{ left: `${l}%`, width: `${w}%`, background: STATUS_COLOR[t.status], ...(overdue ? { boxShadow: "0 0 0 2px rgba(179,53,46,.45)" } : {}) }}
                     />
                   </div>
                 </div>
@@ -415,7 +422,8 @@ export default function ClientWbsBoard({ data }: { data: ClientWbsData }) {
     [params],
   );
   const areas = useMemo(() => new Set((params.get("area") ?? "").split(",").filter((a) => AREA_SET.has(a))), [params]);
-  const view: "list" | "timeline" = params.get("v") === "timeline" ? "timeline" : "list";
+  // 既定表示は工程表（2026-09-15 ユーザー指示）。一覧は v=list で明示
+  const view: "list" | "timeline" = params.get("v") === "list" ? "list" : "timeline";
   const urlQ = params.get("q") ?? "";
   const [q, setQ] = useState(urlQ); // 入力中はローカル（IME対応）。300ms後にURLへ反映
   const [filtersOpen, setFiltersOpen] = useState(() => !!(params.get("st") || params.get("area") || params.get("q")));
@@ -506,8 +514,8 @@ export default function ClientWbsBoard({ data }: { data: ClientWbsData }) {
       const t = data.tasks.find((x) => x.id === id);
       const p = new URLSearchParams(window.location.search);
       let changed = false;
-      if (p.get("v") === "timeline") {
-        p.delete("v");
+      if (p.get("v") !== "list") {
+        p.set("v", "list");
         changed = true;
       }
       if (t && !inMonth(t, effectiveMonth, todayYm)) {
@@ -541,7 +549,7 @@ export default function ClientWbsBoard({ data }: { data: ClientWbsData }) {
             <div>
               <h1 className="font-serif text-3xl font-semibold md:text-4xl">{data.site.label} SEO施策WBS</h1>
               <p className="mt-2 max-w-2xl text-base leading-relaxed text-ink-soft sm:text-sm">
-                {data.site.client}様向けに大沢が進めているSEO施策の進行表です。ご判断・ご確認をお願いしたい事項を先頭に、施策ごとの概要（目的・実施・結果）・現在地・次の対応・判断の記録・効果を掲載しています。施策名を押すと詳細が開きます。
+                {data.site.client}様向けに大沢が進めているSEO施策の進行表です。ご判断・ご確認をお願いしたい事項を先頭に、続けて工程表（各施策の期間・期限つき）と、施策ごとの概要（目的・実施・結果）・現在地・次の対応・判断の記録・効果を掲載しています。施策名を押すと詳細が開きます。
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3 text-sm text-ink-soft md:text-xs">
@@ -682,11 +690,11 @@ export default function ClientWbsBoard({ data }: { data: ClientWbsData }) {
         <div className="mx-auto max-w-6xl px-4 py-2 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-center gap-2">
             <div role="group" aria-label="表示切替" className="flex overflow-hidden rounded-full border border-line bg-white text-sm md:text-xs">
-              {(["list", "timeline"] as const).map((v) => (
+              {(["timeline", "list"] as const).map((v) => (
                 <button
                   key={v}
                   type="button"
-                  onClick={() => setParam("v", v === "timeline" ? "timeline" : "")}
+                  onClick={() => setParam("v", v === "list" ? "list" : "")}
                   aria-pressed={view === v}
                   className={`px-3 py-1.5 ${view === v ? "bg-bronze/10 font-semibold text-bronze-deep" : "text-ink-soft hover:text-bronze-deep"}`}
                 >

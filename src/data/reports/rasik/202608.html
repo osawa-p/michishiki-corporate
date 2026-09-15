@@ -149,6 +149,7 @@
     <button class="tab" data-tab="brand">指名<span class="badge up">119.5%</span></button>
     <button class="tab" data-tab="life">ライフ<span class="badge down">72.7%</span></button>
     <button class="tab" data-tab="other">その他<span class="badge up">111.8%</span></button>
+    <button class="tab" data-tab="split">その他の内訳<span class="badge warn">指名 45.2%</span></button>
     <button class="tab" data-tab="func">機能ページ<span class="badge up">100.0%</span></button>
     <button class="tab" data-tab="plan">年間計画<span class="badge up">累計 100.6%</span></button>
   </div>
@@ -347,8 +348,94 @@
     <section>
       <h2>所見</h2>
       <div class="callout pos"><b>7月に全体未達の主因だったセグメントが、8月は収益 +23.6%・達成率111.8%へ回復し、指名と並ぶ牽引役に戻った。</b>セッション +11.7%（達成率103.4%）に加え、<b>CVRが 1.40% → 1.58%（+0.18pt）へ改善</b>。CVは 1,400（+26.0%）と大きく伸びた。</div>
-      <div class="note">分析: 課題だったAOVは前年差 −1.9%（¥31,720 → ¥31,112）まで縮小した（6月 −9.1% → 7月 −8.2% → 8月 −1.9%）。単価差の縮小とCVR改善が重なり、収益回復につながった。カテゴリ別の売上分解による要因検証は継続する。<br>
+      <div class="note">分析: 課題だったAOVは前年差 −1.9%（¥31,720 → ¥31,112）まで縮小した（6月 −9.1% → 7月 −8.2% → 8月 −1.9%）。単価差の縮小とCVR改善が重なり、収益回復につながった。カテゴリ別の売上分解による要因検証は継続する。<b>指名（ブランド）検索由来／非指名の内訳は「その他の内訳」タブを参照。</b><br>
       対策方向: 秋商戦に向けたベッド・ソファ等の高単価カテゴリKW強化とカテゴリページ最適化を継続。</div>
+    </section>
+  </div>
+
+  <!-- ============ その他の内訳: 指名／非指名（参考推定） ============ -->
+  <div class="panel" id="split">
+    <section>
+      <h2>その他の内訳: 指名／非指名 <small>Search Consoleの指名クリック比率による参考推定・2026-09-14作成（9/8定例ご依頼分）</small></h2>
+      <div class="callout warn"><b>この分割は参考推定です。</b>GA4実測の「その他」売上（カテゴリ・商品ページ着地）を、Search Consoleで同じページ群に着地したクリックの<b>指名（ブランド語）比率</b>で按分しています。指名の判定は「rasik／ラシク／らしく／ラシック」等の表記ゆれを含む検索語。Search ConsoleはGoogle検索のみ（Yahoo・Bing等は含まれない）のため、他タブのGA4実測値とは性質が異なる<b>内訳の目安</b>としてご覧ください。</div>
+      <div class="cards">
+        <div class="card"><div class="label">その他 売上（税抜・GA4実測）</div><div class="val num">43,556,354<span class="unit">円</span></div><div class="prev num">前年 35,241,023 円</div><div class="delta up">▲ 23.6%</div></div>
+        <div class="card"><div class="label">うち指名由来（推定・構成比 45.2%）</div><div class="val num">19,678,952<span class="unit">円</span></div><div class="prev num">前年推定 13,444,818 円</div><div class="delta up">▲ 46.4%</div></div>
+        <div class="card"><div class="label">うち非指名由来（推定・構成比 54.8%）</div><div class="val num">23,877,402<span class="unit">円</span></div><div class="prev num">前年推定 21,796,205 円</div><div class="delta up">▲ 9.5%</div></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>今月のサマリー</h2>
+      <div class="story">
+        <p><span class="kw">8月の「その他」+23.6%の主因は、指名（ブランド）検索由来の伸び（推定 +46.4%）。</span>非指名由来も +9.5% と、6月（−26.6%）・7月（−25.7%）の前年割れからプラス転換した。</p>
+        <p>カテゴリページ着地のGoogleクリックは<b>68.8%が「ラシク 家具」「ラシク ソファ」等のブランド語</b>（前年同月 64.0%）。「その他」は非指名（一般検索）の受け皿であると同時に、<b>ブランド需要の着地面としても年々大きくなっている</b>。非指名由来のプラス転換は、記事→カテゴリの内部リンク張り替え・カテゴリ順位の改善（TOP10入り 34→42件）の時期と重なる（因果は未検証・9月以降の継続で確認）。</p>
+        <p><span class="kw">RASIK LIFEの方針判断の材料として:</span> 「その他 vs ライフ」の比較は、その他の約半分が指名由来である点を差し引いて読む必要がある。非指名の獲得力の比較では<b>「その他 非指名由来 約¥23.9M／月 vs ライフ ¥2.1M／月」</b>が実態に近い。</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>月別の分割推定 <small>売上・税抜／指名比率はページタイプ別按分の売上加重</small></h2>
+      <div class="tablewrap">
+      <table>
+        <thead><tr><th>月</th><th>その他売上（実測）</th><th>指名比率</th><th>指名由来（推定）</th><th>非指名由来（推定）</th><th>その他 前年比</th><th>指名由来 前年比</th><th>非指名由来 前年比</th></tr></thead>
+        <tbody>
+          <tr><td>2026/4</td><td class="num">¥39,247,230</td><td class="num">56.5%</td><td class="num">¥22,168,730</td><td class="num">¥17,078,500</td><td class="num down-t">−9.9%</td><td class="num">—</td><td class="num">—</td></tr>
+          <tr><td>2026/5</td><td class="num">¥37,702,428</td><td class="num">49.6%</td><td class="num">¥18,692,313</td><td class="num">¥19,010,116</td><td class="num up-t">+2.7%</td><td class="num">—</td><td class="num">—</td></tr>
+          <tr><td>2026/6</td><td class="num">¥38,905,699</td><td class="num">48.5%</td><td class="num">¥18,881,815</td><td class="num">¥20,023,884</td><td class="num down-t">−7.7%</td><td class="num up-t">+26.9%</td><td class="num down-t">−26.6%</td></tr>
+          <tr><td>2026/7</td><td class="num">¥41,719,051</td><td class="num">47.9%</td><td class="num">¥19,965,516</td><td class="num">¥21,753,535</td><td class="num down-t">−15.7%</td><td class="num down-t">−1.2%</td><td class="num down-t">−25.7%</td></tr>
+          <tr class="total"><td>2026/8</td><td class="num">¥43,556,354</td><td class="num">45.2%</td><td class="num">¥19,678,952</td><td class="num">¥23,877,402</td><td class="num up-t">+23.6%</td><td class="num up-t">+46.4%</td><td class="num up-t">+9.5%</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="note">※ 指名由来は月¥19〜22Mでほぼ一定。月ごとの変動（4月低→8月高）を作っているのは主に非指名由来。<br>
+      ※ 指名／非指名の前年比は、Search Consoleの保持期間（16ヶ月）の制約で2026年6月以降のみ算出。「その他売上（実測）」と「その他 前年比」は本レポートの他タブのGA4実測値と完全一致（検算済み）。</div>
+    </section>
+
+    <section>
+      <h2>指名クリック比率の推移 <small>Search Console・可視クエリのクリックベース</small></h2>
+      <div class="tablewrap">
+      <table>
+        <thead><tr><th>月</th><th>カテゴリ（/collections/）</th><th>商品（/products/）</th><th>その他計</th></tr></thead>
+        <tbody>
+          <tr class="muted"><td>2025/6</td><td class="num">58.8%</td><td class="num">21.2%</td><td class="num">53.4%</td></tr>
+          <tr class="muted"><td>2025/7</td><td class="num">64.2%</td><td class="num">22.7%</td><td class="num">58.9%</td></tr>
+          <tr class="muted"><td>2025/8</td><td class="num">64.0%</td><td class="num">21.6%</td><td class="num">59.0%</td></tr>
+          <tr><td>2026/4</td><td class="num">78.9%</td><td class="num">40.3%</td><td class="num">74.5%</td></tr>
+          <tr><td>2026/5</td><td class="num">73.4%</td><td class="num">35.1%</td><td class="num">69.4%</td></tr>
+          <tr><td>2026/6</td><td class="num">69.5%</td><td class="num">33.9%</td><td class="num">66.6%</td></tr>
+          <tr><td>2026/7</td><td class="num">69.4%</td><td class="num">34.1%</td><td class="num">66.4%</td></tr>
+          <tr class="total"><td>2026/8</td><td class="num">68.8%</td><td class="num">29.5%</td><td class="num">65.3%</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="note">※ 前年同月比でカテゴリ +4.8pt・商品 +7.9pt と、「その他」の中身は前年より指名寄りになっている。2026年内では4月をピークに指名比率が緩やかに低下＝非指名クリックの回復（記事整理・内部リンク施策の期間と重なる）。<br>
+      ※ 匿名化クエリを除いた可視クリックが分母。この表はクリックベースで、上の「指名比率（売上加重）」とは値が異なる。</div>
+    </section>
+
+    <section>
+      <h2>2026年8月 ページタイプ別 <small>GA4実測 × Search Console</small></h2>
+      <div class="tablewrap">
+      <table>
+        <thead><tr><th>指標</th><th>カテゴリ（/collections/）</th><th>商品（/products/）</th><th>その他計</th></tr></thead>
+        <tbody>
+          <tr><td>GA4 セッション</td><td class="num">44,483</td><td class="num">44,395</td><td class="num">88,878</td></tr>
+          <tr><td>GA4 売上（税抜）</td><td class="num">¥17,338,852</td><td class="num">¥26,217,502</td><td class="num">¥43,556,354</td></tr>
+          <tr><td>GSC 可視クリック</td><td class="num">29,757</td><td class="num">2,901</td><td class="num">32,658</td></tr>
+          <tr><td>うち指名クリック</td><td class="num">20,481</td><td class="num">857</td><td class="num">21,338</td></tr>
+          <tr><td>指名比率（2026-08）</td><td class="num">68.8%</td><td class="num">29.5%</td><td class="num">65.3%</td></tr>
+          <tr class="muted"><td>指名比率（2025-08）</td><td class="num">64.0%</td><td class="num">21.6%</td><td class="num">59.0%</td></tr>
+          <tr class="total"><td>指名由来売上（推定）</td><td class="num">¥11,933,899</td><td class="num">¥7,745,053</td><td class="num">¥19,678,952</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>所見</h2>
+      <div class="callout pos"><b>8月の「その他」の伸びは、過半がブランド需要の伸び。</b>指名セグメント（+29.6%）と合わせると、ブランド需要はオーガニック売上の約50%（前年同月 約43%）を占める規模に拡大していると推定される。一方、<b>SEO施策で直接動かせる非指名由来は月¥20〜24M</b>で、8月にプラス転換。ここを伸ばす＝ベッド・ソファ等の単ワードでのカテゴリ上位表示という現行の主戦場設定は、この分割でも裏付けられる。</div>
+      <div class="note">留意点: ①商品ページはGSC可視クリック 2,901 に対しGA4セッション 44,395 と大きな乖離があり（ショッピングタブ・無料リスティング等のGSC非計上面が主因候補）、商品側の指名比率は精度が粗い。②「firka テレビボード」等の商品名検索は非指名に分類しており、"純粋な一般キーワード"の非指名はこれより小さい。③指名比率の前年差には、Search Console側の匿名化率の変化が混ざる可能性がある。<br>
+      今後: 9月分レポートから本タブを標準掲載し、非指名由来のプラス転換が継続するかを観測する。</div>
     </section>
   </div>
 
