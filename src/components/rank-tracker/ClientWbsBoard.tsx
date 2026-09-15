@@ -326,6 +326,14 @@ function Timeline({ tasks, months, todayIso, onOpen }: { tasks: ClientWbsTask[];
   const rows = tasks.filter((t) => t.start || t.dueDate);
   const undated = tasks.filter((t) => !t.start && !t.dueDate);
   const today = todayIso ? ms(todayIso) : null;
+  // 日付めもり: 表示期間に応じて刻みを変える（〜1.5ヶ月=5日刻み／〜6ヶ月=10日・20日／それ以上=月境界のみ）
+  const spanDays = span / DAY;
+  const tickDays = spanDays <= 45 ? [5, 10, 15, 20, 25] : spanDays <= 190 ? [10, 20] : [];
+  const ticks = months.flatMap((m) =>
+    tickDays
+      .map((d) => ({ at: ms(`${m}-${String(d).padStart(2, "0")}`), label: `${Number(m.slice(5))}/${d}` }))
+      .filter((tk) => tk.at > first && tk.at < end),
+  );
   if (!rows.length) return <p className="rounded-xl border border-dashed border-line px-5 py-6 text-sm text-ink-soft">表示できる期間つきの施策がありません。</p>;
   return (
     <div className="space-y-3">
@@ -337,9 +345,19 @@ function Timeline({ tasks, months, todayIso, onOpen }: { tasks: ClientWbsTask[];
             <div className="relative border-b border-line">
               <div className="flex">
                 {months.map((m) => (
-                  <div key={m} className="flex-1 border-l border-line px-2 py-2 text-xs text-ink-soft">{monthLabel(m)}</div>
+                  <div key={m} className={`flex-1 border-l border-line px-2 pt-2 text-xs text-ink-soft ${ticks.length ? "pb-5" : "pb-2"}`}>{monthLabel(m)}</div>
                 ))}
               </div>
+              {ticks.map((tk) => (
+                <span
+                  key={tk.at}
+                  aria-hidden
+                  className="absolute bottom-0.5 -translate-x-1/2 text-[10px] leading-none tabular-nums text-ink-soft"
+                  style={{ left: `${pct(tk.at)}%` }}
+                >
+                  {tk.label}
+                </span>
+              ))}
             </div>
             {rows.map((t) => {
               const s = ms(t.start ?? t.dueDate!);
@@ -369,6 +387,9 @@ function Timeline({ tasks, months, todayIso, onOpen }: { tasks: ClientWbsTask[];
                     <div className="absolute inset-0 flex" aria-hidden>
                       {months.map((m) => <div key={m} className="flex-1 border-l border-line/70" />)}
                     </div>
+                    {ticks.map((tk) => (
+                      <div key={tk.at} aria-hidden className="absolute inset-y-0 w-px bg-line/60" style={{ left: `${pct(tk.at)}%` }} />
+                    ))}
                     {today !== null && today >= first && today <= end && (
                       <div aria-hidden className="absolute inset-y-0 w-px bg-bronze" style={{ left: `${pct(today)}%` }} />
                     )}
