@@ -21,11 +21,20 @@ async function fetchXml(url: string): Promise<string | null> {
 
 function extractLocs(xml: string): string[] {
   const out: string[] = [];
-  const re = /<loc>\s*([^<]+?)\s*<\/loc>/g;
+  // <loc> の中身は素のテキストか CDATA のどちらか。All in One SEO 等の WordPress プラグインは
+  // <loc><![CDATA[https://…]]></loc> 形式で出力する（例: ai-keiei.shift-ai.co.jp）。
+  // 旧実装は素のテキストしか受け付けず、CDATA 形式の sitemap は URL 0件として扱われていた。
+  const re = /<loc>\s*(?:<!\[CDATA\[([\s\S]*?)\]\]>|([^<]+?))\s*<\/loc>/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(xml)) !== null) {
+    if (m[1] != null) {
+      // CDATA 内はエンティティ展開されない（書かれたまま使う）
+      const u = m[1].trim();
+      if (u) out.push(u);
+      continue;
+    }
     // XMLエンティティの最低限のデコード
-    out.push(m[1].replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">"));
+    out.push(m[2].replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">"));
   }
   return out;
 }

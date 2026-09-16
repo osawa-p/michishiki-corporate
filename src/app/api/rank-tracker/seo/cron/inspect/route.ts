@@ -64,6 +64,25 @@ function errorStatus(reason: unknown): number | undefined {
   return undefined;
 }
 
+// 認証・権限系のエラーか（401/403、または OAuth リフレッシュトークン更新の失敗）。
+// これらは URL 固有ではなくサイト（プロパティ）全体に及ぶため、URL を対象外化せず
+// サイトを打ち切る。例: プロパティが運用アカウントに未共有・未確認のサイト、
+// リフレッシュトークンの失効。旧実装は 4xx を一律「URL 固有の恒久エラー」として
+// 台帳から外していたため、権限のないサイトを登録すると全 URL が検査対象外に
+// 固定され、後日プロパティが使えるようになってもローテーションが空のままになった。
+function isAuthError(reason: unknown): boolean {
+  const status = errorStatus(reason);
+  if (status === 401 || status === 403) return true;
+  if (reason && typeof reason === "object") {
+    const r = reason as { config?: { url?: unknown }; message?: unknown };
+    if (typeof r.config?.url === "string" && /oauth2\.googleapis\.com\/token/.test(r.config.url)) {
+      return true;
+    }
+    if (typeof r.message === "string" && /invalid_grant|invalid_client/i.test(r.message)) return true;
+  }
+  return false;
+}
+
 type InspectSummary = {
   site: string;
   inspected: number;
@@ -114,7 +133,8 @@ async function runRotation(): Promise<RotationResult> {
       let transientFails = 0;
 
       // 検査結果を1件ずつ振り分ける。戻り値は429で再試行すべきURL。
-      // エラーは3分類: 429=レート/クォータ（再試行→ダメならサイト打ち切り）、
+      // エラーは4分類: 401/403・トークン失効=認証/権限（サイト打ち切り・台帳は触らない）、
+      // 429=レート/クォータ（再試行→ダメならサイト打ち切り）、
       // その他4xx=URL固有の恒久エラー（対象外化して先へ進む）、
       // 5xx・ネットワーク断=一時エラー（今回スキップ。多発時のみ打ち切り）。
       // 1件の失敗でサイト全体を打ち切らないこと（初回稼働日に散発エラーで
@@ -130,7 +150,16 @@ async function runRotation(): Promise<RotationResult> {
           const url = urls[j];
           if (res.status === "rejected") {
             const status = errorStatus(res.reason);
-            if (status === 429) {
+            if (isAuthError(res.reason)) {
+              if (!aborted) {
+                console.error(
+                  `[seo-monitor] URL検査の権限がありません（プロパティ未共有/未確認・トークン失効）。本日は打ち切り (${s.site} ${url}):`,
+                  res.reason instanceof Error ? res.reason.message : res.reason
+                );
+              }
+              if (!sum.errors.includes("auth")) sum.errors.push("auth");
+              aborted = true;
+            } else if (status === 429) {
               if (isRetry) {
                 console.error(`[seo-monitor] クォータ超過のため本日は打ち切り (${s.site})`);
                 if (!sum.errors.includes("quota")) sum.errors.push("quota");
