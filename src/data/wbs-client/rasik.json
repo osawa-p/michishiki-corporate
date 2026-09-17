@@ -590,7 +590,12 @@
       "stoppedOn": null,
       "decision": null,
       "noEffect": false,
-      "links": []
+      "links": [
+        {
+          "label": "課題整理ドキュメント",
+          "url": "https://docs.google.com/document/d/17K_RJxk9BV1Juds_20p7v_KZFyPC8Ta1Q0lHvDvSzTk/edit"
+        }
+      ]
     },
     {
       "id": "M-24",
@@ -612,7 +617,12 @@
       "stoppedOn": null,
       "decision": null,
       "noEffect": false,
-      "links": []
+      "links": [
+        {
+          "label": "分析ドキュメント",
+          "url": "https://docs.google.com/document/d/127eXZ6Mj1nkH2D7TNOi7WekCFFJwovIBBrtDAPHvBYI/edit"
+        }
+      ]
     },
     {
       "id": "M-25",
