@@ -37,6 +37,11 @@ const TIME_BUDGET_MS = 240_000;
 // ユーザー単位セッション集約でさかのぼる最大日数（D-2〜D-6の5日分）
 const USER_SESSION_LOOKBACK = 6;
 
+// GSC検索アナリティクスでさかのぼる最大日数（D-3〜D-7）。確定は通常3日遅れだが、
+// それを超えて遅れる日があり（実績: 2026-09-07 は5サイト欠損・2026-09-15 も遅延）、
+// 「3日前の1日分」だけ見る方式では確定遅延日が永久に欠損する。未取り込みの日を毎朝追い直す。
+const GSC_LOOKBACK = 7;
+
 // JSTでn日前の日付（YYYY-MM-DD）
 function jstDateAgo(days: number): string {
   const d = new Date(Date.now() + 9 * 3600_000 - days * 86_400_000);
@@ -128,16 +133,25 @@ export async function GET(request: Request) {
         sum.errors.push("url-ledger");
       }
 
-      // 2) 検索アナリティクス（冪等: 同一日を二重取り込みしない）
+      // 2) 検索アナリティクス（冪等: 取り込み済みの日はスキップ）。
+      //    D-3〜D-7の未取り込み日を追い直す。Google側で未確定の日（0行）は挿入せず、
+      //    翌朝以降の再試行に残す（0行を入れると hasQueryStats が真になり永久欠損するため）。
       try {
-        if (await hasQueryStats(s.site, gscDate)) {
-          sum.querySkipped = true;
-        } else {
-          const rows = await fetchSearchAnalytics(s.gsc_site_url, gscDate, s.auth_account);
-          sum.queryRows = await insertQueryStats(
+        let queryRows = 0;
+        let fetchedDays = 0;
+        for (let back = 3; back <= GSC_LOOKBACK; back++) {
+          if (timeLeft() <= 0) {
+            timedOut = true;
+            break;
+          }
+          const d = jstDateAgo(back);
+          if (await hasQueryStats(s.site, d)) continue;
+          const rows = await fetchSearchAnalytics(s.gsc_site_url, d, s.auth_account);
+          if (rows.length === 0) continue;
+          queryRows += await insertQueryStats(
             rows.map((r) => ({
               site: s.site,
-              date: gscDate,
+              date: d,
               query: r.query,
               page: r.page,
               impressions: r.impressions,
@@ -146,7 +160,10 @@ export async function GET(request: Request) {
               fetched_at: fetchedAt,
             }))
           );
+          fetchedDays++;
         }
+        if (fetchedDays > 0) sum.queryRows = queryRows;
+        else sum.querySkipped = true;
       } catch (err) {
         console.error(`[seo-monitor] 検索アナリティクス取得に失敗 (${s.site}):`, err);
         sum.errors.push("search-analytics");
