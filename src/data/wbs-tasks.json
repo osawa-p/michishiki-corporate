@@ -365,7 +365,7 @@
    "id": "R-28",
    "pj": "remedi",
    "task": "CV直結記事の指示書実行（レジストリ準拠のslot化・相談フォーム直行CTA）— 先方がPRを適用し一括実装",
-   "dep": "9/28 経路確定: 候補をPRで渡し隣さん側で反映（隣さん「一括で変更・まとめて実装予定」）。PR #3021（9013パイロット・レビュー可能） https://github.com/remedy-tokyo/remedy-media/pull/3021 。CIのarchitecture未通過（証跡の台帳未登録・cta.patch末尾空白）は先方運用に委ねる旨をPR本文に注記。大沢側のAPI直接反映はClaude Codeの権限制御で不可。残: 依頼文送信（ops/連絡テキスト_PR反映依頼_2026-09-28.md）→求めがあれば記事別配置・文言案28本（ops/記事別配置・文言案_一括実装用_2026-09-28.md）を共有→反映日起点でT+14/T+28計測（BigQuery n17系＋HubSpot）",
+   "dep": "9/28 PR #3021 に9013＋26記事（計27本）の候補を収録 https://github.com/remedy-tokyo/remedy-media/pull/3021 。自動配置＋origin版検査PASSのみ収録、148・567は現行本文が公開HTML不合格で未収録、凍結・実験対象10本は判定日まで対象外。CIのarchitecture未通過（証跡の台帳未登録・cta.patch末尾空白）は先方運用に委ねる。本番WP/CMS未変更。残: 依頼文送信（ops/連絡テキスト_PR反映依頼_2026-09-28.md）→先方反映→反映日起点でT+14/T+28計測（BigQuery n17系＋HubSpot）→148・567の手作業候補化→凍結解除後（10/14, 10/18, 10/19, 11/9）に残り10本",
    "pri": 1,
    "st": "wait",
    "start": "2026-09-21",
