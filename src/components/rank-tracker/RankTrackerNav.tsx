@@ -22,6 +22,8 @@ const TABS: { href: string; label: string; roles: string[]; requiresAnyDomain?: 
   { href: "/rank-tracker/seo/proposals", label: "AI提案", roles: ["admin"] },
   // WBS（大沢の全クライアント横断タスクボード）は管理者専用
   { href: "/rank-tracker/wbs", label: "WBS", roles: ["admin"] },
+  // AI社員ボード（案件ごとの AI社員への指示・返答・確認。BigQuery ai_staff）は管理者専用
+  { href: "/rank-tracker/ai-staff", label: "AI社員", roles: ["admin"] },
   { href: "/rank-tracker/members", label: "メンバー", roles: ["admin"] },
   { href: "/rank-tracker/settings", label: "サイト設定", roles: ["admin"] },
   { href: "/rank-tracker/seo/settings", label: "SEO設定", roles: ["admin"] },
