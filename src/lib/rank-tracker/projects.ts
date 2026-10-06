@@ -8,6 +8,9 @@ export type ProjectSite = {
   domain: string; // 閲覧権限の判定に使うターゲットドメイン（targetKey正規化済みの値）
   label: string; // 見出し表示名
   description: string; // 一覧での補足説明
+  // 一覧の領域（仕事の種類）の表示順。michi 側 scripts/wbs-client-publish.mjs の SITES[slug].areas と同じ並びにする。
+  // ここに無い領域がデータに現れた場合は、データに出てきた順で末尾に続ける（ClientWbsBoard）
+  areas: string[];
 };
 
 export const PROJECT_SITES: ProjectSite[] = [
@@ -16,12 +19,15 @@ export const PROJECT_SITES: ProjectSite[] = [
     domain: "rasik.style",
     label: "RASIK",
     description: "SEO施策の進捗・待ち・完了と効果（大沢が更新）",
+    // 5区分（2026-10-06）: 「何の項目で何を目的とした施策か」を一覧で読めるようにする
+    areas: ["SEO（順位・インデックス）", "アクセス解析・効果測定", "CVR・サイト改善", "レポート・定例", "記録・連絡・その他作業"],
   },
   {
     slug: "cincia",
     domain: "cin-cia.com",
     label: "Cin-Cia Nail Academy",
     description: "SEO・CV改善施策の進捗・待ち・完了と効果（大沢が更新）",
+    areas: ["CV改善（フォーム・導線）", "計測・データ", "コンテンツ（リライト・記事）", "過去記事整理", "テクニカル", "レポート・定例", "AI検索（AEO）"],
   },
 ];
 
