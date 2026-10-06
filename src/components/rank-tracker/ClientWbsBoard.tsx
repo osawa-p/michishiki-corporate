@@ -247,10 +247,13 @@ function ThemeHeading({ theme, goal, count }: { theme: string; goal: string; cou
   );
 }
 
-// 行が閉じているときの説明行: 施策の目的（goal）があればそれを、無ければ概要の「目的:」部分の先頭90字
+// 行が閉じているときの説明行: このタスクで何をするか（概要の「実施:」部分。無ければ「目的:」部分）の先頭90字。
+// 施策の目的（goal）は施策の小見出しに出すので、行では繰り返さない
 function ClosedRowNote({ t, className }: { t: ClientWbsTask; className: string }) {
-  if (t.goal) return <p className={className}>目的: {t.goal}</p>;
-  return <p className={className}>{t.summary.split("結果:")[0].replace(/^目的:\s*/, "").slice(0, 90)}…</p>;
+  const head = t.summary.split("結果:")[0];
+  const m = head.match(/実施:\s*([\s\S]*)$/);
+  const text = (m ? m[1] : head.replace(/^目的:\s*/, "")).trim();
+  return <p className={className}>{text.slice(0, 90)}{text.length > 90 ? "…" : ""}</p>;
 }
 
 // ---- 詳細サマリー（一覧の行を展開して表示） ----------------------------------------------
