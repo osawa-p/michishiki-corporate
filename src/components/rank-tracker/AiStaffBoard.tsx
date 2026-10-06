@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BoardData, RunRow, StaffRow, TaskRow } from "@/lib/rank-tracker/ai-staff";
+import { DERIVED_META, deriveTask as derive, type Derived } from "@/lib/rank-tracker/ai-staff-view";
+import AiStaffOffice from "./AiStaffOffice";
 
 // AI社員ボード（管理者専用・クライアント部品）。
 // 画面の状態は runs から決まる: 最新 run が queued/claimed/running なら「作業中」、done/failed なら「確認待ち」。
@@ -9,16 +11,9 @@ import type { BoardData, RunRow, StaffRow, TaskRow } from "@/lib/rank-tracker/ai
 // データの読み書きは /api/rank-tracker/ai-staff（管理者専用）。
 
 const API = "/api/rank-tracker/ai-staff";
-const POLL_MS = 60_000;
+// オフィスの動きが追えるよう15秒ごとに更新（タブが見えているときだけ）
+const POLL_MS = 15_000;
 
-type Derived = "review" | "working" | "open" | "waiting" | "done";
-const DERIVED_META: Record<Derived, { label: string; color: string; order: number }> = {
-  review: { label: "確認待ち", color: "#2a78d6", order: 0 },
-  working: { label: "作業中", color: "#fab219", order: 1 },
-  open: { label: "未指示", color: "#8b877c", order: 2 },
-  waiting: { label: "先方待ち", color: "#b07cc6", order: 3 },
-  done: { label: "完了", color: "#0ca30c", order: 4 },
-};
 const VERDICT_META: Record<string, { label: string; color: string }> = {
   done: { label: "完了", color: "#0ca30c" },
   check: { label: "要確認", color: "#b3352e" },
@@ -64,13 +59,6 @@ function fmtTs(iso: string | null | undefined): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
-function derive(task: TaskRow, latest: RunRow | undefined): Derived {
-  if (task.status === "done") return "done";
-  if (task.status === "waiting") return "waiting";
-  if (latest && (latest.status === "queued" || latest.status === "claimed" || latest.status === "running")) return "working";
-  if (latest && (latest.status === "done" || latest.status === "failed")) return "review";
-  return "open";
-}
 function todayIso(): string {
   const d = new Date();
   const p = (n: number) => String(n).padStart(2, "0");
@@ -110,7 +98,9 @@ export default function AiStaffBoard({ initial, loadError }: { initial: BoardDat
     }
   }, []);
 
-  // 1分ごとに自動更新（タブが見えているときだけ）
+  const [showOffice, setShowOffice] = useState(true);
+
+  // 定期的に自動更新（タブが見えているときだけ）
   useEffect(() => {
     const tick = () => {
       if (document.visibilityState === "visible") void refresh();
@@ -191,6 +181,21 @@ export default function AiStaffBoard({ initial, loadError }: { initial: BoardDat
         </p>
       )}
 
+      {/* オフィス（社員の状態をアニメーションで表示） */}
+      {data && showOffice && (
+        <AiStaffOffice
+          staff={data.staff}
+          tasks={data.tasks}
+          runs={data.runs}
+          pjLabel={pjLabel}
+          onSelect={(p, r) => {
+            setPj(p);
+            setRole(r);
+            setStateFilter("all");
+          }}
+        />
+      )}
+
       {/* 件数と絞り込み */}
       <div className="flex flex-wrap items-center gap-2">
         {(Object.keys(DERIVED_META) as Derived[]).map((k) => (
@@ -210,6 +215,9 @@ export default function AiStaffBoard({ initial, loadError }: { initial: BoardDat
         ))}
         <span className="ml-auto flex items-center gap-2 text-xs text-ink-faint">
           {data && <span>更新 {fmtTs(data.generatedAt)}</span>}
+          <button type="button" onClick={() => setShowOffice((v) => !v)} className="rounded border border-line px-3 py-1 hover:border-bronze" aria-pressed={showOffice}>
+            {showOffice ? "オフィスを隠す" : "オフィスを表示"}
+          </button>
           <button type="button" onClick={() => void refresh()} disabled={refreshing} className="rounded border border-line px-3 py-1 hover:border-bronze disabled:opacity-50">
             {refreshing ? "更新中…" : "更新"}
           </button>
