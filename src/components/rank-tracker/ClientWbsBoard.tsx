@@ -1,13 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { projectSiteBySlug } from "@/lib/rank-tracker/projects";
 
 // クライアント向け「施策WBS」。データは src/data/wbs-client/<slug>.json
 // （michi 側 wbs-client-publish.mjs が tasks.js＋公開文面から生成。内部メモ・工数は含まない）。
 // 認証済み server component（projects/[site]/page.tsx）から props で受け取る。
 // 画面構成（GPT-6 Astra 設計・実装監修 2026-09-10 ＋ 2026-09-10 ユーザー指示: 工数は出さない・各施策の詳細サマリーを一覧で展開）:
 // 売上・変化・成果／次の節目 → ご判断・ご確認（判断依頼＋待ち＋期限超過）→ 一覧（領域別・行を展開して詳細サマリー）／工程表。
+// 一覧の階層（2026-10-06 大沢指摘「何の項目で何を目的とした施策かわからない」への対応）:
+//   領域 area（仕事の種類。表示順はサイト設定 projects.ts の areas）> 施策 theme（小見出し＋「目的: goal」）> 個別の対応（行）。
+//   theme/goal の無いデータ（Cin-Cia 等）は従来どおり領域の直下に行を並べる。
 // 絞り込み状態はURL（?m=&st=&area=&v=&q=）を正とし、共有したURLで同じ表示になる。日付判定は日本時間（JST）。
 
 export type ClientWbsStatus = "todo" | "doing" | "wait" | "done" | "skipped" | "paused";
@@ -22,7 +26,9 @@ export type ClientWbsTask = {
   id: string;
   title: string;
   summary: string;
-  area: string;
+  area: string; // 仕事の種類（サイト別5〜7区分）
+  theme: string; // 施策名（同じ theme の行を領域内でまとめる。無ければ ""）
+  goal: string; // 施策の目的（1文。無ければ ""）
   owner: string;
   waitFor: string;
   status: ClientWbsStatus;
@@ -80,7 +86,6 @@ const STATUS_COLOR: Record<ClientWbsStatus, string> = {
   paused: "#b3b0a6",
 };
 const STATUS_ORDER: ClientWbsStatus[] = ["wait", "doing", "todo", "done", "paused", "skipped"];
-const AREA_ORDER = ["カテゴリ上位表示", "テクニカル", "計測・データ", "サイト改善", "コンテンツ（LIFE）", "AI検索（AEO）", "レポート"];
 const DAY = 86400000;
 const JST = 9 * 3600000;
 const ALL = "all";
@@ -107,6 +112,30 @@ function monthRange(from: string, to: string): string[] {
   while (cur <= to && out.length < 120) {
     out.push(cur);
     cur = nextMonth(cur);
+  }
+  return out;
+}
+
+// 領域（仕事の種類）の表示順: サイト設定（projects.ts の areas）を先頭に、設定に無い領域はデータに出てきた順で続ける。
+// 固定配列にしないのは、サイトごとに区分が違う（RASIK 5区分／Cin-Cia 7区分）ため
+function areaOrderFor(slug: string, tasks: ClientWbsTask[]): string[] {
+  const order = [...(projectSiteBySlug(slug)?.areas ?? [])];
+  for (const t of tasks) if (t.area && !order.includes(t.area)) order.push(t.area);
+  return order;
+}
+
+// 領域内を施策（theme）ごとにまとめる。theme の無い行は "" にまとめ、小見出しは出さない。
+// 施策の並びは「最初に出てくる行」の順（行は状態→優先度で並んでいるので、動いている施策が先に来る）
+function groupByTheme(ts: ClientWbsTask[]): { theme: string; goal: string; tasks: ClientWbsTask[] }[] {
+  const out: { theme: string; goal: string; tasks: ClientWbsTask[] }[] = [];
+  for (const t of ts) {
+    const key = t.theme ?? "";
+    let g = out.find((x) => x.theme === key);
+    if (!g) {
+      g = { theme: key, goal: t.goal ?? "", tasks: [] };
+      out.push(g);
+    }
+    g.tasks.push(t);
   }
   return out;
 }
@@ -203,6 +232,25 @@ function EffectText({ t }: { t: ClientWbsTask }) {
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return <h4 className="text-xs font-semibold tracking-wide text-bronze-deep">{children}</h4>;
+}
+
+// 施策（theme）の小見出し: 施策名＋件数、その下に「目的: goal」を1行
+function ThemeHeading({ theme, goal, count }: { theme: string; goal: string; count: number }) {
+  return (
+    <div>
+      <div className="flex flex-wrap items-baseline gap-x-2">
+        <h3 className="text-base font-semibold leading-snug text-ink sm:text-sm">{theme}</h3>
+        <span className={META}>{count}件</span>
+      </div>
+      {goal && <p className="mt-0.5 text-sm leading-relaxed text-ink-soft md:text-xs">目的: {goal}</p>}
+    </div>
+  );
+}
+
+// 行が閉じているときの説明行: 施策の目的（goal）があればそれを、無ければ概要の「目的:」部分の先頭90字
+function ClosedRowNote({ t, className }: { t: ClientWbsTask; className: string }) {
+  if (t.goal) return <p className={className}>目的: {t.goal}</p>;
+  return <p className={className}>{t.summary.split("結果:")[0].replace(/^目的:\s*/, "").slice(0, 90)}…</p>;
 }
 
 // ---- 詳細サマリー（一覧の行を展開して表示） ----------------------------------------------
@@ -417,7 +465,6 @@ function Timeline({ tasks, months, todayIso, onOpen }: { tasks: ClientWbsTask[];
 const subscribeNoop = () => () => {};
 const todayIsoClient = () => isoJst(Date.now()); // 日単位（JST）の文字列＝同一日内で安定
 const todayIsoServer = () => null;
-const AREA_SET = new Set(AREA_ORDER);
 
 export default function ClientWbsBoard({ data }: { data: ClientWbsData }) {
   // 「今日」はサーバー描画では未確定（null）にし、クライアントでJSTの日付を確定する（SSR不一致の回避）
@@ -426,6 +473,9 @@ export default function ClientWbsBoard({ data }: { data: ClientWbsData }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
+  // 領域の表示順（サイト設定＋データに現れた順）。絞り込みチップの候補にも使う
+  const areaOrder = useMemo(() => areaOrderFor(data.site.slug, data.tasks), [data.site.slug, data.tasks]);
+  const areaSet = useMemo(() => new Set(areaOrder), [areaOrder]);
 
   const months = useMemo(() => {
     const yms = data.tasks
@@ -442,7 +492,7 @@ export default function ClientWbsBoard({ data }: { data: ClientWbsData }) {
     () => new Set((params.get("st") ?? "").split(",").filter((s): s is ClientWbsStatus => s in STATUS_LABEL)),
     [params],
   );
-  const areas = useMemo(() => new Set((params.get("area") ?? "").split(",").filter((a) => AREA_SET.has(a))), [params]);
+  const areas = useMemo(() => new Set((params.get("area") ?? "").split(",").filter((a) => areaSet.has(a))), [params, areaSet]);
   // 既定表示は工程表（2026-09-15 ユーザー指示）。一覧は v=list で明示
   const view: "list" | "timeline" = params.get("v") === "list" ? "list" : "timeline";
   const urlQ = params.get("q") ?? "";
@@ -490,7 +540,7 @@ export default function ClientWbsBoard({ data }: { data: ClientWbsData }) {
         inMonth(t, effectiveMonth, todayYm) &&
         (!statuses.size || statuses.has(t.status)) &&
         (!areas.size || areas.has(t.area)) &&
-        (!needle || [t.title, t.summary, t.now, t.reason, t.next, t.outcome, t.owner, t.waitFor, t.impact, t.decision?.ask ?? ""].join(" ").toLowerCase().includes(needle)),
+        (!needle || [t.title, t.theme, t.goal, t.summary, t.now, t.reason, t.next, t.outcome, t.owner, t.waitFor, t.impact, t.decision?.ask ?? ""].join(" ").toLowerCase().includes(needle)),
     );
   }, [data.tasks, effectiveMonth, todayYm, statuses, areas, urlQ]);
 
@@ -511,14 +561,22 @@ export default function ClientWbsBoard({ data }: { data: ClientWbsData }) {
   }, [data.tasks, todayIso]);
   const asksShown = showAllAsks ? asks : asks.slice(0, 3);
 
+  // 一覧のグループ: 領域（サイト設定の順）> 施策 theme（目的つき小見出し）> 行（状態→優先度）
   const groups = useMemo(() => {
     const byArea = new Map<string, ClientWbsTask[]>();
     for (const t of filtered) byArea.set(t.area, [...(byArea.get(t.area) ?? []), t]);
     const order = (t: ClientWbsTask) => STATUS_ORDER.indexOf(t.status) * 10 + t.pri;
+    const rank = (a: string) => {
+      const i = areaOrder.indexOf(a);
+      return i < 0 ? areaOrder.length : i;
+    };
     return [...byArea.entries()]
-      .sort((a, b) => AREA_ORDER.indexOf(a[0]) - AREA_ORDER.indexOf(b[0]))
-      .map(([area, ts]) => [area, ts.sort((a, b) => order(a) - order(b))] as const);
-  }, [filtered]);
+      .sort((a, b) => rank(a[0]) - rank(b[0]))
+      .map(([area, ts]) => {
+        const sorted = ts.sort((a, b) => order(a) - order(b));
+        return { area, count: sorted.length, themes: groupByTheme(sorted) };
+      });
+  }, [filtered, areaOrder]);
 
   const toggleExpand = useCallback((id: string) => {
     setExpanded((prev) => {
@@ -758,7 +816,7 @@ export default function ClientWbsBoard({ data }: { data: ClientWbsData }) {
                 </Chip>
               ))}
               <span aria-hidden className="mx-1 hidden h-4 w-px bg-line sm:inline-block" />
-              {AREA_ORDER.filter((a) => data.tasks.some((t) => t.area === a)).map((a) => (
+              {areaOrder.filter((a) => data.tasks.some((t) => t.area === a)).map((a) => (
                 <Chip key={a} on={areas.has(a)} onClick={() => toggleIn("area", areas, a)}>{a}</Chip>
               ))}
               <input
@@ -784,13 +842,13 @@ export default function ClientWbsBoard({ data }: { data: ClientWbsData }) {
               条件に合う施策がありません。対象月を「全期間」にするか、絞り込みを解除してください。
             </p>
           ) : (
-            groups.map(([area, ts]) => (
+            groups.map(({ area, count, themes }) => (
               <div key={area}>
                 <div className="flex items-baseline gap-3">
                   <h2 className="font-serif text-xl font-semibold">{area}</h2>
-                  <span className={META}>{ts.length}件</span>
+                  <span className={META}>{count}件</span>
                 </div>
-                {/* PC: 表（行を展開して詳細サマリー） */}
+                {/* PC: 表（施策ごとの小見出し行＋行を展開して詳細サマリー） */}
                 <div className="mt-3 hidden overflow-x-auto rounded-xl border border-line bg-white md:block">
                   <table className="w-full text-sm">
                     <thead>
@@ -802,86 +860,108 @@ export default function ClientWbsBoard({ data }: { data: ClientWbsData }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {ts.map((t) => {
-                        const isOpen = expanded.has(t.id);
-                        return (
-                          <>
-                            <tr key={t.id} id={`task-${t.id}`} className="scroll-mt-28 border-t border-line align-top hover:bg-paper/60">
-                              <td className="px-3 py-2.5">
-                                <button
-                                  type="button"
-                                  onClick={() => toggleExpand(t.id)}
-                                  aria-expanded={isOpen}
-                                  aria-controls={`detail-${t.id}`}
-                                  className="flex items-start gap-2 text-left font-medium leading-snug text-ink hover:text-bronze-deep focus-visible:outline-2 focus-visible:outline-bronze-deep"
-                                >
-                                  <span aria-hidden className="mt-0.5 w-3 shrink-0 text-ink-soft">{isOpen ? "▾" : "▸"}</span>
-                                  <span>{t.title}</span>
-                                </button>
-                                {!isOpen && <p className="mt-1 pl-5 text-xs leading-relaxed text-ink-soft">{t.summary.split("結果:")[0].replace(/^目的:\s*/, "").slice(0, 90)}…</p>}
-                                {t.decision && <div className="mt-1 pl-5 text-xs leading-relaxed text-bronze-deep">ご判断のお願い: {t.decision.ask}（{t.decision.who}・{fmtDate(t.decision.by)}まで）</div>}
-                                {(t.status === "skipped" || t.status === "paused") && t.reason && !isOpen && (
-                                  <div className="mt-1 pl-5 text-xs leading-relaxed text-ink-soft">
-                                    {t.status === "skipped" ? "見送りの理由" : "中断の理由"}: {t.reason}
-                                    {t.next && <span className="block">再開条件: {t.next}</span>}
-                                  </div>
-                                )}
+                      {themes.map((g) => (
+                        <Fragment key={g.theme || "_"}>
+                          {g.theme && (
+                            <tr className="border-t border-line bg-paper/60">
+                              <td colSpan={4} className="px-3 pb-2 pt-3">
+                                <ThemeHeading theme={g.theme} goal={g.goal} count={g.tasks.length} />
                               </td>
-                              <td className="px-3 py-2.5">
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <StatusPill st={t.status} small />
-                                  {isOverdue(t, todayIso) && <OverdueBadge />}
-                                </div>
-                              </td>
-                              <td className="max-w-[26rem] px-3 py-2.5 text-xs leading-relaxed"><NextText t={t} /></td>
-                              <td className="px-3 py-2.5 text-xs text-ink-soft"><Period t={t} /></td>
                             </tr>
-                            {isOpen && (
-                              <tr key={`${t.id}-detail`} id={`detail-${t.id}`} className="border-t border-line/60 bg-white">
-                                <td colSpan={4} className="px-5 py-4">
-                                  <DetailBlock t={t} todayIso={todayIso} />
-                                </td>
-                              </tr>
-                            )}
-                          </>
-                        );
-                      })}
+                          )}
+                          {g.tasks.map((t) => {
+                            const isOpen = expanded.has(t.id);
+                            return (
+                              <Fragment key={t.id}>
+                                <tr id={`task-${t.id}`} className="scroll-mt-28 border-t border-line align-top hover:bg-paper/60">
+                                  <td className="px-3 py-2.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleExpand(t.id)}
+                                      aria-expanded={isOpen}
+                                      aria-controls={`detail-${t.id}`}
+                                      className="flex items-start gap-2 text-left font-medium leading-snug text-ink hover:text-bronze-deep focus-visible:outline-2 focus-visible:outline-bronze-deep"
+                                    >
+                                      <span aria-hidden className="mt-0.5 w-3 shrink-0 text-ink-soft">{isOpen ? "▾" : "▸"}</span>
+                                      <span>{t.title}</span>
+                                    </button>
+                                    {!isOpen && <ClosedRowNote t={t} className="mt-1 pl-5 text-xs leading-relaxed text-ink-soft" />}
+                                    {t.decision && <div className="mt-1 pl-5 text-xs leading-relaxed text-bronze-deep">ご判断のお願い: {t.decision.ask}（{t.decision.who}・{fmtDate(t.decision.by)}まで）</div>}
+                                    {(t.status === "skipped" || t.status === "paused") && t.reason && !isOpen && (
+                                      <div className="mt-1 pl-5 text-xs leading-relaxed text-ink-soft">
+                                        {t.status === "skipped" ? "見送りの理由" : "中断の理由"}: {t.reason}
+                                        {t.next && <span className="block">再開条件: {t.next}</span>}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2.5">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      <StatusPill st={t.status} small />
+                                      {isOverdue(t, todayIso) && <OverdueBadge />}
+                                    </div>
+                                  </td>
+                                  <td className="max-w-[26rem] px-3 py-2.5 text-xs leading-relaxed"><NextText t={t} /></td>
+                                  <td className="px-3 py-2.5 text-xs text-ink-soft"><Period t={t} /></td>
+                                </tr>
+                                {isOpen && (
+                                  <tr id={`detail-${t.id}`} className="border-t border-line/60 bg-white">
+                                    <td colSpan={4} className="px-5 py-4">
+                                      <DetailBlock t={t} todayIso={todayIso} />
+                                    </td>
+                                  </tr>
+                                )}
+                              </Fragment>
+                            );
+                          })}
+                        </Fragment>
+                      ))}
                     </tbody>
                   </table>
                 </div>
-                {/* スマホ: カード（押すと詳細を展開） */}
-                <ul className="mt-3 space-y-2 md:hidden">
-                  {ts.map((t) => {
-                    const isOpen = expanded.has(t.id);
-                    return (
-                      <li key={t.id} id={`task-m-${t.id}`} className="scroll-mt-28 rounded-xl border border-line bg-white">
-                        <button
-                          type="button"
-                          onClick={() => toggleExpand(t.id)}
-                          aria-expanded={isOpen}
-                          className="w-full px-4 py-3 text-left focus-visible:outline-2 focus-visible:outline-bronze-deep"
-                        >
-                          <div className="flex flex-wrap items-center gap-2">
-                            <StatusPill st={t.status} small />
-                            {isOverdue(t, todayIso) && <OverdueBadge />}
-                            <span className={`ml-auto ${META}`}>期限 <Period t={t} /></span>
-                          </div>
-                          <div className="mt-1.5 flex items-start gap-2 text-base font-medium leading-snug text-ink">
-                            <span aria-hidden className="mt-0.5 w-3 shrink-0 text-ink-soft">{isOpen ? "▾" : "▸"}</span>
-                            <span>{t.title}</span>
-                          </div>
-                          {t.decision && <div className="mt-1 pl-5 text-sm leading-relaxed text-bronze-deep">ご判断のお願い: {t.decision.ask}（{t.decision.who}・{fmtDate(t.decision.by)}まで）</div>}
-                          {!isOpen && <div className="mt-1 pl-5 text-sm leading-relaxed"><NextText t={t} /></div>}
-                        </button>
-                        {isOpen && (
-                          <div className="border-t border-line/60 px-4 py-4">
-                            <DetailBlock t={t} todayIso={todayIso} />
-                          </div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
+                {/* スマホ: 施策ごとの小見出し＋カード（押すと詳細を展開） */}
+                <div className="mt-3 space-y-4 md:hidden">
+                  {themes.map((g) => (
+                    <div key={g.theme || "_"}>
+                      {g.theme && (
+                        <div className="mb-2">
+                          <ThemeHeading theme={g.theme} goal={g.goal} count={g.tasks.length} />
+                        </div>
+                      )}
+                      <ul className="space-y-2">
+                        {g.tasks.map((t) => {
+                          const isOpen = expanded.has(t.id);
+                          return (
+                            <li key={t.id} id={`task-m-${t.id}`} className="scroll-mt-28 rounded-xl border border-line bg-white">
+                              <button
+                                type="button"
+                                onClick={() => toggleExpand(t.id)}
+                                aria-expanded={isOpen}
+                                className="w-full px-4 py-3 text-left focus-visible:outline-2 focus-visible:outline-bronze-deep"
+                              >
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <StatusPill st={t.status} small />
+                                  {isOverdue(t, todayIso) && <OverdueBadge />}
+                                  <span className={`ml-auto ${META}`}>期限 <Period t={t} /></span>
+                                </div>
+                                <div className="mt-1.5 flex items-start gap-2 text-base font-medium leading-snug text-ink">
+                                  <span aria-hidden className="mt-0.5 w-3 shrink-0 text-ink-soft">{isOpen ? "▾" : "▸"}</span>
+                                  <span>{t.title}</span>
+                                </div>
+                                {t.decision && <div className="mt-1 pl-5 text-sm leading-relaxed text-bronze-deep">ご判断のお願い: {t.decision.ask}（{t.decision.who}・{fmtDate(t.decision.by)}まで）</div>}
+                                {!isOpen && <div className="mt-1 pl-5 text-sm leading-relaxed"><NextText t={t} /></div>}
+                              </button>
+                              {isOpen && (
+                                <div className="border-t border-line/60 px-4 py-4">
+                                  <DetailBlock t={t} todayIso={todayIso} />
+                                </div>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))
           )}
