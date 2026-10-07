@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { RunRow, StaffRow, TaskRow } from "@/lib/rank-tracker/ai-staff";
 import { buildSeats, countTasks, latestRuns, type Counts, type SeatState } from "@/lib/rank-tracker/ai-staff-view";
+import { AVATAR_CSS, RoleBust, StaffAvatar } from "./AiStaffAvatar";
 
 // 「オフィス」パネル（2026-10-07 に GPT-6 Astra の監修で再設計）。
 // - 件数はタスク単位で統一（確認待ち／作業中／受付・準備／先方待ち。失敗は確認待ちの内数）
@@ -16,19 +17,10 @@ const STATE_META: Record<SeatState, { label: string }> = {
   review: { label: "確認待ちあり" },
   idle: { label: "待機中" },
 };
-// 役割ごとの見た目（体の色・髪の色）。名前は staff.name（案件名／役割名）から取る
-const ROLE_LOOK: Record<string, { body: string; hair: string }> = {
-  leader: { body: "#c9a66b", hair: "#3b3a36" },
-  seo: { body: "#7fa37f", hair: "#6b4f2a" },
-  analytics: { body: "#7faee0", hair: "#2f4a6b" },
-  critic: { body: "#d88a84", hair: "#5a2d2d" },
-};
-const FALLBACK_LOOK = { body: "#c9c5ba", hair: "#3b3a36" };
 const ROLE_ORDER: Record<string, number> = { leader: 0, seo: 1, analytics: 2, critic: 3 };
 
 const CSS = `
-@keyframes aio-type { from { transform: translateY(0) } to { transform: translateY(-2px) } }
-.aio-office .aio-type { animation: aio-type .4s ease-in-out infinite alternate; transform-box: fill-box; }
+${AVATAR_CSS}
 .aio-office :is(button, summary):focus-visible { outline: 3px solid #86672f; outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) {
   .aio-office, .aio-office *, .aio-office *::before, .aio-office *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
@@ -75,73 +67,6 @@ function CountsView({ c, compact = false }: { c: Counts; compact?: boolean }) {
         </span>
       )}
     </span>
-  );
-}
-
-function Avatar({ role, state, reviewCount }: { role: string; state: SeatState; reviewCount: number }) {
-  const look = ROLE_LOOK[role] ?? FALLBACK_LOOK;
-  const working = state === "working";
-  const papers = Math.min(reviewCount, 5);
-  return (
-    <svg viewBox="0 0 120 100" className="h-auto w-full" aria-hidden="true" focusable="false">
-      <rect x="8" y="72" width="104" height="6" rx="2" fill="#e2ded2" />
-      <rect x="14" y="78" width="4" height="14" fill="#d6d1c3" />
-      <rect x="102" y="78" width="4" height="14" fill="#d6d1c3" />
-      <rect x="20" y="48" width="32" height="26" rx="7" fill="#d6d1c3" />
-      <rect x="66" y="42" width="40" height="27" rx="3" fill="#2b2a26" />
-      <rect x="69" y="45" width="34" height="21" rx="2" fill={working ? "#dfe9f7" : "#c9c5ba"} />
-      {role === "analytics" ? (
-        <g fill={working ? "#2a78d6" : "#8b877c"}>
-          <rect x="73" y="58" width="4" height="6" />
-          <rect x="79" y="53" width="4" height="11" />
-          <rect x="85" y="56" width="4" height="8" />
-          <rect x="91" y="49" width="4" height="15" />
-          <rect x="97" y="52" width="4" height="12" />
-        </g>
-      ) : (
-        <g stroke={working ? "#56534a" : "#8b877c"} strokeWidth="1.6" strokeLinecap="round">
-          <line x1="73" y1="50" x2="97" y2="50" />
-          <line x1="73" y1="55" x2="91" y2="55" />
-          <line x1="73" y1="60" x2="95" y2="60" />
-        </g>
-      )}
-      <rect x="83" y="69" width="6" height="3" fill="#2b2a26" />
-      <rect x="50" y="66" width="24" height="4" rx="1" fill="#8b877c" />
-      <rect x="24" y="50" width="26" height="24" rx="9" fill={look.body} />
-      <circle cx="37" cy="37" r="12" fill="#efdcc3" />
-      <path d="M25 35 q12 -15 24 0 v-3 q-12 -10 -24 0 z" fill={look.hair} />
-      <rect x="32" y="36" width="2.4" height="3.2" rx="1" fill="#2b2a26" />
-      <rect x="40" y="36" width="2.4" height="3.2" rx="1" fill="#2b2a26" />
-      <path d={role === "critic" ? "M33 43 q4 -2 8 0" : "M33 43 q4 2 8 0"} stroke="#5a2d2d" strokeWidth="1.2" fill="none" />
-      <g className={working ? "aio-type" : ""}>
-        <rect x="46" y="61" width="10" height="4.5" rx="2.2" fill="#efdcc3" />
-        <rect x="56" y="63" width="9" height="4.5" rx="2.2" fill="#efdcc3" />
-      </g>
-      {role === "leader" && (
-        <g>
-          <rect x="10" y="55" width="11" height="15" rx="1" fill="#fff" stroke="#8b877c" strokeWidth="1" />
-          <line x1="12.5" y1="60" x2="18.5" y2="60" stroke="#8b877c" strokeWidth="1" />
-          <line x1="12.5" y1="63" x2="18.5" y2="63" stroke="#8b877c" strokeWidth="1" />
-          <line x1="12.5" y1="66" x2="16.5" y2="66" stroke="#8b877c" strokeWidth="1" />
-        </g>
-      )}
-      {role === "seo" && (
-        <g>
-          <circle cx="16" cy="57" r="5" fill="none" stroke="#56534a" strokeWidth="2" />
-          <line x1="19.5" y1="60.5" x2="24" y2="66" stroke="#56534a" strokeWidth="2.4" strokeLinecap="round" />
-        </g>
-      )}
-      {role === "critic" && <line x1="10" y1="68" x2="22" y2="58" stroke="#b3352e" strokeWidth="3" strokeLinecap="round" />}
-      {Array.from({ length: papers }).map((_, i) => (
-        <rect key={i} x={88 - i * 1.2} y={70 - i * 1.6} width="14" height="3" rx="0.6" fill="#fff" stroke="#8b877c" strokeWidth="0.8" />
-      ))}
-      {state === "queued" && (
-        <g>
-          <path d="M100 22 h10 l-5 6 z" fill="#8b877c" />
-          <path d="M100 34 h10 l-5 -6 z" fill="#c9c5ba" />
-        </g>
-      )}
-    </svg>
   );
 }
 
@@ -281,7 +206,10 @@ export default function AiStaffOffice({
                 const since = current?.startedAt ? `作業開始から ${elapsedLabel(current.startedAt, now) || "1分未満"}` : current?.createdAt ? `依頼から ${elapsedLabel(current.createdAt, now) || "1分未満"}` : "";
                 return (
                   <article key={seat.staff.id} className="min-w-0 rounded-md border border-line bg-white p-3">
-                    <h3 className="mb-2 text-sm font-semibold">{roleName}</h3>
+                    <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
+                      <RoleBust role={seat.staff.role} size={24} />
+                      {roleName}
+                    </h3>
                     <CountsView c={seat.counts} compact />
                     {seat.reviewTitle && (
                       <p className="mt-3 break-words text-sm leading-relaxed">
@@ -290,13 +218,8 @@ export default function AiStaffOffice({
                       </p>
                     )}
                     <div className="mt-3 flex items-start gap-2">
-                      <div className="relative w-24 shrink-0">
-                        <Avatar role={seat.staff.role} state={seat.state} reviewCount={seat.reviewCount} />
-                        {seat.counts.failed > 0 && (
-                          <span className="absolute right-0 top-0 text-[#b3352e]" title="実行失敗あり">
-                            <Mark kind="failed" />
-                          </span>
-                        )}
+                      <div className="w-28 shrink-0" title={seat.counts.failed > 0 ? "実行失敗あり" : undefined}>
+                        <StaffAvatar role={seat.staff.role} state={seat.state} reviewCount={seat.reviewCount} failed={seat.counts.failed > 0} />
                       </div>
                       <div className="min-w-0 flex-1 text-sm leading-relaxed">
                         <p className="flex items-center gap-1 font-medium">

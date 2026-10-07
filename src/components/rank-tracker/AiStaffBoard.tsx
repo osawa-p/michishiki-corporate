@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import type { BoardData, RunRow, StaffRow, TaskRow } from "@/lib/rank-tracker/ai-staff";
 import { DERIVED_META, deriveTask as derive, type Derived } from "@/lib/rank-tracker/ai-staff-view";
 import AiStaffOffice from "./AiStaffOffice";
+import { RoleBust } from "./AiStaffAvatar";
 
 // AI社員ボード（管理者専用・クライアント部品）。2026-10-07 に GPT-6 Astra の監修で再設計。
 // - 既定は「全案件 × 確認待ち」の受信箱。未指示などは状態の切替で見る
@@ -607,8 +608,10 @@ function TaskRowView({
           <h3 id={`${rowId}-title`} className="mt-1 text-base font-semibold leading-snug">
             {task.title}
           </h3>
-          <p className="mt-1 text-sm text-ink-soft">
-            担当：{roleLabel(task.owner_staff)}
+          <p className="mt-1 flex flex-wrap items-center gap-1 text-sm text-ink-soft">
+            担当：
+            {task.owner_staff && <RoleBust role={task.owner_staff.split("-").pop() ?? ""} size={22} />}
+            {roleLabel(task.owner_staff)}
             {task.due && (
               <span className={overdue ? "ml-3 font-semibold text-[#b3352e]" : "ml-3"}>
                 {overdue ? "期限超過：" : `${task.due_label || "期限"}：`}
