@@ -523,6 +523,11 @@ function TaskRowView({
               {latest.executed_by && <span className="text-[10px] text-ink-faint">{latest.executed_by}</span>}
             </div>
             {latest.status === "failed" && <p className="text-[#b3352e]">失敗: {latest.error ?? "理由不明"}</p>}
+            {(latest.status === "running" || latest.status === "claimed") && latest.progress && (
+              <p className="text-ink-soft">
+                いま: {latest.progress} <span className="text-ink-faint">{fmtTs(latest.progress_at)}</span>
+              </p>
+            )}
             {latest.summary && <p className="leading-relaxed">{latest.summary}</p>}
             {metric && <MetricPill metric={metric} />}
             {latest.asks && latest.asks.length > 0 && (

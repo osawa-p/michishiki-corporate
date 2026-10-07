@@ -24,7 +24,7 @@ export type SeatState = "working" | "queued" | "review" | "idle";
 export type Seat = {
   staff: StaffRow;
   state: SeatState;
-  current: { taskId: string; title: string; startedAt: string | null; runStatus: string } | null;
+  current: { taskId: string; title: string; startedAt: string | null; runStatus: string; progress: string | null; progressAt: string | null } | null;
   queuedCount: number;
   reviewCount: number;
   openCount: number;
@@ -45,7 +45,7 @@ export function buildSeats(staff: StaffRow[], tasks: TaskRow[], runs: RunRow[]):
       const d = deriveTask(t, latest);
       if (d === "working" && latest) {
         if (latest.status === "queued") queuedCount++;
-        else if (!current) current = { taskId: t.id, title: t.title, startedAt: latest.started_at, runStatus: latest.status };
+        else if (!current) current = { taskId: t.id, title: t.title, startedAt: latest.started_at, runStatus: latest.status, progress: latest.progress ?? null, progressAt: latest.progress_at ?? null };
       } else if (d === "review") reviewCount++;
       else if (d === "open") openCount++;
       else if (d === "done") doneCount++;
