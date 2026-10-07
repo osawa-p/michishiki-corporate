@@ -47,6 +47,20 @@ export type WbsData = {
   pjMeta: Record<string, { label: string; note: string; stale: boolean }>;
   tasks: WbsTask[];
 };
+// AI社員ボード（BigQuery ai_staff）の最新返答。WBS ID で結ぶ。page.tsx が認証後に取得して props で渡す
+export type WbsAiLatest = Record<string, { taskId: string; taskStatus: string; summary: string | null; verdict: string | null; runStatus: string; finishedAt: string | null }>;
+const AI_VERDICT: Record<string, { label: string; color: string }> = {
+  done: { label: "完了", color: "#0ca30c" },
+  check: { label: "要確認", color: "#b3352e" },
+  hold: { label: "観測中", color: "#fab219" },
+  blocked: { label: "先方待ち", color: "#b07cc6" },
+};
+function aiLabel(ai: WbsAiLatest[string]): string {
+  if (ai.verdict && AI_VERDICT[ai.verdict]) return AI_VERDICT[ai.verdict].label;
+  if (ai.runStatus === "failed") return "失敗";
+  if (ai.runStatus === "done") return "返答あり";
+  return "作業中";
+}
 
 // ステータス配色（検証済みステータスパレット。マーカー・バーのみに使い、テキストはinkを保つ）
 const ST_COLOR: Record<WbsTask["st"], string> = {
@@ -330,11 +344,12 @@ function Gantt({
 
 // 詳細パネル（PC=右ドロワー / スマホ=ボトムシート）
 function DetailPanel({
-  task, data, kpiAuto, today, backId, onOpen, onBack, onClose, onFilter,
+  task, data, kpiAuto, ai, today, backId, onOpen, onBack, onClose, onFilter,
 }: {
   task: WbsTask;
   data: WbsData;
   kpiAuto?: WbsKpiResults;
+  ai?: WbsAiLatest[string];
   today: number;
   backId: string | null;
   onOpen: (id: string) => void;
@@ -459,6 +474,26 @@ function DetailPanel({
           {row("開始", isIso(task.start)
             ? <span className="tabular-nums">{task.start}</span>
             : <span className="text-ink-faint">未設定（ガントでは今日〜期限の破線で表示）</span>)}
+          {ai && (
+            <div className="my-4 rounded-lg border border-line bg-white/60 p-4">
+              <p className="text-xs font-semibold tracking-[0.15em] uppercase text-bronze">AI社員の最新返答</p>
+              <p className="mt-2 text-sm leading-6 text-ink">
+                {ai.verdict && AI_VERDICT[ai.verdict] && (
+                  <span className="mr-2 inline-flex items-center gap-1 rounded-full border border-line px-2 py-px align-[1px] text-[11px] text-ink-soft">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: AI_VERDICT[ai.verdict].color }} aria-hidden />
+                    {AI_VERDICT[ai.verdict].label}
+                  </span>
+                )}
+                {ai.runStatus === "failed" ? "失敗（ボードで理由を確認）" : (ai.summary ?? (ai.runStatus === "done" ? "（要約なし）" : "作業中"))}
+              </p>
+              <p className="mt-1 text-xs text-ink-soft">
+                {ai.finishedAt ? ai.finishedAt.slice(0, 10) : ""}
+                <a href={`/rank-tracker/ai-staff?q=${encodeURIComponent(task.id)}`} className="ml-2 text-bronze-deep underline decoration-dotted underline-offset-2">
+                  AI社員ボードで開く
+                </a>
+              </p>
+            </div>
+          )}
           {task.kpi && (
             <div className="my-4 rounded-lg border border-line bg-white/60 p-4">
               <p className="text-xs font-semibold tracking-[0.15em] uppercase text-bronze">効果計測（KPI）</p>
@@ -545,7 +580,7 @@ function DetailPanel({
   );
 }
 
-export default function WbsBoard({ data, kpiAuto }: { data: WbsData; kpiAuto?: WbsKpiResults }) {
+export default function WbsBoard({ data, kpiAuto, aiLatest }: { data: WbsData; kpiAuto?: WbsKpiResults; aiLatest?: WbsAiLatest }) {
   const [pj, setPj] = useState<string>("all");
   const [st, setSt] = useState<string>("all");
   const [q, setQ] = useState("");
@@ -577,6 +612,20 @@ export default function WbsBoard({ data, kpiAuto }: { data: WbsData; kpiAuto?: W
     setPanel((p) => (p?.back ? { id: p.back, back: null } : p));
   }, []);
   const filterToId = useCallback((id: string) => { setPj("all"); setSt("all"); setQ(id); }, []);
+
+  // URL の #ID で詳細を開く（AI社員ボードからのリンク用）。初期表示は次のティックで、以後は hashchange で開く
+  useEffect(() => {
+    const openFromHash = () => {
+      const id = decodeURIComponent(window.location.hash.slice(1));
+      if (id && all.some((t) => t.id === id)) openTask(id);
+    };
+    const timer = window.setTimeout(openFromHash, 0);
+    window.addEventListener("hashchange", openFromHash);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("hashchange", openFromHash);
+    };
+  }, [all, openTask]);
 
   const selected = panel ? all.find((t) => t.id === panel.id) ?? null : null;
 
@@ -756,6 +805,14 @@ export default function WbsBoard({ data, kpiAuto }: { data: WbsData; kpiAuto?: W
                                     KPI
                                   </span>
                                 )}
+                                {aiLatest?.[t.id] && (
+                                  <span
+                                    className="ml-1.5 inline-block rounded border border-line bg-white/70 px-1.5 py-px align-[2px] text-[11px] font-medium leading-4 text-ink-soft"
+                                    title={aiLatest[t.id].summary ?? ""}
+                                  >
+                                    AI {aiLabel(aiLatest[t.id])}
+                                  </span>
+                                )}
                                 {t.dep && (
                                   <span className="mt-0.5 block truncate text-xs leading-5 text-ink-faint" title={t.dep}>
                                     └ <DepText text={t.dep} onOpen={openTask} />
@@ -790,6 +847,7 @@ export default function WbsBoard({ data, kpiAuto }: { data: WbsData; kpiAuto?: W
           task={selected}
           data={data}
           kpiAuto={kpiAuto}
+          ai={aiLatest?.[selected.id]}
           today={today}
           backId={panel?.back ?? null}
           onOpen={openTask}

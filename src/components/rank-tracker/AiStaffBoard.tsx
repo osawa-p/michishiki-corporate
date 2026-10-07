@@ -29,6 +29,7 @@ const RUN_STATUS_LABEL: Record<string, string> = {
 };
 const GROUP_LABEL: Record<string, string> = {
   X: "追加の依頼",
+  W: "WBS の施策（tasks.js から自動登録）",
   A: "定例の結果を記録に反映",
   B: "効果測定・定常の計測",
   C: "提案・資料づくり",
@@ -72,7 +73,11 @@ async function post(body: Record<string, unknown>): Promise<{ ok: boolean; error
   return json;
 }
 
-export default function AiStaffBoard({ initial, loadError }: { initial: BoardData | null; loadError: boolean }) {
+// WBS（tasks.js → wbs-tasks.json）の施策情報。WBS ID で結ぶ。page.tsx から渡す
+export type WbsInfo = { st: string; due: string; pri: number; task: string };
+const WBS_ST_LABEL: Record<string, string> = { todo: "未着手", doing: "進行中", wait: "待ち", done: "完了" };
+
+export default function AiStaffBoard({ initial, loadError, wbs }: { initial: BoardData | null; loadError: boolean; wbs?: Record<string, WbsInfo> }) {
   const [data, setData] = useState<BoardData | null>(initial);
   const [error, setError] = useState<string | null>(loadError ? "ボードの取得に失敗しました。BigQuery の接続を確認してください。" : null);
   const [refreshing, setRefreshing] = useState(false);
@@ -99,6 +104,12 @@ export default function AiStaffBoard({ initial, loadError }: { initial: BoardDat
   }, []);
 
   const [showOffice, setShowOffice] = useState(true);
+
+  // WBS ページからのリンク（?q=M-37）で検索欄を初期化
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search).get("q");
+    if (p) setQ(p);
+  }, []);
 
   // 定期的に自動更新（タブが見えているときだけ）
   useEffect(() => {
@@ -154,7 +165,7 @@ export default function AiStaffBoard({ initial, loadError }: { initial: BoardDat
       .filter((r) => pj === "all" || r.task.pj === pj)
       .filter((r) => role === "all" || (r.task.owner_staff ?? "").endsWith(`-${role}`))
       .filter((r) => stateFilter === "all" || r.derived === stateFilter)
-      .filter((r) => !ql || `${r.task.id} ${r.task.title} ${r.task.state ?? ""} ${r.task.next ?? ""} ${r.latest?.summary ?? ""}`.toLowerCase().includes(ql))
+      .filter((r) => !ql || `${r.task.id} ${r.task.wbs_id ?? ""} ${r.task.title} ${r.task.state ?? ""} ${r.task.next ?? ""} ${r.latest?.summary ?? ""}`.toLowerCase().includes(ql))
       .sort((a, b) => {
         const d = DERIVED_META[a.derived].order - DERIVED_META[b.derived].order;
         if (d) return d;
@@ -279,6 +290,7 @@ export default function AiStaffBoard({ initial, loadError }: { initial: BoardDat
             staffOptions={staffByPj[task.pj] ?? []}
             pjLabel={pjLabel(task.pj)}
             roleLabel={roleLabel}
+            wbsInfo={task.wbs_id ? wbs?.[task.wbs_id] : undefined}
             onChanged={refresh}
           />
         ))}
@@ -335,6 +347,7 @@ function TaskRowView({
   staffOptions,
   pjLabel,
   roleLabel,
+  wbsInfo,
   onChanged,
 }: {
   task: TaskRow;
@@ -344,6 +357,7 @@ function TaskRowView({
   staffOptions: StaffRow[];
   pjLabel: string;
   roleLabel: (id: string | null | undefined) => string;
+  wbsInfo?: WbsInfo;
   onChanged: () => Promise<void>;
 }) {
   const [staff, setStaff] = useState(task.owner_staff ?? staffOptions[0]?.id ?? "");
@@ -404,7 +418,16 @@ function TaskRowView({
           <span className="rounded bg-ink/5 px-1.5 py-0.5 font-semibold text-ink-soft">{pjLabel}</span>
           <span className="font-mono">{shortId(task)}</span>
           {task.task_group && <span title={GROUP_LABEL[task.task_group] ?? ""}>区分 {task.task_group}</span>}
-          {task.wbs_id && <span className="font-mono">WBS {task.wbs_id}</span>}
+          {task.wbs_id && (
+            <a
+              href={`/rank-tracker/wbs#${encodeURIComponent(task.wbs_id)}`}
+              className="font-mono underline decoration-dotted underline-offset-2 hover:text-bronze-deep"
+              title={wbsInfo ? `${wbsInfo.task}（期限 ${wbsInfo.due}）` : "WBS で開く"}
+            >
+              WBS {task.wbs_id}
+              {wbsInfo ? `・${WBS_ST_LABEL[wbsInfo.st] ?? wbsInfo.st}` : ""}
+            </a>
+          )}
           <Chip label={DERIVED_META[derived].label} color={DERIVED_META[derived].color} />
         </div>
         <p className="text-sm font-semibold leading-snug">{task.title}</p>
