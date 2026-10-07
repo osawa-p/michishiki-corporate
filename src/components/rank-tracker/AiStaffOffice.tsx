@@ -1,18 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { RunRow, StaffRow, TaskRow } from "@/lib/rank-tracker/ai-staff";
-import { buildSeats, type Seat, type SeatState } from "@/lib/rank-tracker/ai-staff-view";
+import { buildSeats, countTasks, latestRuns, type Counts, type SeatState } from "@/lib/rank-tracker/ai-staff-view";
 
-// 「オフィス」パネル: 案件ごとの島に AI社員4体を座らせ、いまの状態をアニメーションで表す。
-// 状態はボードと同じデータ（runs）から導く。待機＝静止／受付＝砂時計／作業中＝タイピング＋経過時間／確認待ち＝机の上の書類。
-// 作業中→確認待ちに変わった瞬間は書類が飛ぶ。動きを減らす設定（prefers-reduced-motion）では全て静止する。
+// 「オフィス」パネル（2026-10-07 に GPT-6 Astra の監修で再設計）。
+// - 件数はタスク単位で統一（確認待ち／作業中／受付・準備／先方待ち。失敗は確認待ちの内数）
+// - 島（案件）は件数を入口にした開閉式。席は役割名・件数・確認候補・いまの工程を文字で示し、色に頼らない（形の記号を併記）
+// - 動かすのは作業中のタイピングだけ。更新で再マウントせず、位置と開閉状態を保つ
+// - 経過時間は「作業開始から」（無ければ「依頼から」）。進捗率や残り時間には変換しない
 
-const STATE_META: Record<SeatState, { label: string; color: string }> = {
-  working: { label: "作業中", color: "#fab219" },
-  queued: { label: "受付（確保待ち）", color: "#8b877c" },
-  review: { label: "確認待ちあり", color: "#2a78d6" },
-  idle: { label: "待機中", color: "#c9c5ba" },
+const STATE_META: Record<SeatState, { label: string }> = {
+  working: { label: "作業中" },
+  queued: { label: "受付（担当確保待ち）" },
+  review: { label: "確認待ちあり" },
+  idle: { label: "待機中" },
 };
 // 役割ごとの見た目（体の色・髪の色）。名前は staff.name（案件名／役割名）から取る
 const ROLE_LOOK: Record<string, { body: string; hair: string }> = {
@@ -22,45 +24,72 @@ const ROLE_LOOK: Record<string, { body: string; hair: string }> = {
   critic: { body: "#d88a84", hair: "#5a2d2d" },
 };
 const FALLBACK_LOOK = { body: "#c9c5ba", hair: "#3b3a36" };
+const ROLE_ORDER: Record<string, number> = { leader: 0, seo: 1, analytics: 2, critic: 3 };
 
 const CSS = `
-@keyframes aio-type { from { transform: translateY(0) } to { transform: translateY(-2.5px) } }
-@keyframes aio-blink { 0%, 92%, 100% { transform: scaleY(1) } 95% { transform: scaleY(0.1) } }
-@keyframes aio-breathe { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(1.2px) } }
-@keyframes aio-dots { 0%, 80%, 100% { opacity: .15 } 40% { opacity: 1 } }
-@keyframes aio-flip { 0% { transform: rotate(0deg) } 40% { transform: rotate(180deg) } 100% { transform: rotate(180deg) } }
-@keyframes aio-fly { 0% { transform: translate(0, 0) rotate(0deg); opacity: 1 } 100% { transform: translate(34px, -70px) rotate(18deg); opacity: 0 } }
-@keyframes aio-glow { 0%, 100% { opacity: .55 } 50% { opacity: 1 } }
-@keyframes aio-pop { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
-.aio-pop { animation: aio-pop .3s ease-out; }
-.aio-type { animation: aio-type .32s ease-in-out infinite alternate; transform-box: fill-box; }
-.aio-blink { animation: aio-blink 4.2s infinite; transform-box: fill-box; transform-origin: center; }
-.aio-breathe { animation: aio-breathe 3.2s ease-in-out infinite; transform-box: fill-box; }
-.aio-dots > * { animation: aio-dots 1.2s infinite; }
-.aio-dots > *:nth-child(2) { animation-delay: .2s } .aio-dots > *:nth-child(3) { animation-delay: .4s }
-.aio-flip { animation: aio-flip 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
-.aio-fly { animation: aio-fly 1.1s ease-in forwards; transform-box: fill-box; }
-.aio-glow { animation: aio-glow 1.6s ease-in-out infinite; }
+@keyframes aio-type { from { transform: translateY(0) } to { transform: translateY(-2px) } }
+.aio-office .aio-type { animation: aio-type .4s ease-in-out infinite alternate; transform-box: fill-box; }
+.aio-office :is(button, summary):focus-visible { outline: 3px solid #86672f; outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) {
-  .aio-type, .aio-blink, .aio-breathe, .aio-dots > *, .aio-flip, .aio-fly, .aio-glow, .aio-pop { animation: none !important; }
+  .aio-office, .aio-office *, .aio-office *::before, .aio-office *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
 `;
 
-function Avatar({ role, state, reviewCount, flying }: { role: string; state: SeatState; reviewCount: number; flying: boolean }) {
+// 状態の記号（色が見えなくても形で分かる）
+type MarkKind = SeatState | "waiting" | "failed";
+const MARK_PATH: Record<MarkKind, string> = {
+  idle: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18",
+  queued: "M6 3h12v3l-6 6 6 6v3H6v-3l6-6-6-6z",
+  working: "M3 6h18v12H3z M6 10h2m2 0h2m2 0h2m2 0h1 M7 14h10",
+  review: "M6 3h12v18H6z M9 8h6m-6 4h6m-6 4h4",
+  waiting: "M8 4v16M16 4v16",
+  failed: "M12 3L2 21h20z M12 9v5m0 3v1",
+};
+function Mark({ kind }: { kind: MarkKind }) {
+  return (
+    <svg viewBox="0 0 24 24" className="inline-block h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <path d={MARK_PATH[kind]} />
+    </svg>
+  );
+}
+
+function CountsView({ c, compact = false }: { c: Counts; compact?: boolean }) {
+  const items = [
+    ["review", "確認待ち", c.review, "#2a78d6"],
+    ["working", "作業中", c.working - c.queued, "#fab219"],
+    ["queued", "受付・準備", c.queued, "#8b877c"],
+    ["waiting", "先方待ち", c.waiting, "#b07cc6"],
+  ] as const;
+  return (
+    <span className={`flex flex-wrap gap-x-3 gap-y-1 text-ink ${compact ? "text-xs" : "text-sm"}`}>
+      {items.map(([kind, label, n, color]) => (
+        <span key={kind} className={`inline-flex items-center gap-1 border-b-2 pb-0.5 ${n === 0 ? "text-ink-faint" : ""}`} style={{ borderColor: color }}>
+          <Mark kind={kind} />
+          {label} <b className="tabular-nums">{n}</b>件
+        </span>
+      ))}
+      {c.failed > 0 && (
+        <span className="inline-flex items-center gap-1 font-semibold text-[#b3352e]">
+          <Mark kind="failed" />
+          うち実行失敗 {c.failed}件
+        </span>
+      )}
+    </span>
+  );
+}
+
+function Avatar({ role, state, reviewCount }: { role: string; state: SeatState; reviewCount: number }) {
   const look = ROLE_LOOK[role] ?? FALLBACK_LOOK;
   const working = state === "working";
   const papers = Math.min(reviewCount, 5);
   return (
     <svg viewBox="0 0 120 100" className="h-auto w-full" aria-hidden="true" focusable="false">
-      {/* 机 */}
       <rect x="8" y="72" width="104" height="6" rx="2" fill="#e2ded2" />
       <rect x="14" y="78" width="4" height="14" fill="#d6d1c3" />
       <rect x="102" y="78" width="4" height="14" fill="#d6d1c3" />
-      {/* 椅子 */}
       <rect x="20" y="48" width="32" height="26" rx="7" fill="#d6d1c3" />
-      {/* モニター */}
       <rect x="66" y="42" width="40" height="27" rx="3" fill="#2b2a26" />
-      <rect x="69" y="45" width="34" height="21" rx="2" fill={working ? "#dfe9f7" : "#c9c5ba"} className={working ? "aio-glow" : ""} />
+      <rect x="69" y="45" width="34" height="21" rx="2" fill={working ? "#dfe9f7" : "#c9c5ba"} />
       {role === "analytics" ? (
         <g fill={working ? "#2a78d6" : "#8b877c"}>
           <rect x="73" y="58" width="4" height="6" />
@@ -77,26 +106,17 @@ function Avatar({ role, state, reviewCount, flying }: { role: string; state: Sea
         </g>
       )}
       <rect x="83" y="69" width="6" height="3" fill="#2b2a26" />
-      {/* キーボード */}
       <rect x="50" y="66" width="24" height="4" rx="1" fill="#8b877c" />
-      {/* 体 */}
-      <g className={state === "idle" ? "aio-breathe" : ""}>
-        <rect x="24" y="50" width="26" height="24" rx="9" fill={look.body} />
-        <circle cx="37" cy="37" r="12" fill="#efdcc3" />
-        <path d="M25 35 q12 -15 24 0 v-3 q-12 -10 -24 0 z" fill={look.hair} />
-        <g className="aio-blink">
-          <rect x="32" y="36" width="2.4" height="3.2" rx="1" fill="#2b2a26" />
-          <rect x="40" y="36" width="2.4" height="3.2" rx="1" fill="#2b2a26" />
-        </g>
-        {role === "critic" && <path d="M33 43 q4 -2 8 0" stroke="#5a2d2d" strokeWidth="1.2" fill="none" />}
-        {role !== "critic" && <path d="M33 43 q4 2 8 0" stroke="#5a2d2d" strokeWidth="1.2" fill="none" />}
-      </g>
-      {/* 手（作業中はタイピング） */}
+      <rect x="24" y="50" width="26" height="24" rx="9" fill={look.body} />
+      <circle cx="37" cy="37" r="12" fill="#efdcc3" />
+      <path d="M25 35 q12 -15 24 0 v-3 q-12 -10 -24 0 z" fill={look.hair} />
+      <rect x="32" y="36" width="2.4" height="3.2" rx="1" fill="#2b2a26" />
+      <rect x="40" y="36" width="2.4" height="3.2" rx="1" fill="#2b2a26" />
+      <path d={role === "critic" ? "M33 43 q4 -2 8 0" : "M33 43 q4 2 8 0"} stroke="#5a2d2d" strokeWidth="1.2" fill="none" />
       <g className={working ? "aio-type" : ""}>
         <rect x="46" y="61" width="10" height="4.5" rx="2.2" fill="#efdcc3" />
         <rect x="56" y="63" width="9" height="4.5" rx="2.2" fill="#efdcc3" />
       </g>
-      {/* 役割の小物 */}
       {role === "leader" && (
         <g>
           <rect x="10" y="55" width="11" height="15" rx="1" fill="#fff" stroke="#8b877c" strokeWidth="1" />
@@ -112,37 +132,39 @@ function Avatar({ role, state, reviewCount, flying }: { role: string; state: Sea
         </g>
       )}
       {role === "critic" && <line x1="10" y1="68" x2="22" y2="58" stroke="#b3352e" strokeWidth="3" strokeLinecap="round" />}
-      {/* 机の上の書類（確認待ち） */}
       {Array.from({ length: papers }).map((_, i) => (
         <rect key={i} x={88 - i * 1.2} y={70 - i * 1.6} width="14" height="3" rx="0.6" fill="#fff" stroke="#8b877c" strokeWidth="0.8" />
       ))}
-      {/* 受付中: 砂時計 */}
       {state === "queued" && (
-        <g className="aio-flip">
+        <g>
           <path d="M100 22 h10 l-5 6 z" fill="#8b877c" />
           <path d="M100 34 h10 l-5 -6 z" fill="#c9c5ba" />
         </g>
       )}
-      {/* 作業中: 吹き出しの点 */}
-      {working && (
-        <g className="aio-dots" fill="#56534a">
-          <circle cx="98" cy="28" r="2" />
-          <circle cx="104" cy="28" r="2" />
-          <circle cx="110" cy="28" r="2" />
-        </g>
-      )}
-      {/* 返答が返った瞬間: 飛ぶ書類 */}
-      {flying && <rect className="aio-fly" x="52" y="58" width="16" height="4" rx="0.8" fill="#fff" stroke="#2a78d6" strokeWidth="1" />}
     </svg>
   );
 }
 
-function elapsedLabel(startedAt: string | null, now: number): string {
-  if (!startedAt) return "";
-  const ms = now - new Date(startedAt).getTime();
+// PC（lg 以上）かどうか。島の初期開閉に使う（SSR では閉じた状態で描き、クライアントで購読する）
+const DESKTOP_MQ = "(min-width: 1024px)";
+function useDesktop(): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      const mq = window.matchMedia(DESKTOP_MQ);
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    },
+    () => window.matchMedia(DESKTOP_MQ).matches,
+    () => false,
+  );
+}
+
+function elapsedLabel(iso: string | null, now: number): string {
+  if (!iso) return "";
+  const ms = now - new Date(iso).getTime();
   if (!Number.isFinite(ms) || ms < 0) return "";
   const m = Math.floor(ms / 60000);
-  return m < 1 ? "開始直後" : m < 60 ? `${m}分` : `${Math.floor(m / 60)}時間${m % 60}分`;
+  return m < 1 ? "1分未満" : m < 60 ? `${m}分` : `${Math.floor(m / 60)}時間${m % 60}分`;
 }
 
 export default function AiStaffOffice({
@@ -159,115 +181,171 @@ export default function AiStaffOffice({
   onSelect: (pj: string, role: string) => void;
 }) {
   const seats = useMemo(() => buildSeats(staff, tasks, runs), [staff, tasks, runs]);
+  const latest = useMemo(() => latestRuns(runs), [runs]);
+  const totals = useMemo(() => countTasks(tasks, latest), [tasks, latest]);
+  const [order, setOrder] = useState<string[]>([]);
+
+  // 島の並びは固定。「確認待ち順に並べる」を押したときだけ変える。役割は リーダー→SEO→解析→反論 で固定
   const islands = useMemo(() => {
-    const m: Record<string, Seat[]> = {};
-    for (const s of seats) (m[s.staff.pj] ||= []).push(s);
-    return Object.entries(m).sort(([a], [b]) => a.localeCompare(b));
-  }, [seats]);
+    const ids = [...new Set([...staff.map((s) => s.pj), ...tasks.map((t) => t.pj)])];
+    const rank = (pj: string) => {
+      const i = order.indexOf(pj);
+      return i < 0 ? Number.MAX_SAFE_INTEGER : i;
+    };
+    return ids
+      .map((pj) => ({
+        pj,
+        // 席から合算せず、担当未設定のタスクも含める
+        counts: countTasks(
+          tasks.filter((t) => t.pj === pj),
+          latest,
+        ),
+        list: seats.filter((s) => s.staff.pj === pj).sort((a, b) => (ROLE_ORDER[a.staff.role] ?? 4) - (ROLE_ORDER[b.staff.role] ?? 4)),
+      }))
+      .sort((a, b) => rank(a.pj) - rank(b.pj) || pjLabel(a.pj).localeCompare(pjLabel(b.pj), "ja"));
+  }, [staff, tasks, seats, latest, order, pjLabel]);
 
-  // 作業中/受付 → 確認待ち に変わった社員の書類を飛ばす（1.1秒）
-  const prev = useRef<Record<string, SeatState>>({});
-  const [flying, setFlying] = useState<Record<string, number>>({});
-  useEffect(() => {
-    const changed: string[] = [];
-    for (const s of seats) {
-      const before = prev.current[s.staff.id];
-      if ((before === "working" || before === "queued") && s.state === "review") changed.push(s.staff.id);
-      prev.current[s.staff.id] = s.state;
-    }
-    if (!changed.length) return;
-    const at = Date.now();
-    setFlying((f) => ({ ...f, ...Object.fromEntries(changed.map((id) => [id, at])) }));
-    const t = window.setTimeout(() => setFlying((f) => Object.fromEntries(Object.entries(f).filter(([, v]) => v !== at))), 1300);
-    return () => window.clearTimeout(t);
-  }, [seats]);
-
-  // 経過時間を1分ごとに進める（作業中の社員がいるときだけ）
-  const anyWorking = seats.some((s) => s.state === "working");
+  // 経過時間（作業中があるときだけ30秒ごとに進める）
   const [now, setNow] = useState(() => Date.now());
+  const hasActive = totals.working > 0;
   useEffect(() => {
-    if (!anyWorking) return;
+    if (!hasActive) return;
     const t = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => window.clearInterval(t);
-  }, [anyWorking]);
+  }, [hasActive]);
 
-  const totals = seats.reduce(
-    (a, s) => ({ working: a.working + (s.state === "working" ? 1 : 0), queued: a.queued + (s.state === "queued" ? 1 : 0), review: a.review + s.reviewCount }),
-    { working: 0, queued: 0, review: 0 },
-  );
+  // 最新依頼ごとに、この画面で観測できた工程だけを保持する（新しい順・最大3件）。
+  // props（latest）が変わったときに描画中に派生状態を更新する（effect 内の setState を避ける）
+  const [stepsState, setStepsState] = useState<{ latest: Map<string, RunRow>; steps: Record<string, string[]> }>({ latest, steps: {} });
+  let steps = stepsState.steps;
+  if (stepsState.latest !== latest) {
+    const next: Record<string, string[]> = {};
+    for (const r of latest.values()) {
+      const key = `${r.task_id}|${r.created_at ?? ""}`;
+      const previous = stepsState.steps[key] ?? [];
+      const progress = r.progress?.trim();
+      next[key] = !progress || previous[0] === progress ? previous : [progress, ...previous].slice(0, 3);
+    }
+    steps = next;
+    setStepsState({ latest, steps: next });
+  }
+
+  // 通知は確認待ち・失敗の件数が変わったときだけ（15秒ごとの工程は読み上げない）
+  const countsKey = `${totals.review}/${totals.failed}`;
+  const [noticeState, setNoticeState] = useState({ key: countsKey, text: "" });
+  if (noticeState.key !== countsKey) setNoticeState({ key: countsKey, text: `確認待ち${totals.review}件、うち実行失敗${totals.failed}件。` });
+  const notice = noticeState.text;
+
+  // 島の初期開閉: PC は開く、スマホは件数だけ見せて閉じる。以後はネイティブ details に任せ、更新で上書きしない
+  const openByDefault = useDesktop();
 
   return (
-    <section aria-label="オフィス（AI社員の状態）" className="rounded-lg border border-line bg-white/50 p-4">
+    <section aria-label="オフィス（AI社員の状態）" className="aio-office rounded-lg border border-line bg-white/50 p-4 text-ink">
       <style>{CSS}</style>
-      <div className="mb-3 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs text-ink-soft">
-        <span className="font-serif text-sm font-semibold text-ink">オフィス</span>
-        <span>
-          作業中 <b className="font-mono">{totals.working}</b>
-        </span>
-        <span>
-          受付 <b className="font-mono">{totals.queued}</b>
-        </span>
-        <span>
-          確認待ちの書類 <b className="font-mono">{totals.review}</b>
-        </span>
-        <span className="ml-auto text-[11px] text-ink-faint">席を押すとその社員のタスクに絞り込み</span>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-serif text-lg font-semibold">オフィス</h2>
+        <button
+          type="button"
+          className="min-h-11 rounded border border-line bg-white px-3 text-sm text-ink-soft hover:border-bronze"
+          onClick={() =>
+            setOrder([...islands].sort((a, b) => b.counts.review - a.counts.review || b.counts.waiting - a.counts.waiting || pjLabel(a.pj).localeCompare(pjLabel(b.pj), "ja")).map((x) => x.pj))
+          }
+        >
+          確認待ち順に並べる
+        </button>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        {islands.map(([pj, list]) => (
-          <div key={pj} className="rounded-md border border-line bg-paper/70 p-3">
-            <div className="mb-2 flex items-baseline justify-between">
-              <span className="text-sm font-semibold">{pjLabel(pj)}</span>
-              <span className="text-[11px] text-ink-faint">
-                未指示 {list.reduce((a, s) => a + s.openCount, 0)}・完了 {list.reduce((a, s) => a + s.doneCount, 0)}
+      <CountsView c={totals} />
+      <p className="my-3 text-sm leading-relaxed text-ink-soft">件数はタスク単位です。確認待ちの担当を開き、返答を読んで「OK・完了」か「修正内容を書く」を選びます。送付・公開は管理者が行います。</p>
+      <p className="sr-only" role="status" aria-atomic="true">
+        {notice}
+      </p>
+
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        {islands.map(({ pj, counts, list }) => (
+          <details key={pj} className="rounded-lg border border-line bg-paper" open={openByDefault || undefined}>
+            <summary className="min-h-11 cursor-pointer rounded-lg p-4">
+              <strong className="mb-2 inline-block text-base">{pjLabel(pj)}</strong>
+              <CountsView c={counts} compact />
+              <span className="mt-2 block text-xs text-ink-faint">
+                未指示 {counts.open}件・完了 {counts.done}件・担当別の状態を開閉
               </span>
-            </div>
-            <div className="grid grid-cols-4 gap-2">
+            </summary>
+            <div className="grid gap-3 p-3 pt-0 md:grid-cols-2">
               {list.map((seat) => {
-                const meta = STATE_META[seat.state];
                 const roleName = seat.staff.name.split("／")[1] ?? seat.staff.role;
+                const current = seat.current;
+                const key = current ? `${current.taskId}|${current.createdAt ?? ""}` : "";
+                const recent = steps[key] ?? [];
+                const stateLabel = current?.runStatus === "claimed" ? "担当確保済み・開始待ち" : current?.runStatus === "queued" ? "受付（担当確保待ち）" : STATE_META[seat.state].label;
+                const otherActive = seat.counts.working - (current ? 1 : 0);
+                const since = current?.startedAt ? `作業開始から ${elapsedLabel(current.startedAt, now) || "1分未満"}` : current?.createdAt ? `依頼から ${elapsedLabel(current.createdAt, now) || "1分未満"}` : "";
                 return (
-                  <button
-                    key={seat.staff.id}
-                    type="button"
-                    onClick={() => onSelect(seat.staff.pj, seat.staff.role)}
-                    title={`${roleName}: ${meta.label}${seat.current ? `（${seat.current.title}）` : ""}`}
-                    className="group relative rounded-md border border-transparent p-1 text-left transition-colors hover:border-bronze/60 hover:bg-white/70 focus-visible:outline-2 focus-visible:outline-bronze-deep"
-                  >
-                    {/* いまの工程（派遣係が30秒ごとに更新）。文が変わるたびに吹き出しが出直す */}
-                    {seat.state === "working" && seat.current?.progress && (
-                      <div
-                        key={seat.current.progress}
-                        className="aio-pop pointer-events-none absolute left-1 right-1 top-0 z-10 rounded-md border border-line bg-white px-1.5 py-0.5 text-[10px] leading-snug text-ink shadow-sm"
-                        title={seat.current.progress}
-                      >
-                        <span className="line-clamp-2">{seat.current.progress}</span>
-                        <span className="absolute -bottom-1 left-4 h-2 w-2 rotate-45 border-b border-r border-line bg-white" aria-hidden />
-                      </div>
+                  <article key={seat.staff.id} className="min-w-0 rounded-md border border-line bg-white p-3">
+                    <h3 className="mb-2 text-sm font-semibold">{roleName}</h3>
+                    <CountsView c={seat.counts} compact />
+                    {seat.reviewTitle && (
+                      <p className="mt-3 break-words text-sm leading-relaxed">
+                        <b>確認候補：</b>
+                        {seat.reviewTitle}
+                      </p>
                     )}
-                    <Avatar role={seat.staff.role} state={seat.state} reviewCount={seat.reviewCount} flying={!!flying[seat.staff.id]} />
-                    <p className="mt-1 truncate text-[11px] font-semibold leading-tight">{roleName}</p>
-                    <p className="flex items-center gap-1 text-[10px] text-ink-soft">
-                      <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: meta.color }} aria-hidden />
-                      {meta.label}
-                      {seat.state === "working" && seat.current?.startedAt && <span className="text-ink-faint">{elapsedLabel(seat.current.startedAt, now)}</span>}
-                      {seat.state === "review" && <span className="text-ink-faint">{seat.reviewCount}件</span>}
+                    <div className="mt-3 flex items-start gap-2">
+                      <div className="relative w-24 shrink-0">
+                        <Avatar role={seat.staff.role} state={seat.state} reviewCount={seat.reviewCount} />
+                        {seat.counts.failed > 0 && (
+                          <span className="absolute right-0 top-0 text-[#b3352e]" title="実行失敗あり">
+                            <Mark kind="failed" />
+                          </span>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1 text-sm leading-relaxed">
+                        <p className="flex items-center gap-1 font-medium">
+                          <Mark kind={seat.state} />
+                          {stateLabel}
+                        </p>
+                        {current && (
+                          <>
+                            <p className="mt-1 break-words">{current.title}</p>
+                            {since && <p className="text-ink-soft">{since}</p>}
+                            <p className="mt-2 break-words">現在：{current.progress || (seat.state === "queued" ? stateLabel : "工程はまだ報告されていません")}</p>
+                            {current.progress && <p className="text-xs text-ink-faint">{current.progressAt ? `工程更新から ${elapsedLabel(current.progressAt, now) || "1分未満"}` : "工程の更新時刻は未報告"}</p>}
+                            {otherActive > 0 && <p className="text-ink-soft">ほか {otherActive}件が作業中または受付・準備中</p>}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    {current && recent.length > 0 && (
+                      <details className="mt-2 text-sm">
+                        <summary className="min-h-11 cursor-pointer py-3 text-ink-soft underline decoration-dotted underline-offset-2">観測した工程（新しい順・最大3件）</summary>
+                        <ol className="list-decimal space-y-1 pl-5">
+                          {recent.map((text, i) => (
+                            <li key={i} className="break-words">
+                              {text}
+                            </li>
+                          ))}
+                        </ol>
+                        <p className="mt-2 text-xs text-ink-faint">この画面を開いて以降の観測です。取得の間に進んだ工程は含まれない場合があります。再読み込みで消えます。</p>
+                      </details>
+                    )}
+                    <p className="mt-3 text-xs text-ink-faint">
+                      未指示 {seat.openCount}件・完了 {seat.doneCount}件
                     </p>
-                    {seat.current && <p className="truncate text-[10px] text-ink-faint">{seat.current.title}</p>}
-                    {seat.state === "working" && (
-                      <div className="mt-1 h-1 w-full overflow-hidden rounded bg-line" aria-hidden>
-                        <div
-                          className="h-full rounded bg-[#fab219]"
-                          style={{ width: `${Math.min(95, Math.max(6, ((now - (seat.current?.startedAt ? new Date(seat.current.startedAt).getTime() : now)) / (45 * 60_000)) * 100))}%` }}
-                        />
-                      </div>
-                    )}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => onSelect(seat.staff.pj, seat.staff.role)}
+                      aria-label={`${pjLabel(pj)}、${roleName}のタスクを表示`}
+                      className="mt-2 min-h-11 w-full rounded border border-line bg-white px-3 text-sm font-medium text-ink-soft hover:border-bronze hover:text-bronze-deep"
+                    >
+                      この担当のタスクを表示
+                    </button>
+                  </article>
                 );
               })}
+              {list.length === 0 && <p className="text-sm text-ink-soft">この案件の社員が登録されていません。</p>}
             </div>
-          </div>
+          </details>
         ))}
-        {islands.length === 0 && <p className="text-sm text-ink-faint">社員が登録されていません。</p>}
+        {islands.length === 0 && <p className="text-sm text-ink-soft">社員・タスクが登録されていません。</p>}
       </div>
     </section>
   );

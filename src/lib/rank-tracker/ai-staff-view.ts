@@ -19,12 +19,43 @@ export function deriveTask(task: TaskRow, latest: RunRow | undefined): Derived {
   return "open";
 }
 
-// 社員1体の「いまの状態」。優先順: 作業中 > 受付（派遣係の確保待ち）> 確認待ちを抱えている > 待機
+// タスク件数（単位はタスク）。queued は working の内数（queued/claimed）、failed は review の内数
+export type Counts = Record<Derived, number> & { queued: number; failed: number };
+
+export function latestRuns(runs: RunRow[]): Map<string, RunRow> {
+  const latest = new Map<string, RunRow>();
+  for (const r of runs) if (!latest.has(r.task_id)) latest.set(r.task_id, r); // runs は created_at 降順
+  return latest;
+}
+
+export function countTasks(tasks: TaskRow[], latest: Map<string, RunRow>): Counts {
+  const c: Counts = { review: 0, working: 0, open: 0, waiting: 0, done: 0, queued: 0, failed: 0 };
+  for (const t of tasks) {
+    const r = latest.get(t.id);
+    const d = deriveTask(t, r);
+    c[d]++;
+    if (d === "working" && r?.status !== "running") c.queued++;
+    if (d === "review" && r?.status === "failed") c.failed++;
+  }
+  return c;
+}
+
+// 社員1体の「いまの状態」。稼働状態（作業中／受付／待機）と、抱えている確認待ち・失敗・先方待ちは別々に持つ
 export type SeatState = "working" | "queued" | "review" | "idle";
 export type Seat = {
   staff: StaffRow;
   state: SeatState;
-  current: { taskId: string; title: string; startedAt: string | null; runStatus: string; progress: string | null; progressAt: string | null } | null;
+  current: {
+    taskId: string;
+    title: string;
+    startedAt: string | null;
+    createdAt: string | null;
+    runStatus: string;
+    progress: string | null;
+    progressAt: string | null;
+  } | null;
+  counts: Counts;
+  reviewTitle: string | null; // 最も古い確認待ちの題名（確認候補）
   queuedCount: number;
   reviewCount: number;
   openCount: number;
@@ -32,26 +63,41 @@ export type Seat = {
 };
 
 export function buildSeats(staff: StaffRow[], tasks: TaskRow[], runs: RunRow[]): Seat[] {
-  const taskById: Record<string, TaskRow> = Object.fromEntries(tasks.map((t) => [t.id, t]));
-  const latestByTask: Record<string, RunRow> = {};
-  for (const r of runs) if (!latestByTask[r.task_id]) latestByTask[r.task_id] = r; // runs は created_at 降順
+  const latest = latestRuns(runs);
+  const age = (a: TaskRow, b: TaskRow) =>
+    (Date.parse(latest.get(a.id)?.created_at ?? "") || 0) - (Date.parse(latest.get(b.id)?.created_at ?? "") || 0) || a.id.localeCompare(b.id);
   return staff.map((s) => {
-    let current: Seat["current"] = null;
-    let queuedCount = 0, reviewCount = 0, openCount = 0, doneCount = 0;
-    for (const t of tasks) {
-      const latest = latestByTask[t.id];
-      const mine = (latest?.staff ?? t.owner_staff) === s.id;
-      if (!mine) continue;
-      const d = deriveTask(t, latest);
-      if (d === "working" && latest) {
-        if (latest.status === "queued") queuedCount++;
-        else if (!current) current = { taskId: t.id, title: t.title, startedAt: latest.started_at, runStatus: latest.status, progress: latest.progress ?? null, progressAt: latest.progress_at ?? null };
-      } else if (d === "review") reviewCount++;
-      else if (d === "open") openCount++;
-      else if (d === "done") doneCount++;
-    }
-    const state: SeatState = current ? "working" : queuedCount ? "queued" : reviewCount ? "review" : "idle";
-    void taskById;
-    return { staff: s, state, current, queuedCount, reviewCount, openCount, doneCount };
+    const own = tasks.filter((t) => t.pj === s.pj && (latest.get(t.id)?.staff ?? t.owner_staff) === s.id);
+    const c = countTasks(own, latest);
+    // 表示する実行は running 優先、その中では古い依頼から。確認候補も古い依頼から
+    const active = own
+      .filter((t) => deriveTask(t, latest.get(t.id)) === "working")
+      .sort((a, b) => Number(latest.get(b.id)?.status === "running") - Number(latest.get(a.id)?.status === "running") || age(a, b));
+    const review = own.filter((t) => deriveTask(t, latest.get(t.id)) === "review").sort(age)[0];
+    const t = active[0];
+    const r = t ? latest.get(t.id) : undefined;
+    const current: Seat["current"] =
+      t && r
+        ? {
+            taskId: t.id,
+            title: t.title,
+            startedAt: r.started_at ?? null,
+            createdAt: r.created_at ?? null,
+            runStatus: r.status,
+            progress: r.progress ?? null,
+            progressAt: r.progress_at ?? null,
+          }
+        : null;
+    return {
+      staff: s,
+      state: r?.status === "running" ? "working" : r ? "queued" : c.review ? "review" : "idle",
+      current,
+      counts: c,
+      reviewTitle: review?.title ?? null,
+      queuedCount: c.queued,
+      reviewCount: c.review,
+      openCount: c.open,
+      doneCount: c.done,
+    };
   });
 }
