@@ -31,6 +31,8 @@ const CSS = `
 @keyframes aio-flip { 0% { transform: rotate(0deg) } 40% { transform: rotate(180deg) } 100% { transform: rotate(180deg) } }
 @keyframes aio-fly { 0% { transform: translate(0, 0) rotate(0deg); opacity: 1 } 100% { transform: translate(34px, -70px) rotate(18deg); opacity: 0 } }
 @keyframes aio-glow { 0%, 100% { opacity: .55 } 50% { opacity: 1 } }
+@keyframes aio-pop { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
+.aio-pop { animation: aio-pop .3s ease-out; }
 .aio-type { animation: aio-type .32s ease-in-out infinite alternate; transform-box: fill-box; }
 .aio-blink { animation: aio-blink 4.2s infinite; transform-box: fill-box; transform-origin: center; }
 .aio-breathe { animation: aio-breathe 3.2s ease-in-out infinite; transform-box: fill-box; }
@@ -40,7 +42,7 @@ const CSS = `
 .aio-fly { animation: aio-fly 1.1s ease-in forwards; transform-box: fill-box; }
 .aio-glow { animation: aio-glow 1.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .aio-type, .aio-blink, .aio-breathe, .aio-dots > *, .aio-flip, .aio-fly, .aio-glow { animation: none !important; }
+  .aio-type, .aio-blink, .aio-breathe, .aio-dots > *, .aio-flip, .aio-fly, .aio-glow, .aio-pop { animation: none !important; }
 }
 `;
 
@@ -229,8 +231,19 @@ export default function AiStaffOffice({
                     type="button"
                     onClick={() => onSelect(seat.staff.pj, seat.staff.role)}
                     title={`${roleName}: ${meta.label}${seat.current ? `（${seat.current.title}）` : ""}`}
-                    className="group rounded-md border border-transparent p-1 text-left transition-colors hover:border-bronze/60 hover:bg-white/70 focus-visible:outline-2 focus-visible:outline-bronze-deep"
+                    className="group relative rounded-md border border-transparent p-1 text-left transition-colors hover:border-bronze/60 hover:bg-white/70 focus-visible:outline-2 focus-visible:outline-bronze-deep"
                   >
+                    {/* いまの工程（派遣係が30秒ごとに更新）。文が変わるたびに吹き出しが出直す */}
+                    {seat.state === "working" && seat.current?.progress && (
+                      <div
+                        key={seat.current.progress}
+                        className="aio-pop pointer-events-none absolute left-1 right-1 top-0 z-10 rounded-md border border-line bg-white px-1.5 py-0.5 text-[10px] leading-snug text-ink shadow-sm"
+                        title={seat.current.progress}
+                      >
+                        <span className="line-clamp-2">{seat.current.progress}</span>
+                        <span className="absolute -bottom-1 left-4 h-2 w-2 rotate-45 border-b border-r border-line bg-white" aria-hidden />
+                      </div>
+                    )}
                     <Avatar role={seat.staff.role} state={seat.state} reviewCount={seat.reviewCount} flying={!!flying[seat.staff.id]} />
                     <p className="mt-1 truncate text-[11px] font-semibold leading-tight">{roleName}</p>
                     <p className="flex items-center gap-1 text-[10px] text-ink-soft">

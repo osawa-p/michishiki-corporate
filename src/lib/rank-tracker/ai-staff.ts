@@ -63,6 +63,8 @@ export type RunRow = {
   links: string | null; // JSON 文字列
   executed_by: string | null;
   error: string | null;
+  progress: string | null; // 派遣係が書く最新の工程（例: GA4 を取得中）
+  progress_at: string | null;
 };
 
 export type BoardData = { staff: StaffRow[]; tasks: TaskRow[]; runs: RunRow[]; generatedAt: string };
@@ -85,7 +87,7 @@ ORDER BY pj, task_group, ord, id`,
       query: `SELECT id, task_id, staff, kind, prompt, status, route,
   ${TS("created_at")} AS created_at, ${TS("started_at")} AS started_at, ${TS("finished_at")} AS finished_at,
   summary, verdict, asks, TO_JSON_STRING(metric) AS metric, result, files, TO_JSON_STRING(links) AS links,
-  executed_by, error
+  executed_by, error, progress, ${TS("progress_at")} AS progress_at
 FROM ${T("runs")}
 ORDER BY created_at DESC
 LIMIT ${RUN_LIMIT}`,
