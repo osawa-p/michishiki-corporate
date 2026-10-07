@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getAccess } from "@/lib/rank-tracker/auth";
 import { loadBoard, type BoardData } from "@/lib/rank-tracker/ai-staff";
-import AiStaffBoard from "@/components/rank-tracker/AiStaffBoard";
+import AiStaffBoard, { type WbsInfo } from "@/components/rank-tracker/AiStaffBoard";
+// WBS（tasks.js 由来）の施策情報。WBS ID で結んで各行に状態を出す（管理者専用ページなので server 側で読んで props で渡す）
+import wbsData from "@/data/wbs-tasks.json";
+
+type WbsJson = { tasks?: { id: string; st: string; due: string; pri: number; task: string }[] };
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +19,10 @@ export default async function AiStaffPage() {
   const access = await getAccess();
   if (!access) redirect("/rank-tracker/login");
   if (access.role !== "admin") redirect("/rank-tracker/dashboard");
+
+  const wbsMap: Record<string, WbsInfo> = Object.fromEntries(
+    ((wbsData as unknown as WbsJson).tasks ?? []).map((t) => [t.id, { st: t.st, due: t.due, pri: t.pri, task: t.task }]),
+  );
 
   let initial: BoardData | null = null;
   let loadError = false;
@@ -40,7 +48,7 @@ export default async function AiStaffPage() {
 
       <section className="py-8 md:py-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <AiStaffBoard initial={initial} loadError={loadError} />
+          <AiStaffBoard initial={initial} loadError={loadError} wbs={wbsMap} />
         </div>
       </section>
     </>

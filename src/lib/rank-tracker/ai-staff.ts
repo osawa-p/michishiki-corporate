@@ -99,6 +99,28 @@ LIMIT ${RUN_LIMIT}`,
   };
 }
 
+// WBS ID ごとの最新返答（WBS ページに出す）。同じ WBS ID を複数タスクが持つときは最新の run を採る
+export type WbsAiLatestRow = {
+  wbs_id: string;
+  task_id: string;
+  task_status: string;
+  summary: string | null;
+  verdict: string | null;
+  run_status: string;
+  finished_at: string | null;
+  created_at: string | null;
+};
+export async function loadLatestByWbs(): Promise<Record<string, WbsAiLatestRow>> {
+  const { rows } = await runQuery<WbsAiLatestRow>({
+    query: `SELECT t.wbs_id, t.id AS task_id, t.status AS task_status, r.summary, r.verdict, r.status AS run_status,
+  ${TS("r.finished_at")} AS finished_at, ${TS("r.created_at")} AS created_at
+FROM ${T("tasks")} t JOIN ${T("runs")} r ON r.task_id = t.id
+WHERE t.wbs_id IS NOT NULL
+QUALIFY ROW_NUMBER() OVER (PARTITION BY t.wbs_id ORDER BY r.created_at DESC) = 1`,
+  });
+  return Object.fromEntries(rows.map((r) => [r.wbs_id, r]));
+}
+
 function newRunId(): string {
   return `run_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }
