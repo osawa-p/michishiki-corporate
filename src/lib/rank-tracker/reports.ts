@@ -18,6 +18,12 @@ export const REPORT_SITES: ReportSite[] = [
     description: "月次オーガニックレポート（GA4実測）",
   },
   {
+    slug: "rasik-ai",
+    domain: "rasik.style",
+    label: "RASIK（生成AI流入）",
+    description: "月次 生成AI流入レポート（ChatGPT・Gemini等からの流入・売上／GA4実測）",
+  },
+  {
     slug: "cincia",
     domain: "cin-cia.com",
     label: "Cin-Cia Nail Academy",

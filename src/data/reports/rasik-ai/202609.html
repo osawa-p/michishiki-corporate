@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RASIK 月次 生成AI流入レポート｜2026年9月</title>
+<style>
+  :root{
+    --bg:#f4f6f8; --card:#ffffff; --ink:#1c2530; --sub:#5b6b7b;
+    --line:#e3e8ee; --brand:#2f6f6a; --brand-soft:#e5f0ef; --brand-ink:#234f4b;
+    --pos:#1a8c5a; --pos-bg:#e7f6ee; --neg:#c0392b; --neg-bg:#fbecea;
+    --warn:#b8860b; --warn-bg:#fbf3df;
+    --shadow:0 1px 3px rgba(20,35,50,.08),0 4px 16px rgba(20,35,50,.06);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Segoe UI","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+    line-height:1.65;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 20px 64px}
+  header.top{margin-bottom:20px}
+  .eyebrow{font-size:13px;letter-spacing:.08em;color:var(--brand);font-weight:700;margin:0 0 6px}
+  h1{font-size:25px;margin:0 0 6px;letter-spacing:.01em}
+  .period{color:var(--sub);font-size:13.5px}
+  .defs{margin-top:10px;font-size:11.5px;color:var(--sub);background:#fff;border:1px solid var(--line);
+    border-radius:9px;padding:11px 13px}
+  .defs b{color:var(--ink)}
+  .defs .drow{display:grid;grid-template-columns:88px 1fr;gap:4px 10px;padding:3px 0;align-items:baseline}
+  .defs .drow+.drow{border-top:1px dashed var(--line)}
+  .defs .dlabel{font-weight:700;color:var(--ink);white-space:nowrap}
+  .defs .dseg{display:inline-block;margin-right:10px;white-space:nowrap}
+  .defs .dseg b{margin-right:2px}
+  @media(max-width:560px){.defs .drow{grid-template-columns:1fr;gap:1px}}
+  .tabs{display:flex;gap:6px;margin:22px 0 6px;flex-wrap:wrap;border-bottom:2px solid var(--line)}
+  .tab{appearance:none;border:none;background:none;cursor:pointer;font:inherit;font-size:14px;
+    font-weight:600;color:var(--sub);padding:10px 14px;border-radius:9px 9px 0 0;position:relative;top:2px}
+  .tab:hover{color:var(--brand-ink);background:#eef3f2}
+  .tab.active{color:var(--brand-ink);background:var(--brand-soft);border:2px solid var(--line);border-bottom:2px solid var(--brand-soft)}
+  .tab .badge{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:20px;margin-left:6px;vertical-align:1px}
+  .badge.up{color:var(--pos);background:var(--pos-bg)} .badge.down{color:var(--neg);background:var(--neg-bg)} .badge.warn{color:var(--warn);background:var(--warn-bg)}
+  .panel{display:none;animation:fade .2s ease}
+  .panel.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  section{margin-top:26px}
+  h2{font-size:16px;margin:0 0 13px;padding-left:11px;border-left:4px solid var(--brand);
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  h2 small{font-weight:400;font-size:11.5px;color:var(--sub)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:15px 17px;box-shadow:var(--shadow)}
+  .card .label{font-size:12px;color:var(--sub);margin-bottom:6px}
+  .card .val{font-size:25px;font-weight:700;letter-spacing:-.01em;line-height:1.12}
+  .card .val .unit{font-size:12.5px;font-weight:600;color:var(--sub);margin-left:2px}
+  .card .prev{font-size:11px;color:var(--sub);margin-top:3px}
+  .delta{display:inline-block;font-size:12px;font-weight:700;margin-top:8px;padding:2px 8px;border-radius:20px}
+  .delta.up{color:var(--pos);background:var(--pos-bg)} .delta.down{color:var(--neg);background:var(--neg-bg)}
+  .ach{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow)}
+  .ach .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}
+  .ach .top .big{font-size:27px;font-weight:700}
+  .ach .top .lab{font-size:12.5px;color:var(--sub)}
+  .ach .mini{position:relative;height:12px;background:#eef1f4;border-radius:6px;overflow:hidden}
+  .ach .mini .f{position:absolute;left:0;top:0;bottom:0;border-radius:6px}
+  .ach .cap{display:flex;justify-content:space-between;font-size:11.5px;color:var(--sub);margin-top:7px}
+  .f.g{background:linear-gradient(90deg,#2f6f6a,#3a9d92)} .f.y{background:linear-gradient(90deg,#c9a13a,#e0be5a)} .f.r{background:linear-gradient(90deg,#c0563f,#d67a63)}
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);
+    border-radius:12px;overflow:hidden;font-size:13px;box-shadow:var(--shadow)}
+  th,td{padding:10px 13px;text-align:right;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  thead th{background:var(--brand-soft);color:var(--brand-ink);font-weight:700;font-size:12px;border-bottom:1px solid #cfe0de}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr.total{background:#f7fafa;font-weight:700}
+  tbody tr.muted td{color:var(--sub)}
+  tbody tr:hover{background:#fafcfc}
+  .num{font-variant-numeric:tabular-nums}
+  .up-t{color:var(--pos);font-weight:700} .down-t{color:var(--neg);font-weight:700} .warn-t{color:var(--warn);font-weight:700}
+  .chip{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:20px}
+  .chip.up{color:var(--pos);background:var(--pos-bg)} .chip.down{color:var(--neg);background:var(--neg-bg)} .chip.warn{color:var(--warn);background:var(--warn-bg)}
+  .story{background:var(--brand-soft);border:1px solid #cfe0de;border-radius:12px;padding:16px 19px}
+  .story p{margin:0 0 8px} .story p:last-child{margin:0} .story .kw{font-weight:700;color:var(--brand-ink)}
+  .note{font-size:11px;color:var(--sub);margin-top:9px}
+  .callout{border-radius:10px;padding:12px 15px;font-size:12.5px;margin-top:6px}
+  .callout.pos{background:var(--pos-bg);border:1px solid #bfe6cf} .callout.neg{background:var(--neg-bg);border:1px solid #f0cdc7} .callout.warn{background:var(--warn-bg);border:1px solid #ecdcae}
+  .kgi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 22px 16px;box-shadow:var(--shadow)}
+  .kgi .row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:12.5px;color:var(--sub);margin-bottom:10px}
+  .bar{position:relative;height:24px;background:#eef1f4;border-radius:6px;overflow:hidden}
+  .bar .fill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#2f6f6a,#3a9d92);border-radius:6px}
+  .bar .mark{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.5}
+  .bar .mark span{position:absolute;top:-19px;transform:translateX(-50%);font-size:10px;color:var(--ink);white-space:nowrap}
+  .kgi .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:13px;font-size:12px;color:var(--sub)}
+  .kgi .legend b{color:var(--ink)}
+  /* スプレッドシートリンク */
+  .sheetlink{display:inline-flex;align-items:center;gap:8px;margin-top:10px;padding:9px 15px;
+    background:var(--brand);color:#fff;border-radius:9px;text-decoration:none;font-size:12.5px;font-weight:700;
+    box-shadow:var(--shadow);transition:filter .15s}
+  .sheetlink:hover{filter:brightness(1.1)}
+  .sheetlink .ic{font-size:14px}
+  .sheetlink small{font-weight:400;opacity:.85;font-size:11px}
+  /* 12ヶ月チャート */
+  .chartbox{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px 12px;box-shadow:var(--shadow)}
+  .chart-wrap{position:relative;padding:8px 0 0 58px}
+  .gridlines{position:absolute;left:58px;right:0;top:8px;height:240px;pointer-events:none}
+  .gline{position:absolute;left:0;right:0;border-top:1px dashed var(--line)}
+  .gline span{position:absolute;left:-54px;top:-8px;font-size:10px;color:var(--sub)}
+  .cols{display:flex;align-items:flex-end;gap:5px;height:240px;position:relative}
+  .col{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;border-radius:6px 6px 0 0}
+  .col.cur{background:rgba(47,111,106,.06)}
+  .stack{position:relative;width:100%;height:100%;display:flex;align-items:flex-end;justify-content:center;gap:3px}
+  .bar{width:12px;border-radius:3px 3px 0 0}
+  .bar.tgt{background:#cfe0de}
+  .bar.act.ok{background:linear-gradient(180deg,#3a9d92,#2f6f6a)}
+  .bar.act.near{background:linear-gradient(180deg,#e0be5a,#c9a13a)}
+  .bar.act.low{background:linear-gradient(180deg,#d67a63,#c0563f)}
+  .bar.act.empty{height:0}
+  .prev-tick{position:absolute;left:50%;transform:translateX(-50%);width:28px;height:2px;background:#8fa0ae;z-index:2;border-radius:2px}
+  .xlab{font-size:10.5px;color:var(--sub);margin-top:6px;white-space:nowrap}
+  .col.cur .xlab{color:var(--brand-ink);font-weight:700}
+  .clegend{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-size:11.5px;color:var(--sub);align-items:center}
+  .clegend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-2px}
+  .clegend .l-tgt{background:#cfe0de} .clegend .l-ok{background:#2f6f6a} .clegend .l-near{background:#c9a13a} .clegend .l-low{background:#c0563f}
+  .clegend .l-prev{width:16px;height:2px;background:#8fa0ae;border-radius:2px;vertical-align:3px}
+  .tablewrap{overflow-x:auto}
+  footer{margin-top:44px;padding-top:15px;border-top:1px solid var(--line);font-size:11px;color:var(--sub);
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  @media(max-width:560px){h1{font-size:21px}.card .val{font-size:21px}.tab{padding:9px 10px;font-size:13px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <p class="eyebrow">RASIK ／ 生成AI 月次レポート</p>
+    <h1>月次 生成AI流入レポート｜2026年9月</h1>
+    <div class="period">対象期間: 2026-09-01 〜 2026-09-30 ／ 前月比（2026年8月）・前年同月比（2025年9月）</div>
+    <div class="defs">
+      <div class="drow"><span class="dlabel">生成AI流入</span><span>GA4でセッションの参照元が生成AIサービスのもの（媒体は問わない）—
+        <span class="dseg"><b>ChatGPT:</b> chatgpt.com・openai</span>
+        <span class="dseg"><b>Gemini:</b> gemini.google.com</span>
+        <span class="dseg"><b>Perplexity:</b> perplexity.ai</span>
+        <span class="dseg"><b>Copilot:</b> copilot.com・copilot.microsoft.com</span>
+        <span class="dseg"><b>Claude:</b> claude.ai</span>
+        <span class="dseg"><b>その他AI:</b> Felo・Genspark・Manus・Grok</span></span></div>
+      <div class="drow"><span class="dlabel">売上</span><span><b>税抜</b>（GA4税込 ÷ 1.1）。同じセッション内の購入のみ（AIで知って後日検索・直接来訪して購入した分は含まない）</span></div>
+      <div class="drow"><span class="dlabel">注意</span><span>アプリ版などで参照元が送られないAI経由の訪問は「直接流入」に計上されるため、<b>本レポートの数値は下限値</b>です。オーガニック月次レポートとは集計対象が異なり、重複しません</span></div>
+    </div>
+    <a class="sheetlink" href="https://docs.google.com/spreadsheets/d/1ZtM_as6HfV9lhy9hGgg1i56vxuVQExSnrek2ckEKHRI/edit" target="_blank" rel="noopener"><span class="ic">▦</span>詳細データをスプレッドシートで開く<small>／ 推移・AIサービス別・着地ページ・ユーザー・デバイス</small></a>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="overview">全体サマリー</button>
+    <button class="tab" data-tab="service">AIサービス別<span class="badge up">ChatGPT 98%</span></button>
+    <button class="tab" data-tab="landing">着地ページ<span class="badge warn">商品 80%</span></button>
+    <button class="tab" data-tab="users">ユーザー・デバイス</button>
+    <button class="tab" data-tab="trend">月別推移<span class="badge up">前年比 ×13.0</span></button>
+  </div>
+
+  <div class="panel active" id="overview">
+    <section>
+      <h2>ハイライト <small>生成AI経由・2026年9月</small></h2>
+      <div class="cards"><div class="card"><div class="label">生成AI経由 セッション</div><div class="val num">11,039<span class="unit"></span></div><div class="prev num">前月 6,688 ／ 前年 1,151</div><div class="delta up">前月比 +65.1%</div></div><div class="card"><div class="label">生成AI経由 売上（税抜）</div><div class="val num">3,348,336<span class="unit">円</span></div><div class="prev num">前月 2,104,753 円 ／ 前年 256,778 円</div><div class="delta up">前月比 +59.1%</div></div><div class="card"><div class="label">購入件数</div><div class="val num">112<span class="unit">件</span></div><div class="prev num">前月 59 件 ／ 前年 5 件</div><div class="delta up">前月比 +89.8%</div></div><div class="card"><div class="label">CVR（購入÷セッション）</div><div class="val num">1.01<span class="unit">%</span></div><div class="prev num">前月 0.88% ／ 前年 0.43%</div><div class="delta up">前月比 +0.13pt</div></div><div class="card"><div class="label">サイト全体売上に占める割合</div><div class="val num">0.38<span class="unit">%</span></div><div class="prev num">前月 0.25%</div><div class="delta up">前月比 +0.13pt</div></div><div class="card"><div class="label">オーガニック検索売上に対する規模</div><div class="val num">3.2<span class="unit">%</span></div><div class="prev num">前月 2.3%</div><div class="delta up">前月比 +1.0pt</div></div></div>
+    </section>
+    <section>
+      <h2>今月のサマリー</h2>
+      <div class="story"><p><span class="kw">生成AIからの流入は2026年9月に 11,039 セッション・売上 ¥3,348,336（税抜）・購入 112 件。前月比でセッション +65.1%・売上 +59.1%、前年同月の13.0倍。</span></p><p>サイト全体の売上に占める割合は 0.38%（前月 0.25%）、オーガニック検索売上に対しては 3.2% の規模。まだ小さいが、2025年9月以降で最も大きく、伸びが続いている。</p><p><span class="kw">ほぼ全量がChatGPT経由</span>（セッションの 98%・売上の 100%）。着地は<b>商品ページへの直行が 80%</b>で、商品ページへの直接の送客が中心。売上の 74% はリピーター（再訪ユーザー）、88% のセッションがスマートフォン。</p></div>
+    </section>
+    <section>
+      <h2>AIサービス別 <small>2026年9月・前月比</small></h2>
+      <div class="tablewrap"><table><thead><tr><th>AIサービス</th><th>セッション</th><th>前月比</th><th>売上（税抜）</th><th>前月比</th><th>購入</th><th>CVR</th><th>セッション構成比</th></tr></thead><tbody><tr><td>ChatGPT</td><td class="num">10,857</td><td class="num">+64.8%</td><td class="num">¥3,348,336</td><td class="num">+62.0%</td><td class="num">112</td><td class="num">1.03%</td><td class="num">98.4%</td></tr><tr><td>Gemini</td><td class="num">119</td><td class="num">+88.9%</td><td class="num">¥0</td><td class="num">−100.0%</td><td class="num">0</td><td class="num">0.00%</td><td class="num">1.1%</td></tr><tr><td>Perplexity</td><td class="num">43</td><td class="num">+115.0%</td><td class="num">¥0</td><td class="num">—</td><td class="num">0</td><td class="num">0.00%</td><td class="num">0.4%</td></tr><tr><td>Copilot</td><td class="num">15</td><td class="num">+36.4%</td><td class="num">¥0</td><td class="num">—</td><td class="num">0</td><td class="num">0.00%</td><td class="num">0.1%</td></tr><tr><td>Claude</td><td class="num">4</td><td class="num">−42.9%</td><td class="num">¥0</td><td class="num">—</td><td class="num">0</td><td class="num">0.00%</td><td class="num">0.0%</td></tr><tr><td>その他AI</td><td class="num">1</td><td class="num">—</td><td class="num">¥0</td><td class="num">—</td><td class="num">0</td><td class="num">0.00%</td><td class="num">0.0%</td></tr><tr class="total"><td>合計</td><td class="num">11,039</td><td class="num">+65.1%</td><td class="num">¥3,348,336</td><td class="num">+59.1%</td><td class="num">112</td><td class="num">1.01%</td><td class="num">100%</td></tr></tbody></table></div>
+    </section>
+  </div>
+
+  <div class="panel" id="service">
+    <section>
+      <h2>AIサービス別 実績 <small>2026年9月</small></h2>
+      <div class="tablewrap"><table><thead><tr><th>AIサービス</th><th>セッション</th><th>前月比</th><th>売上（税抜）</th><th>前月比</th><th>購入</th><th>CVR</th><th>セッション構成比</th></tr></thead><tbody><tr><td>ChatGPT</td><td class="num">10,857</td><td class="num">+64.8%</td><td class="num">¥3,348,336</td><td class="num">+62.0%</td><td class="num">112</td><td class="num">1.03%</td><td class="num">98.4%</td></tr><tr><td>Gemini</td><td class="num">119</td><td class="num">+88.9%</td><td class="num">¥0</td><td class="num">−100.0%</td><td class="num">0</td><td class="num">0.00%</td><td class="num">1.1%</td></tr><tr><td>Perplexity</td><td class="num">43</td><td class="num">+115.0%</td><td class="num">¥0</td><td class="num">—</td><td class="num">0</td><td class="num">0.00%</td><td class="num">0.4%</td></tr><tr><td>Copilot</td><td class="num">15</td><td class="num">+36.4%</td><td class="num">¥0</td><td class="num">—</td><td class="num">0</td><td class="num">0.00%</td><td class="num">0.1%</td></tr><tr><td>Claude</td><td class="num">4</td><td class="num">−42.9%</td><td class="num">¥0</td><td class="num">—</td><td class="num">0</td><td class="num">0.00%</td><td class="num">0.0%</td></tr><tr><td>その他AI</td><td class="num">1</td><td class="num">—</td><td class="num">¥0</td><td class="num">—</td><td class="num">0</td><td class="num">0.00%</td><td class="num">0.0%</td></tr><tr class="total"><td>合計</td><td class="num">11,039</td><td class="num">+65.1%</td><td class="num">¥3,348,336</td><td class="num">+59.1%</td><td class="num">112</td><td class="num">1.01%</td><td class="num">100%</td></tr></tbody></table></div>
+    </section>
+    <section>
+      <h2>AIサービス別 セッション推移 <small>2025年9月〜2026年9月</small></h2>
+      <div class="tablewrap"><table><thead><tr><th>月</th><th>ChatGPT</th><th>Gemini</th><th>Perplexity</th><th>Copilot</th><th>Claude</th><th>その他AI</th></tr></thead><tbody><tr><td>2025年9月</td><td class="num">855</td><td class="num">28</td><td class="num">240</td><td class="num">24</td><td class="num">2</td><td class="num">2</td></tr><tr><td>2025年10月</td><td class="num">859</td><td class="num">19</td><td class="num">136</td><td class="num">21</td><td class="num">0</td><td class="num">7</td></tr><tr><td>2025年11月</td><td class="num">1,152</td><td class="num">25</td><td class="num">109</td><td class="num">32</td><td class="num">3</td><td class="num">1</td></tr><tr><td>2025年12月</td><td class="num">993</td><td class="num">53</td><td class="num">177</td><td class="num">30</td><td class="num">2</td><td class="num">2</td></tr><tr><td>2026年1月</td><td class="num">1,717</td><td class="num">66</td><td class="num">140</td><td class="num">34</td><td class="num">2</td><td class="num">0</td></tr><tr><td>2026年2月</td><td class="num">1,837</td><td class="num">62</td><td class="num">133</td><td class="num">34</td><td class="num">3</td><td class="num">8</td></tr><tr><td>2026年3月</td><td class="num">2,522</td><td class="num">71</td><td class="num">124</td><td class="num">65</td><td class="num">11</td><td class="num">1</td></tr><tr><td>2026年4月</td><td class="num">2,413</td><td class="num">50</td><td class="num">95</td><td class="num">50</td><td class="num">12</td><td class="num">0</td></tr><tr><td>2026年5月</td><td class="num">2,939</td><td class="num">45</td><td class="num">49</td><td class="num">14</td><td class="num">29</td><td class="num">1</td></tr><tr><td>2026年6月</td><td class="num">3,087</td><td class="num">32</td><td class="num">25</td><td class="num">19</td><td class="num">2</td><td class="num">0</td></tr><tr><td>2026年7月</td><td class="num">3,696</td><td class="num">50</td><td class="num">18</td><td class="num">19</td><td class="num">9</td><td class="num">2</td></tr><tr><td>2026年8月</td><td class="num">6,587</td><td class="num">63</td><td class="num">20</td><td class="num">11</td><td class="num">7</td><td class="num">0</td></tr><tr><td>2026年9月</td><td class="num">10,857</td><td class="num">119</td><td class="num">43</td><td class="num">15</td><td class="num">4</td><td class="num">1</td></tr></tbody></table></div>
+    </section>
+  </div>
+
+  <div class="panel" id="landing">
+    <section>
+      <h2>着地ページの種類別 <small>2026年9月・前月比・前年同月</small></h2>
+      <div class="tablewrap"><table><thead><tr><th>着地ページの種類</th><th>セッション</th><th>構成比</th><th>売上（税抜）</th><th>前月比</th><th>前年同月の売上</th><th>購入</th><th>CVR</th></tr></thead><tbody><tr><td>商品ページ</td><td class="num">8,722</td><td class="num">80.4%</td><td class="num">¥2,030,927</td><td class="num">+63.2%</td><td class="num">¥170,885</td><td class="num">70</td><td class="num">0.80%</td></tr><tr><td>カテゴリ</td><td class="num">692</td><td class="num">6.4%</td><td class="num">¥128,741</td><td class="num">+32.8%</td><td class="num">¥0</td><td class="num">6</td><td class="num">0.87%</td></tr><tr><td>トップ・ブランドページ</td><td class="num">625</td><td class="num">5.8%</td><td class="num">¥486,276</td><td class="num">+300.9%</td><td class="num">¥0</td><td class="num">13</td><td class="num">2.08%</td></tr><tr><td>RASIK LIFE（記事）</td><td class="num">366</td><td class="num">3.4%</td><td class="num">¥55,620</td><td class="num">—</td><td class="num">¥85,893</td><td class="num">1</td><td class="num">0.27%</td></tr><tr><td>カート・その他</td><td class="num">447</td><td class="num">4.1%</td><td class="num">¥646,772</td><td class="num">+0.8%</td><td class="num">¥0</td><td class="num">22</td><td class="num">4.92%</td></tr></tbody></table></div>
+    </section>
+    <section>
+      <h2>着地ページ 上位20（セッション順）</h2>
+      <div class="tablewrap"><table><thead><tr><th>着地ページ（セッション順）</th><th>セッション</th><th>売上（税抜）</th><th>購入</th></tr></thead><tbody><tr><td><span title="/">/</span></td><td class="num">432</td><td class="num">¥474,020</td><td class="num">12</td></tr><tr><td><span title="(not set)">(not set)</span></td><td class="num">284</td><td class="num">¥0</td><td class="num">0</td></tr><tr><td><span title="/collections/bed">/collections/bed</span></td><td class="num">137</td><td class="num">¥22,709</td><td class="num">1</td></tr><tr><td><span title="/collections/sofa">/collections/sofa</span></td><td class="num">95</td><td class="num">¥33,212</td><td class="num">1</td></tr><tr><td><span title="/collections/storage">/collections/storage</span></td><td class="num">94</td><td class="num">¥0</td><td class="num">0</td></tr><tr><td><span title="/products/214419">/products/214419</span></td><td class="num">83</td><td class="num">¥0</td><td class="num">0</td></tr><tr><td><span title="/collections/tvstand">/collections/tvstand</span></td><td class="num">73</td><td class="num">¥0</td><td class="num">0</td></tr><tr><td><span title="/products/214222-3-ma-gg">/products/214222-3-ma-gg</span></td><td class="num">66</td><td class="num">¥0</td><td class="num">0</td></tr><tr><td><span title="/products/206355-2">/products/206355-2</span></td><td class="num">62</td><td class="num">¥85,984</td><td class="num">1</td></tr><tr><td><span title="/products/210477-2-1-gg">/products/210477-2-1-gg</span></td><td class="num">62</td><td class="num">¥39,073</td><td class="num">1</td></tr><tr><td><span title="/products/214620-na">/products/214620-na</span></td><td class="num">55</td><td class="num">¥0</td><td class="num">0</td></tr><tr><td><span title="/search">/search</span></td><td class="num">54</td><td class="num">¥0</td><td class="num">1</td></tr><tr><td><span title="/collections/table">/collections/table</span></td><td class="num">50</td><td class="num">¥0</td><td class="num">0</td></tr><tr><td><span title="/products/216365-1-gg">/products/216365-1-gg</span></td><td class="num">42</td><td class="num">¥18,785</td><td class="num">2</td></tr><tr><td><span title="/products/219353-mt">/products/219353-mt</span></td><td class="num">41</td><td class="num">¥0</td><td class="num">0</td></tr><tr><td><span title="/products/210477-2-2-gg">/products/210477-2-2-gg</span></td><td class="num">41</td><td class="num">¥64,147</td><td class="num">2</td></tr><tr><td><span title="/products/155217-1">/products/155217-1</span></td><td class="num">40</td><td class="num">¥0</td><td class="num">0</td></tr><tr><td><span title="/collections/dining">/collections/dining</span></td><td class="num">40</td><td class="num">¥26,345</td><td class="num">1</td></tr><tr><td><span title="/pages/contact">/pages/contact</span></td><td class="num">38</td><td class="num">¥0</td><td class="num">0</td></tr><tr><td><span title="/products/215811-3-gg">/products/215811-3-gg</span></td><td class="num">38</td><td class="num">¥0</td><td class="num">0</td></tr></tbody></table></div>
+    </section>
+    <section>
+      <h2>着地ページ 上位15（売上順）<small>カート・購入完了ページは購入直前の再訪を含む</small></h2>
+      <div class="tablewrap"><table><thead><tr><th>着地ページ（売上順）</th><th>セッション</th><th>売上（税抜）</th><th>購入</th></tr></thead><tbody><tr><td><span title="/">/</span></td><td class="num">432</td><td class="num">¥474,020</td><td class="num">12</td></tr><tr><td><span title="/cart">/cart</span></td><td class="num">33</td><td class="num">¥340,851</td><td class="num">10</td></tr><tr><td><span title="/products/216205-3-st">/products/216205-3-st</span></td><td class="num">2</td><td class="num">¥135,687</td><td class="num">1</td></tr><tr><td><span title="/products/149776-b-iv">/products/149776-b-iv</span></td><td class="num">4</td><td class="num">¥105,529</td><td class="num">1</td></tr><tr><td><span title="/products/206355-2">/products/206355-2</span></td><td class="num">62</td><td class="num">¥85,984</td><td class="num">1</td></tr><tr><td><span title="/products/212284-st">/products/212284-st</span></td><td class="num">16</td><td class="num">¥82,620</td><td class="num">1</td></tr><tr><td><span title="/products/191629">/products/191629</span></td><td class="num">1</td><td class="num">¥71,800</td><td class="num">1</td></tr><tr><td><span title="/products/212178-4">/products/212178-4</span></td><td class="num">2</td><td class="num">¥71,309</td><td class="num">1</td></tr><tr><td><span title="/products/214620-br">/products/214620-br</span></td><td class="num">10</td><td class="num">¥70,347</td><td class="num">1</td></tr><tr><td><span title="/products/210477-2-2-gg">/products/210477-2-2-gg</span></td><td class="num">41</td><td class="num">¥64,147</td><td class="num">2</td></tr><tr><td><span title="/products/189941">/products/189941</span></td><td class="num">7</td><td class="num">¥58,513</td><td class="num">1</td></tr><tr><td><span title="/products/203734-2">/products/203734-2</span></td><td class="num">29</td><td class="num">¥57,255</td><td class="num">1</td></tr><tr><td><span title="/products/215826-1-60-ggwh">/products/215826-1-60-ggwh</span></td><td class="num">16</td><td class="num">¥56,422</td><td class="num">1</td></tr><tr><td><span title="/blogs/bed/1057">/blogs/bed/1057</span></td><td class="num">14</td><td class="num">¥55,620</td><td class="num">1</td></tr><tr><td><span title="/products/214869-2-na">/products/214869-2-na</span></td><td class="num">4</td><td class="num">¥49,876</td><td class="num">1</td></tr></tbody></table></div>
+    </section>
+  </div>
+
+  <div class="panel" id="users">
+    <section>
+      <h2>新規・リピーター別 <small>2026年9月</small></h2>
+      <div class="tablewrap"><table><thead><tr><th>ユーザー区分</th><th>セッション</th><th>構成比</th><th>売上（税抜）</th><th>売上構成比</th><th>購入</th><th>CVR</th></tr></thead><tbody><tr><td>新規ユーザー</td><td class="num">7,380</td><td class="num">66.9%</td><td class="num">¥885,629</td><td class="num">26.4%</td><td class="num">33</td><td class="num">0.45%</td></tr><tr><td>リピーター（再訪）</td><td class="num">3,267</td><td class="num">29.6%</td><td class="num">¥2,462,707</td><td class="num">73.6%</td><td class="num">79</td><td class="num">2.42%</td></tr><tr><td>判定不能</td><td class="num">368</td><td class="num">3.3%</td><td class="num">¥0</td><td class="num">0.0%</td><td class="num">0</td><td class="num">0.00%</td></tr></tbody></table></div>
+    </section>
+    <section>
+      <h2>デバイス別 <small>2026年9月</small></h2>
+      <div class="tablewrap"><table><thead><tr><th>デバイス</th><th>セッション</th><th>構成比</th><th>売上（税抜）</th><th>購入</th><th>CVR</th></tr></thead><tbody><tr><td>スマートフォン</td><td class="num">9,663</td><td class="num">87.5%</td><td class="num">¥2,359,999</td><td class="num">76</td><td class="num">0.79%</td></tr><tr><td>PC</td><td class="num">1,394</td><td class="num">12.6%</td><td class="num">¥988,337</td><td class="num">36</td><td class="num">2.58%</td></tr><tr><td>タブレット</td><td class="num">21</td><td class="num">0.2%</td><td class="num">¥0</td><td class="num">0</td><td class="num">0.00%</td></tr></tbody></table></div>
+    </section>
+  </div>
+
+  <div class="panel" id="trend">
+    <section>
+      <h2>月別推移 <small>2025年9月〜2026年9月・生成AI合計</small></h2>
+      <div class="tablewrap"><table><thead><tr><th>月</th><th>セッション</th><th>売上（税抜）</th><th>購入</th><th>CVR</th><th>サイト全体売上比</th><th>オーガニック売上比</th></tr></thead><tbody><tr><td>2025年9月</td><td class="num">1,151</td><td class="num">¥256,778</td><td class="num">5</td><td class="num">0.43%</td><td class="num">0.03%</td><td class="num">0.3%</td></tr><tr><td>2025年10月</td><td class="num">1,042</td><td class="num">¥536,718</td><td class="num">15</td><td class="num">1.44%</td><td class="num">0.07%</td><td class="num">0.7%</td></tr><tr><td>2025年11月</td><td class="num">1,322</td><td class="num">¥741,050</td><td class="num">12</td><td class="num">0.91%</td><td class="num">0.08%</td><td class="num">0.7%</td></tr><tr><td>2025年12月</td><td class="num">1,257</td><td class="num">¥501,539</td><td class="num">15</td><td class="num">1.19%</td><td class="num">0.06%</td><td class="num">0.6%</td></tr><tr><td>2026年1月</td><td class="num">1,959</td><td class="num">¥254,749</td><td class="num">10</td><td class="num">0.51%</td><td class="num">0.03%</td><td class="num">0.3%</td></tr><tr><td>2026年2月</td><td class="num">2,077</td><td class="num">¥504,736</td><td class="num">11</td><td class="num">0.53%</td><td class="num">0.05%</td><td class="num">0.5%</td></tr><tr><td>2026年3月</td><td class="num">2,794</td><td class="num">¥1,007,825</td><td class="num">25</td><td class="num">0.89%</td><td class="num">0.09%</td><td class="num">0.9%</td></tr><tr><td>2026年4月</td><td class="num">2,620</td><td class="num">¥779,638</td><td class="num">33</td><td class="num">1.26%</td><td class="num">0.09%</td><td class="num">0.9%</td></tr><tr><td>2026年5月</td><td class="num">3,077</td><td class="num">¥777,391</td><td class="num">24</td><td class="num">0.78%</td><td class="num">0.09%</td><td class="num">0.9%</td></tr><tr><td>2026年6月</td><td class="num">3,165</td><td class="num">¥1,000,163</td><td class="num">27</td><td class="num">0.85%</td><td class="num">0.12%</td><td class="num">1.2%</td></tr><tr><td>2026年7月</td><td class="num">3,794</td><td class="num">¥1,640,370</td><td class="num">41</td><td class="num">1.08%</td><td class="num">0.19%</td><td class="num">1.8%</td></tr><tr><td>2026年8月</td><td class="num">6,688</td><td class="num">¥2,104,753</td><td class="num">59</td><td class="num">0.88%</td><td class="num">0.25%</td><td class="num">2.3%</td></tr><tr><td>2026年9月</td><td class="num">11,039</td><td class="num">¥3,348,336</td><td class="num">112</td><td class="num">1.01%</td><td class="num">0.38%</td><td class="num">3.2%</td></tr></tbody></table></div>
+    </section>
+  </div>
+
+</div>
+<script>
+  document.querySelectorAll('.tab').forEach(function(t){
+    t.addEventListener('click',function(){
+      document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});
+      document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active')});
+      t.classList.add('active');
+      document.getElementById(t.dataset.tab).classList.add('active');
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+  });
+</script>
+</body>
+</html>
