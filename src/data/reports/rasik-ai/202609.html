@@ -121,6 +121,18 @@
     display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
   @media(max-width:560px){h1{font-size:21px}.card .val{font-size:21px}.tab{padding:9px 10px;font-size:13px}}
 </style>
+<style>
+  .chartbox{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 14px 6px;box-shadow:var(--shadow)}
+  .chartbox .ctitle{font-size:13px;font-weight:700;margin:0 0 2px 4px}
+  .chartbox .csub{font-size:11.5px;color:var(--sub);margin:0 0 6px 4px}
+  .charts{display:grid;grid-template-columns:1fr;gap:14px}
+  .chart .hit{cursor:default;outline:none}
+  .chart .hit:hover .mark,.chart .hit:focus .mark{opacity:.75}
+  #aitt{position:fixed;pointer-events:none;z-index:2000;background:#fff;border:1px solid var(--line);border-radius:8px;
+    box-shadow:0 4px 16px rgba(20,35,50,.12);padding:8px 10px;font-size:12px;line-height:1.5;color:var(--ink);display:none;white-space:pre}
+  #aitt b{font-size:13px}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -155,6 +167,92 @@
     <section>
       <h2>ハイライト <small>生成AI経由・2026年9月</small></h2>
       <div class="cards"><div class="card"><div class="label">生成AI経由 セッション</div><div class="val num">11,039<span class="unit"></span></div><div class="prev num">前月 6,688 ／ 前年 1,151</div><div class="delta up">前月比 +65.1%</div></div><div class="card"><div class="label">生成AI経由 売上（税抜）</div><div class="val num">3,348,336<span class="unit">円</span></div><div class="prev num">前月 2,104,753 円 ／ 前年 256,778 円</div><div class="delta up">前月比 +59.1%</div></div><div class="card"><div class="label">購入件数</div><div class="val num">112<span class="unit">件</span></div><div class="prev num">前月 59 件 ／ 前年 5 件</div><div class="delta up">前月比 +89.8%</div></div><div class="card"><div class="label">CVR（購入÷セッション）</div><div class="val num">1.01<span class="unit">%</span></div><div class="prev num">前月 0.88% ／ 前年 0.43%</div><div class="delta up">前月比 +0.13pt</div></div><div class="card"><div class="label">サイト全体売上に占める割合</div><div class="val num">0.38<span class="unit">%</span></div><div class="prev num">前月 0.25%</div><div class="delta up">前月比 +0.13pt</div></div><div class="card"><div class="label">オーガニック検索売上に対する規模</div><div class="val num">3.2<span class="unit">%</span></div><div class="prev num">前月 2.3%</div><div class="delta up">前月比 +1.0pt</div></div></div>
+    </section>
+    <section>
+      <h2>成長推移 <small>2025年9月〜2026年9月・カーソルを合わせると数値を表示</small></h2>
+      <div class="charts">
+  <div class="chartbox"><p class="ctitle">生成AI経由の売上（税抜）</p><p class="csub">2025年9月〜2026年9月・月別</p><svg viewBox="0 0 720 220" width="100%" role="img" aria-label="生成AI経由の売上（月別・税抜）" class="chart" id="ch-rev"><line x1="64" x2="700" y1="186.0" y2="186.0" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="190.0" text-anchor="end" font-size="11" fill="#5b6b7b">0</text><line x1="64" x2="700" y1="145.0" y2="145.0" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="149.0" text-anchor="end" font-size="11" fill="#5b6b7b">100万</text><line x1="64" x2="700" y1="104.0" y2="104.0" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="108.0" text-anchor="end" font-size="11" fill="#5b6b7b">200万</text><line x1="64" x2="700" y1="63.0" y2="63.0" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="67.0" text-anchor="end" font-size="11" fill="#5b6b7b">300万</text><line x1="64" x2="700" y1="22.0" y2="22.0" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="26.0" text-anchor="end" font-size="11" fill="#5b6b7b">400万</text><g class="hit" tabindex="0" data-tip="2025年9月
+¥256,778
+セッション 1,151・購入 5 件"><rect x="64.0" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M76.5,186.0 V179.5 Q76.5,175.5 80.5,175.5 H96.5 Q100.5,175.5 100.5,179.5 V186.0 Z" fill="#00897b"/></g><text x="88.5" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/9</text><g class="hit" tabindex="0" data-tip="2025年10月
+¥536,718
+セッション 1,042・購入 15 件"><rect x="112.9" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M125.4,186.0 V168.0 Q125.4,164.0 129.4,164.0 H145.4 Q149.4,164.0 149.4,168.0 V186.0 Z" fill="#00897b"/></g><text x="137.4" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/10</text><g class="hit" tabindex="0" data-tip="2025年11月
+¥741,050
+セッション 1,322・購入 12 件"><rect x="161.8" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M174.3,186.0 V159.6 Q174.3,155.6 178.3,155.6 H194.3 Q198.3,155.6 198.3,159.6 V186.0 Z" fill="#00897b"/></g><text x="186.3" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/11</text><g class="hit" tabindex="0" data-tip="2025年12月
+¥501,539
+セッション 1,257・購入 15 件"><rect x="210.8" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M223.2,186.0 V169.4 Q223.2,165.4 227.2,165.4 H243.2 Q247.2,165.4 247.2,169.4 V186.0 Z" fill="#00897b"/></g><text x="235.2" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/12</text><g class="hit" tabindex="0" data-tip="2026年1月
+¥254,749
+セッション 1,959・購入 10 件"><rect x="259.7" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M272.2,186.0 V179.6 Q272.2,175.6 276.2,175.6 H292.2 Q296.2,175.6 296.2,179.6 V186.0 Z" fill="#00897b"/></g><text x="284.2" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/1</text><g class="hit" tabindex="0" data-tip="2026年2月
+¥504,736
+セッション 2,077・購入 11 件"><rect x="308.6" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M321.1,186.0 V169.3 Q321.1,165.3 325.1,165.3 H341.1 Q345.1,165.3 345.1,169.3 V186.0 Z" fill="#00897b"/></g><text x="333.1" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/2</text><g class="hit" tabindex="0" data-tip="2026年3月
+¥1,007,825
+セッション 2,794・購入 25 件"><rect x="357.5" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M370.0,186.0 V148.7 Q370.0,144.7 374.0,144.7 H390.0 Q394.0,144.7 394.0,148.7 V186.0 Z" fill="#00897b"/></g><text x="382.0" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/3</text><g class="hit" tabindex="0" data-tip="2026年4月
+¥779,638
+セッション 2,620・購入 33 件"><rect x="406.5" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M418.9,186.0 V158.0 Q418.9,154.0 422.9,154.0 H438.9 Q442.9,154.0 442.9,158.0 V186.0 Z" fill="#00897b"/></g><text x="430.9" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/4</text><g class="hit" tabindex="0" data-tip="2026年5月
+¥777,391
+セッション 3,077・購入 24 件"><rect x="455.4" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M467.8,186.0 V158.1 Q467.8,154.1 471.8,154.1 H487.8 Q491.8,154.1 491.8,158.1 V186.0 Z" fill="#00897b"/></g><text x="479.8" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/5</text><g class="hit" tabindex="0" data-tip="2026年6月
+¥1,000,163
+セッション 3,165・購入 27 件"><rect x="504.3" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M516.8,186.0 V149.0 Q516.8,145.0 520.8,145.0 H536.8 Q540.8,145.0 540.8,149.0 V186.0 Z" fill="#00897b"/></g><text x="528.8" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/6</text><g class="hit" tabindex="0" data-tip="2026年7月
+¥1,640,370
+セッション 3,794・購入 41 件"><rect x="553.2" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M565.7,186.0 V122.7 Q565.7,118.7 569.7,118.7 H585.7 Q589.7,118.7 589.7,122.7 V186.0 Z" fill="#00897b"/></g><text x="577.7" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/7</text><g class="hit" tabindex="0" data-tip="2026年8月
+¥2,104,753
+セッション 6,688・購入 59 件"><rect x="602.2" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M614.6,186.0 V103.7 Q614.6,99.7 618.6,99.7 H634.6 Q638.6,99.7 638.6,103.7 V186.0 Z" fill="#00897b"/></g><text x="626.6" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/8</text><g class="hit" tabindex="0" data-tip="2026年9月
+¥3,348,336
+セッション 11,039・購入 112 件"><rect x="651.1" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M663.5,186.0 V52.7 Q663.5,48.7 667.5,48.7 H683.5 Q687.5,48.7 687.5,52.7 V186.0 Z" fill="#00897b"/></g><text x="675.5" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/9</text><text x="675.5" y="42.7" text-anchor="middle" font-size="12" font-weight="700" fill="#1c2530">¥335万</text></svg></div>
+  <div class="chartbox"><p class="ctitle">生成AI経由のセッション</p><p class="csub">2025年9月〜2026年9月・月別</p><svg viewBox="0 0 720 220" width="100%" role="img" aria-label="生成AI経由のセッション（月別）" class="chart" id="ch-sess"><line x1="64" x2="700" y1="186.0" y2="186.0" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="190.0" text-anchor="end" font-size="11" fill="#5b6b7b">0</text><line x1="64" x2="700" y1="158.7" y2="158.7" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="162.7" text-anchor="end" font-size="11" fill="#5b6b7b">2,000</text><line x1="64" x2="700" y1="131.3" y2="131.3" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="135.3" text-anchor="end" font-size="11" fill="#5b6b7b">4,000</text><line x1="64" x2="700" y1="104.0" y2="104.0" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="108.0" text-anchor="end" font-size="11" fill="#5b6b7b">6,000</text><line x1="64" x2="700" y1="76.7" y2="76.7" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="80.7" text-anchor="end" font-size="11" fill="#5b6b7b">8,000</text><line x1="64" x2="700" y1="49.3" y2="49.3" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="53.3" text-anchor="end" font-size="11" fill="#5b6b7b">10,000</text><line x1="64" x2="700" y1="22.0" y2="22.0" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="26.0" text-anchor="end" font-size="11" fill="#5b6b7b">12,000</text><g class="hit" tabindex="0" data-tip="2025年9月
+1,151 セッション
+うちChatGPT 855"><rect x="64.0" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M76.5,186.0 V174.3 Q76.5,170.3 80.5,170.3 H96.5 Q100.5,170.3 100.5,174.3 V186.0 Z" fill="#00897b"/></g><text x="88.5" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/9</text><g class="hit" tabindex="0" data-tip="2025年10月
+1,042 セッション
+うちChatGPT 859"><rect x="112.9" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M125.4,186.0 V175.8 Q125.4,171.8 129.4,171.8 H145.4 Q149.4,171.8 149.4,175.8 V186.0 Z" fill="#00897b"/></g><text x="137.4" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/10</text><g class="hit" tabindex="0" data-tip="2025年11月
+1,322 セッション
+うちChatGPT 1,152"><rect x="161.8" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M174.3,186.0 V171.9 Q174.3,167.9 178.3,167.9 H194.3 Q198.3,167.9 198.3,171.9 V186.0 Z" fill="#00897b"/></g><text x="186.3" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/11</text><g class="hit" tabindex="0" data-tip="2025年12月
+1,257 セッション
+うちChatGPT 993"><rect x="210.8" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M223.2,186.0 V172.8 Q223.2,168.8 227.2,168.8 H243.2 Q247.2,168.8 247.2,172.8 V186.0 Z" fill="#00897b"/></g><text x="235.2" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/12</text><g class="hit" tabindex="0" data-tip="2026年1月
+1,959 セッション
+うちChatGPT 1,717"><rect x="259.7" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M272.2,186.0 V163.2 Q272.2,159.2 276.2,159.2 H292.2 Q296.2,159.2 296.2,163.2 V186.0 Z" fill="#00897b"/></g><text x="284.2" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/1</text><g class="hit" tabindex="0" data-tip="2026年2月
+2,077 セッション
+うちChatGPT 1,837"><rect x="308.6" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M321.1,186.0 V161.6 Q321.1,157.6 325.1,157.6 H341.1 Q345.1,157.6 345.1,161.6 V186.0 Z" fill="#00897b"/></g><text x="333.1" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/2</text><g class="hit" tabindex="0" data-tip="2026年3月
+2,794 セッション
+うちChatGPT 2,522"><rect x="357.5" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M370.0,186.0 V151.8 Q370.0,147.8 374.0,147.8 H390.0 Q394.0,147.8 394.0,151.8 V186.0 Z" fill="#00897b"/></g><text x="382.0" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/3</text><g class="hit" tabindex="0" data-tip="2026年4月
+2,620 セッション
+うちChatGPT 2,413"><rect x="406.5" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M418.9,186.0 V154.2 Q418.9,150.2 422.9,150.2 H438.9 Q442.9,150.2 442.9,154.2 V186.0 Z" fill="#00897b"/></g><text x="430.9" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/4</text><g class="hit" tabindex="0" data-tip="2026年5月
+3,077 セッション
+うちChatGPT 2,939"><rect x="455.4" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M467.8,186.0 V147.9 Q467.8,143.9 471.8,143.9 H487.8 Q491.8,143.9 491.8,147.9 V186.0 Z" fill="#00897b"/></g><text x="479.8" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/5</text><g class="hit" tabindex="0" data-tip="2026年6月
+3,165 セッション
+うちChatGPT 3,087"><rect x="504.3" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M516.8,186.0 V146.7 Q516.8,142.7 520.8,142.7 H536.8 Q540.8,142.7 540.8,146.7 V186.0 Z" fill="#00897b"/></g><text x="528.8" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/6</text><g class="hit" tabindex="0" data-tip="2026年7月
+3,794 セッション
+うちChatGPT 3,696"><rect x="553.2" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M565.7,186.0 V138.1 Q565.7,134.1 569.7,134.1 H585.7 Q589.7,134.1 589.7,138.1 V186.0 Z" fill="#00897b"/></g><text x="577.7" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/7</text><g class="hit" tabindex="0" data-tip="2026年8月
+6,688 セッション
+うちChatGPT 6,587"><rect x="602.2" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M614.6,186.0 V98.6 Q614.6,94.6 618.6,94.6 H634.6 Q638.6,94.6 638.6,98.6 V186.0 Z" fill="#00897b"/></g><text x="626.6" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/8</text><g class="hit" tabindex="0" data-tip="2026年9月
+11,039 セッション
+うちChatGPT 10,857"><rect x="651.1" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M663.5,186.0 V39.1 Q663.5,35.1 667.5,35.1 H683.5 Q687.5,35.1 687.5,39.1 V186.0 Z" fill="#00897b"/></g><text x="675.5" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/9</text><text x="675.5" y="29.1" text-anchor="middle" font-size="12" font-weight="700" fill="#1c2530">11,039</text></svg></div>
+  <div class="chartbox"><p class="ctitle">サイト全体の売上に占める割合</p><p class="csub">2025年9月〜2026年9月・月別（全チャネル売上を分母）</p><svg viewBox="0 0 720 220" width="100%" role="img" aria-label="サイト全体売上に占める生成AI経由の割合（月別）" class="chart" id="ch-share"><line x1="64" x2="700" y1="186.0" y2="186.0" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="190.0" text-anchor="end" font-size="11" fill="#5b6b7b">0%</text><line x1="64" x2="700" y1="153.2" y2="153.2" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="157.2" text-anchor="end" font-size="11" fill="#5b6b7b">0.1%</text><line x1="64" x2="700" y1="120.4" y2="120.4" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="124.4" text-anchor="end" font-size="11" fill="#5b6b7b">0.2%</text><line x1="64" x2="700" y1="87.6" y2="87.6" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="91.6" text-anchor="end" font-size="11" fill="#5b6b7b">0.3%</text><line x1="64" x2="700" y1="54.8" y2="54.8" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="58.8" text-anchor="end" font-size="11" fill="#5b6b7b">0.4%</text><line x1="64" x2="700" y1="22.0" y2="22.0" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="26.0" text-anchor="end" font-size="11" fill="#5b6b7b">0.5%</text><polygon points="88.5,186.0 88.5,174.8 137.4,163.1 186.3,160.3 235.2,167.2 284.2,176.2 333.1,168.8 382.0,156.5 430.9,157.8 479.8,155.5 528.8,147.6 577.7,124.1 626.6,104.8 675.5,62.9 675.5,186.0" fill="#00897b" fill-opacity="0.10"/><polyline points="88.5,174.8 137.4,163.1 186.3,160.3 235.2,167.2 284.2,176.2 333.1,168.8 382.0,156.5 430.9,157.8 479.8,155.5 528.8,147.6 577.7,124.1 626.6,104.8 675.5,62.9" fill="none" stroke="#00897b" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><text x="88.5" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/9</text><g class="hit" tabindex="0" data-tip="2025年9月
+0.03%
+オーガニック売上比 0.3%"><rect x="64.0" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="88.5" cy="174.8" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="137.4" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/10</text><g class="hit" tabindex="0" data-tip="2025年10月
+0.07%
+オーガニック売上比 0.7%"><rect x="112.9" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="137.4" cy="163.1" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="186.3" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/11</text><g class="hit" tabindex="0" data-tip="2025年11月
+0.08%
+オーガニック売上比 0.7%"><rect x="161.8" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="186.3" cy="160.3" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="235.2" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/12</text><g class="hit" tabindex="0" data-tip="2025年12月
+0.06%
+オーガニック売上比 0.6%"><rect x="210.8" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="235.2" cy="167.2" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="284.2" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/1</text><g class="hit" tabindex="0" data-tip="2026年1月
+0.03%
+オーガニック売上比 0.3%"><rect x="259.7" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="284.2" cy="176.2" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="333.1" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/2</text><g class="hit" tabindex="0" data-tip="2026年2月
+0.05%
+オーガニック売上比 0.5%"><rect x="308.6" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="333.1" cy="168.8" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="382.0" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/3</text><g class="hit" tabindex="0" data-tip="2026年3月
+0.09%
+オーガニック売上比 0.9%"><rect x="357.5" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="382.0" cy="156.5" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="430.9" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/4</text><g class="hit" tabindex="0" data-tip="2026年4月
+0.09%
+オーガニック売上比 0.9%"><rect x="406.5" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="430.9" cy="157.8" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="479.8" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/5</text><g class="hit" tabindex="0" data-tip="2026年5月
+0.09%
+オーガニック売上比 0.9%"><rect x="455.4" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="479.8" cy="155.5" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="528.8" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/6</text><g class="hit" tabindex="0" data-tip="2026年6月
+0.12%
+オーガニック売上比 1.2%"><rect x="504.3" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="528.8" cy="147.6" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="577.7" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/7</text><g class="hit" tabindex="0" data-tip="2026年7月
+0.19%
+オーガニック売上比 1.8%"><rect x="553.2" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="577.7" cy="124.1" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="626.6" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/8</text><g class="hit" tabindex="0" data-tip="2026年8月
+0.25%
+オーガニック売上比 2.3%"><rect x="602.2" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="626.6" cy="104.8" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="675.5" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/9</text><g class="hit" tabindex="0" data-tip="2026年9月
+0.38%
+オーガニック売上比 3.2%"><rect x="651.1" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="675.5" cy="62.9" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="675.5" y="52.9" text-anchor="middle" font-size="12" font-weight="700" fill="#1c2530">0.38%</text></svg></div>
+</div>
     </section>
     <section>
       <h2>今月のサマリー</h2>
@@ -205,12 +303,121 @@
 
   <div class="panel" id="trend">
     <section>
+      <h2>成長推移 <small>2025年9月〜2026年9月</small></h2>
+      <div class="charts">
+  <div class="chartbox"><p class="ctitle">生成AI経由の売上（税抜）</p><p class="csub">2025年9月〜2026年9月・月別</p><svg viewBox="0 0 720 220" width="100%" role="img" aria-label="生成AI経由の売上（月別・税抜）" class="chart" id="ch-rev"><line x1="64" x2="700" y1="186.0" y2="186.0" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="190.0" text-anchor="end" font-size="11" fill="#5b6b7b">0</text><line x1="64" x2="700" y1="145.0" y2="145.0" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="149.0" text-anchor="end" font-size="11" fill="#5b6b7b">100万</text><line x1="64" x2="700" y1="104.0" y2="104.0" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="108.0" text-anchor="end" font-size="11" fill="#5b6b7b">200万</text><line x1="64" x2="700" y1="63.0" y2="63.0" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="67.0" text-anchor="end" font-size="11" fill="#5b6b7b">300万</text><line x1="64" x2="700" y1="22.0" y2="22.0" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="26.0" text-anchor="end" font-size="11" fill="#5b6b7b">400万</text><g class="hit" tabindex="0" data-tip="2025年9月
+¥256,778
+セッション 1,151・購入 5 件"><rect x="64.0" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M76.5,186.0 V179.5 Q76.5,175.5 80.5,175.5 H96.5 Q100.5,175.5 100.5,179.5 V186.0 Z" fill="#00897b"/></g><text x="88.5" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/9</text><g class="hit" tabindex="0" data-tip="2025年10月
+¥536,718
+セッション 1,042・購入 15 件"><rect x="112.9" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M125.4,186.0 V168.0 Q125.4,164.0 129.4,164.0 H145.4 Q149.4,164.0 149.4,168.0 V186.0 Z" fill="#00897b"/></g><text x="137.4" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/10</text><g class="hit" tabindex="0" data-tip="2025年11月
+¥741,050
+セッション 1,322・購入 12 件"><rect x="161.8" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M174.3,186.0 V159.6 Q174.3,155.6 178.3,155.6 H194.3 Q198.3,155.6 198.3,159.6 V186.0 Z" fill="#00897b"/></g><text x="186.3" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/11</text><g class="hit" tabindex="0" data-tip="2025年12月
+¥501,539
+セッション 1,257・購入 15 件"><rect x="210.8" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M223.2,186.0 V169.4 Q223.2,165.4 227.2,165.4 H243.2 Q247.2,165.4 247.2,169.4 V186.0 Z" fill="#00897b"/></g><text x="235.2" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/12</text><g class="hit" tabindex="0" data-tip="2026年1月
+¥254,749
+セッション 1,959・購入 10 件"><rect x="259.7" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M272.2,186.0 V179.6 Q272.2,175.6 276.2,175.6 H292.2 Q296.2,175.6 296.2,179.6 V186.0 Z" fill="#00897b"/></g><text x="284.2" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/1</text><g class="hit" tabindex="0" data-tip="2026年2月
+¥504,736
+セッション 2,077・購入 11 件"><rect x="308.6" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M321.1,186.0 V169.3 Q321.1,165.3 325.1,165.3 H341.1 Q345.1,165.3 345.1,169.3 V186.0 Z" fill="#00897b"/></g><text x="333.1" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/2</text><g class="hit" tabindex="0" data-tip="2026年3月
+¥1,007,825
+セッション 2,794・購入 25 件"><rect x="357.5" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M370.0,186.0 V148.7 Q370.0,144.7 374.0,144.7 H390.0 Q394.0,144.7 394.0,148.7 V186.0 Z" fill="#00897b"/></g><text x="382.0" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/3</text><g class="hit" tabindex="0" data-tip="2026年4月
+¥779,638
+セッション 2,620・購入 33 件"><rect x="406.5" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M418.9,186.0 V158.0 Q418.9,154.0 422.9,154.0 H438.9 Q442.9,154.0 442.9,158.0 V186.0 Z" fill="#00897b"/></g><text x="430.9" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/4</text><g class="hit" tabindex="0" data-tip="2026年5月
+¥777,391
+セッション 3,077・購入 24 件"><rect x="455.4" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M467.8,186.0 V158.1 Q467.8,154.1 471.8,154.1 H487.8 Q491.8,154.1 491.8,158.1 V186.0 Z" fill="#00897b"/></g><text x="479.8" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/5</text><g class="hit" tabindex="0" data-tip="2026年6月
+¥1,000,163
+セッション 3,165・購入 27 件"><rect x="504.3" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M516.8,186.0 V149.0 Q516.8,145.0 520.8,145.0 H536.8 Q540.8,145.0 540.8,149.0 V186.0 Z" fill="#00897b"/></g><text x="528.8" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/6</text><g class="hit" tabindex="0" data-tip="2026年7月
+¥1,640,370
+セッション 3,794・購入 41 件"><rect x="553.2" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M565.7,186.0 V122.7 Q565.7,118.7 569.7,118.7 H585.7 Q589.7,118.7 589.7,122.7 V186.0 Z" fill="#00897b"/></g><text x="577.7" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/7</text><g class="hit" tabindex="0" data-tip="2026年8月
+¥2,104,753
+セッション 6,688・購入 59 件"><rect x="602.2" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M614.6,186.0 V103.7 Q614.6,99.7 618.6,99.7 H634.6 Q638.6,99.7 638.6,103.7 V186.0 Z" fill="#00897b"/></g><text x="626.6" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/8</text><g class="hit" tabindex="0" data-tip="2026年9月
+¥3,348,336
+セッション 11,039・購入 112 件"><rect x="651.1" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M663.5,186.0 V52.7 Q663.5,48.7 667.5,48.7 H683.5 Q687.5,48.7 687.5,52.7 V186.0 Z" fill="#00897b"/></g><text x="675.5" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/9</text><text x="675.5" y="42.7" text-anchor="middle" font-size="12" font-weight="700" fill="#1c2530">¥335万</text></svg></div>
+  <div class="chartbox"><p class="ctitle">生成AI経由のセッション</p><p class="csub">2025年9月〜2026年9月・月別</p><svg viewBox="0 0 720 220" width="100%" role="img" aria-label="生成AI経由のセッション（月別）" class="chart" id="ch-sess"><line x1="64" x2="700" y1="186.0" y2="186.0" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="190.0" text-anchor="end" font-size="11" fill="#5b6b7b">0</text><line x1="64" x2="700" y1="158.7" y2="158.7" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="162.7" text-anchor="end" font-size="11" fill="#5b6b7b">2,000</text><line x1="64" x2="700" y1="131.3" y2="131.3" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="135.3" text-anchor="end" font-size="11" fill="#5b6b7b">4,000</text><line x1="64" x2="700" y1="104.0" y2="104.0" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="108.0" text-anchor="end" font-size="11" fill="#5b6b7b">6,000</text><line x1="64" x2="700" y1="76.7" y2="76.7" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="80.7" text-anchor="end" font-size="11" fill="#5b6b7b">8,000</text><line x1="64" x2="700" y1="49.3" y2="49.3" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="53.3" text-anchor="end" font-size="11" fill="#5b6b7b">10,000</text><line x1="64" x2="700" y1="22.0" y2="22.0" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="26.0" text-anchor="end" font-size="11" fill="#5b6b7b">12,000</text><g class="hit" tabindex="0" data-tip="2025年9月
+1,151 セッション
+うちChatGPT 855"><rect x="64.0" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M76.5,186.0 V174.3 Q76.5,170.3 80.5,170.3 H96.5 Q100.5,170.3 100.5,174.3 V186.0 Z" fill="#00897b"/></g><text x="88.5" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/9</text><g class="hit" tabindex="0" data-tip="2025年10月
+1,042 セッション
+うちChatGPT 859"><rect x="112.9" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M125.4,186.0 V175.8 Q125.4,171.8 129.4,171.8 H145.4 Q149.4,171.8 149.4,175.8 V186.0 Z" fill="#00897b"/></g><text x="137.4" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/10</text><g class="hit" tabindex="0" data-tip="2025年11月
+1,322 セッション
+うちChatGPT 1,152"><rect x="161.8" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M174.3,186.0 V171.9 Q174.3,167.9 178.3,167.9 H194.3 Q198.3,167.9 198.3,171.9 V186.0 Z" fill="#00897b"/></g><text x="186.3" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/11</text><g class="hit" tabindex="0" data-tip="2025年12月
+1,257 セッション
+うちChatGPT 993"><rect x="210.8" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M223.2,186.0 V172.8 Q223.2,168.8 227.2,168.8 H243.2 Q247.2,168.8 247.2,172.8 V186.0 Z" fill="#00897b"/></g><text x="235.2" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/12</text><g class="hit" tabindex="0" data-tip="2026年1月
+1,959 セッション
+うちChatGPT 1,717"><rect x="259.7" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M272.2,186.0 V163.2 Q272.2,159.2 276.2,159.2 H292.2 Q296.2,159.2 296.2,163.2 V186.0 Z" fill="#00897b"/></g><text x="284.2" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/1</text><g class="hit" tabindex="0" data-tip="2026年2月
+2,077 セッション
+うちChatGPT 1,837"><rect x="308.6" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M321.1,186.0 V161.6 Q321.1,157.6 325.1,157.6 H341.1 Q345.1,157.6 345.1,161.6 V186.0 Z" fill="#00897b"/></g><text x="333.1" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/2</text><g class="hit" tabindex="0" data-tip="2026年3月
+2,794 セッション
+うちChatGPT 2,522"><rect x="357.5" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M370.0,186.0 V151.8 Q370.0,147.8 374.0,147.8 H390.0 Q394.0,147.8 394.0,151.8 V186.0 Z" fill="#00897b"/></g><text x="382.0" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/3</text><g class="hit" tabindex="0" data-tip="2026年4月
+2,620 セッション
+うちChatGPT 2,413"><rect x="406.5" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M418.9,186.0 V154.2 Q418.9,150.2 422.9,150.2 H438.9 Q442.9,150.2 442.9,154.2 V186.0 Z" fill="#00897b"/></g><text x="430.9" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/4</text><g class="hit" tabindex="0" data-tip="2026年5月
+3,077 セッション
+うちChatGPT 2,939"><rect x="455.4" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M467.8,186.0 V147.9 Q467.8,143.9 471.8,143.9 H487.8 Q491.8,143.9 491.8,147.9 V186.0 Z" fill="#00897b"/></g><text x="479.8" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/5</text><g class="hit" tabindex="0" data-tip="2026年6月
+3,165 セッション
+うちChatGPT 3,087"><rect x="504.3" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M516.8,186.0 V146.7 Q516.8,142.7 520.8,142.7 H536.8 Q540.8,142.7 540.8,146.7 V186.0 Z" fill="#00897b"/></g><text x="528.8" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/6</text><g class="hit" tabindex="0" data-tip="2026年7月
+3,794 セッション
+うちChatGPT 3,696"><rect x="553.2" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M565.7,186.0 V138.1 Q565.7,134.1 569.7,134.1 H585.7 Q589.7,134.1 589.7,138.1 V186.0 Z" fill="#00897b"/></g><text x="577.7" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/7</text><g class="hit" tabindex="0" data-tip="2026年8月
+6,688 セッション
+うちChatGPT 6,587"><rect x="602.2" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M614.6,186.0 V98.6 Q614.6,94.6 618.6,94.6 H634.6 Q638.6,94.6 638.6,98.6 V186.0 Z" fill="#00897b"/></g><text x="626.6" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/8</text><g class="hit" tabindex="0" data-tip="2026年9月
+11,039 セッション
+うちChatGPT 10,857"><rect x="651.1" y="22" width="48.9" height="164" fill="transparent"/><path class="mark" d="M663.5,186.0 V39.1 Q663.5,35.1 667.5,35.1 H683.5 Q687.5,35.1 687.5,39.1 V186.0 Z" fill="#00897b"/></g><text x="675.5" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/9</text><text x="675.5" y="29.1" text-anchor="middle" font-size="12" font-weight="700" fill="#1c2530">11,039</text></svg></div>
+  <div class="chartbox"><p class="ctitle">サイト全体の売上に占める割合</p><p class="csub">2025年9月〜2026年9月・月別（全チャネル売上を分母）</p><svg viewBox="0 0 720 220" width="100%" role="img" aria-label="サイト全体売上に占める生成AI経由の割合（月別）" class="chart" id="ch-share"><line x1="64" x2="700" y1="186.0" y2="186.0" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="190.0" text-anchor="end" font-size="11" fill="#5b6b7b">0%</text><line x1="64" x2="700" y1="153.2" y2="153.2" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="157.2" text-anchor="end" font-size="11" fill="#5b6b7b">0.1%</text><line x1="64" x2="700" y1="120.4" y2="120.4" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="124.4" text-anchor="end" font-size="11" fill="#5b6b7b">0.2%</text><line x1="64" x2="700" y1="87.6" y2="87.6" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="91.6" text-anchor="end" font-size="11" fill="#5b6b7b">0.3%</text><line x1="64" x2="700" y1="54.8" y2="54.8" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="58.8" text-anchor="end" font-size="11" fill="#5b6b7b">0.4%</text><line x1="64" x2="700" y1="22.0" y2="22.0" stroke="#e3e8ee" stroke-width="1"/><text x="56" y="26.0" text-anchor="end" font-size="11" fill="#5b6b7b">0.5%</text><polygon points="88.5,186.0 88.5,174.8 137.4,163.1 186.3,160.3 235.2,167.2 284.2,176.2 333.1,168.8 382.0,156.5 430.9,157.8 479.8,155.5 528.8,147.6 577.7,124.1 626.6,104.8 675.5,62.9 675.5,186.0" fill="#00897b" fill-opacity="0.10"/><polyline points="88.5,174.8 137.4,163.1 186.3,160.3 235.2,167.2 284.2,176.2 333.1,168.8 382.0,156.5 430.9,157.8 479.8,155.5 528.8,147.6 577.7,124.1 626.6,104.8 675.5,62.9" fill="none" stroke="#00897b" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><text x="88.5" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/9</text><g class="hit" tabindex="0" data-tip="2025年9月
+0.03%
+オーガニック売上比 0.3%"><rect x="64.0" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="88.5" cy="174.8" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="137.4" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/10</text><g class="hit" tabindex="0" data-tip="2025年10月
+0.07%
+オーガニック売上比 0.7%"><rect x="112.9" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="137.4" cy="163.1" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="186.3" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/11</text><g class="hit" tabindex="0" data-tip="2025年11月
+0.08%
+オーガニック売上比 0.7%"><rect x="161.8" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="186.3" cy="160.3" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="235.2" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">25/12</text><g class="hit" tabindex="0" data-tip="2025年12月
+0.06%
+オーガニック売上比 0.6%"><rect x="210.8" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="235.2" cy="167.2" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="284.2" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/1</text><g class="hit" tabindex="0" data-tip="2026年1月
+0.03%
+オーガニック売上比 0.3%"><rect x="259.7" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="284.2" cy="176.2" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="333.1" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/2</text><g class="hit" tabindex="0" data-tip="2026年2月
+0.05%
+オーガニック売上比 0.5%"><rect x="308.6" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="333.1" cy="168.8" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="382.0" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/3</text><g class="hit" tabindex="0" data-tip="2026年3月
+0.09%
+オーガニック売上比 0.9%"><rect x="357.5" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="382.0" cy="156.5" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="430.9" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/4</text><g class="hit" tabindex="0" data-tip="2026年4月
+0.09%
+オーガニック売上比 0.9%"><rect x="406.5" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="430.9" cy="157.8" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="479.8" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/5</text><g class="hit" tabindex="0" data-tip="2026年5月
+0.09%
+オーガニック売上比 0.9%"><rect x="455.4" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="479.8" cy="155.5" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="528.8" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/6</text><g class="hit" tabindex="0" data-tip="2026年6月
+0.12%
+オーガニック売上比 1.2%"><rect x="504.3" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="528.8" cy="147.6" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="577.7" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/7</text><g class="hit" tabindex="0" data-tip="2026年7月
+0.19%
+オーガニック売上比 1.8%"><rect x="553.2" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="577.7" cy="124.1" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="626.6" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/8</text><g class="hit" tabindex="0" data-tip="2026年8月
+0.25%
+オーガニック売上比 2.3%"><rect x="602.2" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="626.6" cy="104.8" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="675.5" y="208" text-anchor="middle" font-size="11" fill="#5b6b7b">26/9</text><g class="hit" tabindex="0" data-tip="2026年9月
+0.38%
+オーガニック売上比 3.2%"><rect x="651.1" y="22" width="48.9" height="164" fill="transparent"/><circle class="mark" cx="675.5" cy="62.9" r="4" fill="#00897b" stroke="#fff" stroke-width="2"/></g><text x="675.5" y="52.9" text-anchor="middle" font-size="12" font-weight="700" fill="#1c2530">0.38%</text></svg></div>
+</div>
+    </section>
+    <section>
       <h2>月別推移 <small>2025年9月〜2026年9月・生成AI合計</small></h2>
       <div class="tablewrap"><table><thead><tr><th>月</th><th>セッション</th><th>売上（税抜）</th><th>購入</th><th>CVR</th><th>サイト全体売上比</th><th>オーガニック売上比</th></tr></thead><tbody><tr><td>2025年9月</td><td class="num">1,151</td><td class="num">¥256,778</td><td class="num">5</td><td class="num">0.43%</td><td class="num">0.03%</td><td class="num">0.3%</td></tr><tr><td>2025年10月</td><td class="num">1,042</td><td class="num">¥536,718</td><td class="num">15</td><td class="num">1.44%</td><td class="num">0.07%</td><td class="num">0.7%</td></tr><tr><td>2025年11月</td><td class="num">1,322</td><td class="num">¥741,050</td><td class="num">12</td><td class="num">0.91%</td><td class="num">0.08%</td><td class="num">0.7%</td></tr><tr><td>2025年12月</td><td class="num">1,257</td><td class="num">¥501,539</td><td class="num">15</td><td class="num">1.19%</td><td class="num">0.06%</td><td class="num">0.6%</td></tr><tr><td>2026年1月</td><td class="num">1,959</td><td class="num">¥254,749</td><td class="num">10</td><td class="num">0.51%</td><td class="num">0.03%</td><td class="num">0.3%</td></tr><tr><td>2026年2月</td><td class="num">2,077</td><td class="num">¥504,736</td><td class="num">11</td><td class="num">0.53%</td><td class="num">0.05%</td><td class="num">0.5%</td></tr><tr><td>2026年3月</td><td class="num">2,794</td><td class="num">¥1,007,825</td><td class="num">25</td><td class="num">0.89%</td><td class="num">0.09%</td><td class="num">0.9%</td></tr><tr><td>2026年4月</td><td class="num">2,620</td><td class="num">¥779,638</td><td class="num">33</td><td class="num">1.26%</td><td class="num">0.09%</td><td class="num">0.9%</td></tr><tr><td>2026年5月</td><td class="num">3,077</td><td class="num">¥777,391</td><td class="num">24</td><td class="num">0.78%</td><td class="num">0.09%</td><td class="num">0.9%</td></tr><tr><td>2026年6月</td><td class="num">3,165</td><td class="num">¥1,000,163</td><td class="num">27</td><td class="num">0.85%</td><td class="num">0.12%</td><td class="num">1.2%</td></tr><tr><td>2026年7月</td><td class="num">3,794</td><td class="num">¥1,640,370</td><td class="num">41</td><td class="num">1.08%</td><td class="num">0.19%</td><td class="num">1.8%</td></tr><tr><td>2026年8月</td><td class="num">6,688</td><td class="num">¥2,104,753</td><td class="num">59</td><td class="num">0.88%</td><td class="num">0.25%</td><td class="num">2.3%</td></tr><tr><td>2026年9月</td><td class="num">11,039</td><td class="num">¥3,348,336</td><td class="num">112</td><td class="num">1.01%</td><td class="num">0.38%</td><td class="num">3.2%</td></tr></tbody></table></div>
     </section>
   </div>
 
 </div>
+
+<div id="aitt"></div>
+<script>
+(function(){
+  var tt=document.getElementById('aitt');
+  function show(el,x,y){
+    var lines=(el.getAttribute('data-tip')||'').split('\n');
+    tt.textContent='';
+    lines.forEach(function(t,i){var s=document.createElement(i===0?'div':'div');if(i===1){var b=document.createElement('b');b.textContent=t;s.appendChild(b);}else{s.textContent=t;}tt.appendChild(s);});
+    tt.style.display='block';
+    var r=tt.getBoundingClientRect();var nx=x+14, ny=y-r.height-10;
+    if(nx+r.width>window.innerWidth-8)nx=x-r.width-14; if(ny<8)ny=y+16;
+    tt.style.left=nx+'px'; tt.style.top=ny+'px';
+  }
+  document.querySelectorAll('.chart .hit').forEach(function(el){
+    el.addEventListener('pointermove',function(e){show(el,e.clientX,e.clientY)});
+    el.addEventListener('pointerleave',function(){tt.style.display='none'});
+    el.addEventListener('focus',function(){var r=el.getBoundingClientRect();show(el,r.left+r.width/2,r.top+20)});
+    el.addEventListener('blur',function(){tt.style.display='none'});
+  });
+})();
+</script>
+
 <script>
   document.querySelectorAll('.tab').forEach(function(t){
     t.addEventListener('click',function(){
